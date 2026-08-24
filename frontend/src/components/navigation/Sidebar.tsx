@@ -47,7 +47,7 @@ const navigationStructure: NavGroup[] = [
         name: 'Operação',
         path: '/app/operacao',
         icon: <Activity className="w-4 h-4 text-amber-400" />,
-        status: 'soon',
+        status: 'active',
       },
       {
         name: 'Agendamentos',

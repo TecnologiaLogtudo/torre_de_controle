@@ -15,14 +15,12 @@ import { ResumoEmpresasTorre } from '../components/ResumoEmpresasTorre'
 import { DetalhamentoTorre } from '../components/DetalhamentoTorre'
 import { HistoricoEventosTorre } from '../components/HistoricoEventosTorre'
 import { Alert } from '@/components/ui/Alert'
-import { ImportModal } from '@/components/ui/ImportModal'
 import { formatToBahia } from '@/utils/date'
 
 export const TorrePage: React.FC = () => {
   const hojeStr = new Date().toISOString().split('T')[0]
   const [dataFiltro, setDataFiltro] = useState(hojeStr)
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState<string | null>(null)
-  const [importModalOpen, setImportModalOpen] = useState(false)
 
   const [resumo, setResumo] = useState<ResumoTorre | null>(null)
   const [empresasResumo, setEmpresasResumo] = useState<ResumoEmpresaTorre[]>([])
@@ -100,7 +98,6 @@ export const TorrePage: React.FC = () => {
         dataFiltro={dataFiltro}
         onDataChange={handleDataChange}
         onRefresh={carregarDadosTorre}
-        onOpenImport={() => setImportModalOpen(true)}
         ultimaAtualizacao={ultimaAtualizacao}
         isLoading={loading}
       />
@@ -141,13 +138,6 @@ export const TorrePage: React.FC = () => {
           />
         </div>
       </div>
-
-      {/* Modal de Importação de Planilha */}
-      <ImportModal
-        isOpen={importModalOpen}
-        onClose={() => setImportModalOpen(false)}
-        onSuccess={carregarDadosTorre}
-      />
     </div>
   )
 }

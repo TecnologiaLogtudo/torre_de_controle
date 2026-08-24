@@ -188,6 +188,8 @@ def listar_eventos_operacionais(
     novo_status: Optional[str] = Query(None),
     motivo: Optional[str] = Query(None),
     usuario_id: Optional[UUID] = Query(None),
+    motorista_nome: Optional[str] = Query(None),
+    placa: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=100, alias="limite"),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
@@ -204,6 +206,8 @@ def listar_eventos_operacionais(
         novo_status=novo_status,
         motivo=motivo,
         usuario_id=usuario_id,
+        motorista_nome=motorista_nome,
+        placa=placa,
         limite=limit,
         offset=offset,
     )

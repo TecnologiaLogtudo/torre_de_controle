@@ -1,15 +1,17 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { agendamentosService } from '@/services/agendamentos/agendamentosService'
 import { empresasService } from '@/services/empresas/empresasService'
 import { motoristasService } from '@/services/motoristas/motoristasService'
 import { veiculosService } from '@/services/veiculos/veiculosService'
 import { motivosService } from '@/services/motivos/motivosService'
+import { contratosService } from '@/services/contratos/contratosService'
 import { Agendamento, HistoricoAgendamento } from '@/types/agendamentos'
 import { Empresa } from '@/types/empresas'
 import { Motorista } from '@/types/motoristas'
 import { Veiculo } from '@/types/veiculos'
 import { MotivoIndisponibilidade } from '@/types/motivos'
+import { MotoristaDedicadoVinculo } from '@/types/contratos'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -46,6 +48,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
   const [motoristas, setMotoristas] = useState<Motorista[]>([])
   const [veiculos, setVeiculos] = useState<Veiculo[]>([])
   const [motivos, setMotivos] = useState<MotivoIndisponibilidade[]>([])
+  const [vinculosDedicados, setVinculosDedicados] = useState<MotoristaDedicadoVinculo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -77,12 +80,13 @@ export const AgendamentoDetalhesPage: React.FC = () => {
       const agData = await agendamentosService.buscarPorId(id)
       setAgendamento(agData)
 
-      const [empData, histData, mList, vList, motList] = await Promise.all([
+      const [empData, histData, mList, vList, motList, vincList] = await Promise.all([
         empresasService.buscarPorId(agData.empresa_id).catch(() => null),
         agendamentosService.obterHistorico(agData.id).catch(() => []),
         motoristasService.listar().catch(() => []),
         veiculosService.listar().catch(() => []),
         motivosService.listarMotivos(true).catch(() => []),
+        contratosService.listarVinculosAtivos().catch(() => []),
       ])
 
       setEmpresa(empData)
@@ -90,6 +94,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
       setMotoristas(mList)
       setVeiculos(vList)
       setMotivos(motList)
+      setVinculosDedicados(vincList)
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar detalhes do agendamento.')
     } finally {
@@ -100,6 +105,61 @@ export const AgendamentoDetalhesPage: React.FC = () => {
   useEffect(() => {
     carregarDetalhes()
   }, [carregarDetalhes])
+
+  // Motoristas elegíveis para inclusão SPOT:
+  // 1. Não pode ter vínculo DEDICADO ativo com NENHUMA empresa
+  // 2. Não pode estar INDISPONÍVEL nem alocado no agendamento atual
+  const motoristasSpotElegiveis = useMemo(() => {
+    if (!agendamento) return []
+    
+    // IDs de motoristas com vínculo DEDICADO ativo
+    const motoristasDedicadosSet = new Set(
+      vinculosDedicados
+        .filter(v => v.ativo && (v.categoria === 'DEDICADO' || v.categoria_operacional === 'DEDICADO'))
+        .map(v => v.motorista_id)
+    )
+
+    // IDs de motoristas já alocados no agendamento atual
+    const motoristasAlocadosNoAgendamento = new Set(
+      agendamento.alocacoes
+        .filter(a => targetAlocacaoId ? a.id !== targetAlocacaoId : true)
+        .map(a => a.motorista_id)
+    )
+
+    return motoristas.filter(m => {
+      if (!m.ativo) return false
+      if (motoristasDedicadosSet.has(m.id)) return false
+      if (motoristasAlocadosNoAgendamento.has(m.id)) return false
+      return true
+    })
+  }, [agendamento, vinculosDedicados, motoristas, targetAlocacaoId])
+
+  // Veículos elegíveis para inclusão SPOT:
+  // 1. Não pode ter vínculo DEDICADO ativo com NENHUMA empresa
+  // 2. Não pode estar alocado no agendamento atual
+  const veiculosSpotElegiveis = useMemo(() => {
+    if (!agendamento) return []
+
+    // IDs de veículos com vínculo DEDICADO ativo
+    const veiculosDedicadosSet = new Set(
+      vinculosDedicados
+        .filter(v => v.ativo && (v.categoria === 'DEDICADO' || v.categoria_operacional === 'DEDICADO'))
+        .map(v => v.veiculo_id)
+    )
+
+    // IDs de veículos já alocados no agendamento atual
+    const veiculosAlocadosNoAgendamento = new Set(
+      agendamento.alocacoes
+        .filter(a => targetAlocacaoId ? a.id !== targetAlocacaoId : true)
+        .map(a => a.veiculo_id)
+    )
+
+    return veiculos.filter(v => {
+      if (veiculosDedicadosSet.has(v.id)) return false
+      if (veiculosAlocadosNoAgendamento.has(v.id)) return false
+      return true
+    })
+  }, [agendamento, vinculosDedicados, veiculos, targetAlocacaoId])
 
   const handleOpenAdicionarSpot = () => {
     setTargetAlocacaoId(null)
@@ -492,20 +552,20 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           {spotFormError && <Alert type="error">{spotFormError}</Alert>}
 
           <Select
-            label="Motorista SPOT"
+            label="Motorista SPOT (Apenas Não-Dedicados e Livres)"
             value={motoristaSpotId}
             onChange={e => setMotoristaSpotId(e.target.value)}
             placeholder="Selecione o motorista..."
-            options={motoristas.map(m => ({ value: m.id, label: m.nome }))}
+            options={motoristasSpotElegiveis.map(m => ({ value: m.id, label: m.nome }))}
             required
           />
 
           <Select
-            label="Veículo SPOT"
+            label="Veículo SPOT (Apenas Não-Dedicados e Livres)"
             value={veiculoSpotId}
             onChange={e => setVeiculoSpotId(e.target.value)}
             placeholder="Selecione o veículo..."
-            options={veiculos.map(v => ({
+            options={veiculosSpotElegiveis.map(v => ({
               value: v.id,
               label: `${v.tipo_veiculo} - ${v.identificacao} [${v.placa}] (${v.especialidade})`,
             }))}

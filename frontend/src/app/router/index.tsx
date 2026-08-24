@@ -13,6 +13,7 @@ import { MotivosIndisponibilidadePage } from '@/modules/operacao/pages/MotivosIn
 import { UsuariosPage } from '@/modules/usuarios/pages/UsuariosPage'
 import { AgendamentosPage } from '@/modules/agendamentos/pages/AgendamentosPage'
 import { AgendamentoDetalhesPage } from '@/modules/agendamentos/pages/AgendamentoDetalhesPage'
+import { HistoricoEventosPage } from '@/modules/operacao/pages/HistoricoEventosPage'
 
 export const AppRouter: React.FC = () => {
   return (
@@ -42,6 +43,7 @@ export const AppRouter: React.FC = () => {
           <Route path="torre" element={<TorrePage />} />
 
           {/* Módulos Operacionais */}
+          <Route path="operacao" element={<HistoricoEventosPage />} />
           <Route path="empresas" element={<EmpresasPage />} />
           <Route path="motoristas" element={<MotoristasPage />} />
           <Route path="veiculos" element={<VeiculosPage />} />

@@ -295,11 +295,21 @@ class OperacaoService:
         novo_status: Optional[str] = None,
         motivo: Optional[str] = None,
         usuario_id: Optional[UUID] = None,
+        motorista_nome: Optional[str] = None,
+        placa: Optional[str] = None,
         limite: int = 50,
         offset: int = 0,
     ) -> List[EventoOperacional]:
         query = db.query(EventoOperacional)
 
+        if motorista_nome:
+            query = query.join(Motorista, EventoOperacional.motorista_id == Motorista.id).filter(
+                Motorista.nome.ilike(f"%{motorista_nome}%")
+            )
+        if placa:
+            query = query.join(Veiculo, EventoOperacional.veiculo_id == Veiculo.id).filter(
+                Veiculo.placa.ilike(f"%{placa}%")
+            )
         if empresa_id:
             query = query.filter(EventoOperacional.empresa_id == empresa_id)
         if data_inicio:

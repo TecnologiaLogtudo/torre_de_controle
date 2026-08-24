@@ -78,14 +78,18 @@ class DetalhamentoOperacionalResponse(BaseModel):
 class EventoOperacionalResponse(BaseModel):
     id: UUID
     empresa_id: UUID
+    empresa_nome: Optional[str] = None
     motorista_id: UUID
+    motorista_nome: Optional[str] = None
     veiculo_id: UUID
+    veiculo_placa: Optional[str] = None
     agendamento_id: Optional[UUID] = None
     categoria: str
     status_anterior: str
     novo_status: str
     motivo_indisponibilidade: Optional[str] = None
     usuario_id: UUID
+    usuario_nome: Optional[str] = None
     origem_alteracao: Optional[str] = None
     criado_em: datetime
 

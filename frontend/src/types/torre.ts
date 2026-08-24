@@ -33,14 +33,18 @@ export interface DetalhamentoOperacional {
 export interface EventoOperacional {
   id: string
   empresa_id: string
+  empresa_nome?: string | null
   motorista_id: string
+  motorista_nome?: string | null
   veiculo_id: string
+  veiculo_placa?: string | null
   agendamento_id?: string | null
   categoria: string
   status_anterior: string
   novo_status: string
   motivo_indisponibilidade?: string | null
   usuario_id: string
+  usuario_nome?: string | null
   origem_alteracao?: string | null
   criado_em: string
 }
@@ -64,7 +68,9 @@ export interface FiltrosHistoricoEventos {
   data_inicio?: string
   data_fim?: string
   motorista_id?: string
+  motorista_nome?: string
   veiculo_id?: string
+  placa?: string
   categoria?: string
   novo_status?: string
   motivo?: string

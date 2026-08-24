@@ -67,8 +67,7 @@ class AgendamentoService:
     def verificar_conflito_alocacao(
         db: Session, motorista_id: UUID, veiculo_id: UUID, agendamento_id: UUID
     ) -> None:
-        """Verifica se motorista ou veículo já possuem alocação ativa e conflitante em outro agendamento, com bloqueio pessimista."""
-        # Adquire trava pessimista (FOR UPDATE) no motorista e no veículo para serializar transações concorrentes simultâneas
+        """Verifica se motorista ou veículo já possuem alocação ativa/indisponível ou impedimento contratual dedicado."""
         if motorista_id:
             db.query(Motorista).filter(Motorista.id == motorista_id).with_for_update().first()
         if veiculo_id:
@@ -78,7 +77,81 @@ class AgendamentoService:
         if not agendamento_alvo:
             return
 
-        # Conflito de Motorista
+        # 1. Regra de Exclusividade do Motorista DEDICADO por Empresa
+        vinculo_motorista_dedic = (
+            db.query(MotoristaDedicadoVinculo)
+            .filter(
+                MotoristaDedicadoVinculo.motorista_id == motorista_id,
+                MotoristaDedicadoVinculo.ativo == True,
+                MotoristaDedicadoVinculo.categoria_operacional == "DEDICADO",
+            )
+            .first()
+        )
+        if vinculo_motorista_dedic:
+            if vinculo_motorista_dedic.empresa_id != agendamento_alvo.empresa_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="O motorista informado é DEDICADO exclusivo de outra empresa e não pode ser agendado nesta empresa.",
+                )
+            if vinculo_motorista_dedic.veiculo_id and vinculo_motorista_dedic.veiculo_id != veiculo_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Este motorista é DEDICADO e está vinculado a outro veículo específico. Ele só pode operar com seu veículo cadastrado no contrato.",
+                )
+
+        # 2. Regra de Exclusividade do Veículo DEDICADO por Empresa
+        vinculo_veiculo_dedic = (
+            db.query(MotoristaDedicadoVinculo)
+            .filter(
+                MotoristaDedicadoVinculo.veiculo_id == veiculo_id,
+                MotoristaDedicadoVinculo.ativo == True,
+                MotoristaDedicadoVinculo.categoria_operacional == "DEDICADO",
+            )
+            .first()
+        )
+        if vinculo_veiculo_dedic and vinculo_veiculo_dedic.empresa_id != agendamento_alvo.empresa_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O veículo informado é DEDICADO exclusivo de outra empresa e não pode ser escalado nesta empresa.",
+            )
+
+        # 3. Regra de Indisponibilidade na mesma data (Motorista)
+        indisponivel_motorista = (
+            db.query(AlocacaoOperacional)
+            .join(Agendamento)
+            .filter(
+                AlocacaoOperacional.motorista_id == motorista_id,
+                Agendamento.data == agendamento_alvo.data,
+                Agendamento.status != "CANCELADO",
+                AlocacaoOperacional.status_operacional == "INDISPONIVEL",
+            )
+            .first()
+        )
+        if indisponivel_motorista:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O motorista informado está marcado como INDISPONÍVEL nesta data. Ele só poderá ser alocado quando seu status for alterado.",
+            )
+
+        # 4. Regra de Indisponibilidade na mesma data (Veículo)
+        indisponivel_veiculo = (
+            db.query(AlocacaoOperacional)
+            .join(Agendamento)
+            .filter(
+                AlocacaoOperacional.veiculo_id == veiculo_id,
+                Agendamento.data == agendamento_alvo.data,
+                Agendamento.status != "CANCELADO",
+                AlocacaoOperacional.status_operacional == "INDISPONIVEL",
+            )
+            .first()
+        )
+        if indisponivel_veiculo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O veículo informado está marcado como INDISPONÍVEL nesta data. Ele só poderá ser alocado quando seu status for alterado.",
+            )
+
+        # 5. Conflito de Alocação Ativa (Motorista)
         conflito_motorista = (
             db.query(AlocacaoOperacional)
             .join(Agendamento)
@@ -97,7 +170,7 @@ class AgendamentoService:
                 detail="O motorista informado já está alocado e ativo em outra operação simultânea.",
             )
 
-        # Conflito de Veículo
+        # 6. Conflito de Alocação Ativa (Veículo)
         conflito_veiculo = (
             db.query(AlocacaoOperacional)
             .join(Agendamento)

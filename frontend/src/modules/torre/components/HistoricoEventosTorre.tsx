@@ -3,7 +3,7 @@ import { EventoOperacional } from '@/types/torre'
 import { Card } from '@/components/ui/Card'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { formatToBahia } from '@/utils/date'
-import { Activity } from 'lucide-react'
+import { Activity, User } from 'lucide-react'
 
 export interface HistoricoEventosTorreProps {
   eventos: EventoOperacional[]
@@ -41,7 +41,7 @@ export const HistoricoEventosTorre: React.FC<HistoricoEventosTorreProps> = ({ ev
               <div className="flex items-start gap-3">
                 <Activity className="w-4 h-4 text-logtudo-accent shrink-0 mt-0.5" />
                 <div>
-                  <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                     <span className="font-mono text-[11px] text-logtudo-accent font-bold">
                       {formatToBahia(ev.criado_em)}
                     </span>
@@ -49,6 +49,12 @@ export const HistoricoEventosTorre: React.FC<HistoricoEventosTorreProps> = ({ ev
                     <span className="font-bold text-slate-200 uppercase tracking-wide">
                       {ev.categoria}
                     </span>
+                    {ev.motorista_nome && (
+                      <>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-slate-300 font-semibold">{ev.motorista_nome}</span>
+                      </>
+                    )}
                   </div>
                   <div className="text-slate-300">
                     Transição de <span className="font-mono text-slate-400">{ev.status_anterior}</span> para{' '}
@@ -56,6 +62,12 @@ export const HistoricoEventosTorre: React.FC<HistoricoEventosTorreProps> = ({ ev
                     {ev.motivo_indisponibilidade && (
                       <span className="text-red-400 block mt-0.5">
                         Motivo: <strong>{ev.motivo_indisponibilidade}</strong>
+                      </span>
+                    )}
+                    {ev.usuario_nome && (
+                      <span className="text-slate-400 text-[11px] flex items-center gap-1 mt-1">
+                        <User className="w-3 h-3 text-logtudo-accent shrink-0" />
+                        Alterado por: <strong className="text-slate-200">{ev.usuario_nome}</strong>
                       </span>
                     )}
                   </div>

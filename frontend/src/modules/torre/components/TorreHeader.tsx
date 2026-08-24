@@ -2,13 +2,12 @@ import React from 'react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { RefreshCw, Clock, Upload } from 'lucide-react'
+import { RefreshCw, Clock } from 'lucide-react'
 
 export interface TorreHeaderProps {
   dataFiltro: string
   onDataChange: (data: string) => void
   onRefresh: () => void
-  onOpenImport?: () => void
   ultimaAtualizacao: string | null
   isLoading: boolean
 }
@@ -17,7 +16,6 @@ export const TorreHeader: React.FC<TorreHeaderProps> = ({
   dataFiltro,
   onDataChange,
   onRefresh,
-  onOpenImport,
   ultimaAtualizacao,
   isLoading,
 }) => {
@@ -37,17 +35,6 @@ export const TorreHeader: React.FC<TorreHeaderProps> = ({
             className="text-xs"
           />
         </div>
-
-        {onOpenImport && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onOpenImport}
-            leftIcon={<Upload className="w-3.5 h-3.5" />}
-          >
-            Importar Planilha
-          </Button>
-        )}
 
         <Button
           variant="primary"

@@ -40,6 +40,22 @@ class EventoOperacional(BaseEntidade):
     agendamento = relationship("Agendamento")
     usuario = relationship("Usuario")
 
+    @property
+    def empresa_nome(self):
+        return self.empresa.nome if self.empresa else None
+
+    @property
+    def motorista_nome(self):
+        return self.motorista.nome if self.motorista else None
+
+    @property
+    def veiculo_placa(self):
+        return self.veiculo.placa if self.veiculo else None
+
+    @property
+    def usuario_nome(self):
+        return self.usuario.nome if self.usuario else None
+
     def __repr__(self) -> str:
         return f"<EventoOperacional motorista={self.motorista_id} status_anterior={self.status_anterior} novo={self.novo_status}>"
 

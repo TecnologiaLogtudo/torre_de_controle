@@ -7,7 +7,26 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ## [1.0.1] - 2026-08-23
 
+### Removido
+- **Botão Importar Planilha na Torre de Controle**:
+  - Removido o botão *"Importar Planilha"* do cabeçalho da Torre de Controle ([TorreHeader.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/torre/components/TorreHeader.tsx)) e desativado o modal em `TorrePage.tsx`.
+
 ### Adicionado
+- **Central de Operação & Eventos Operacionais (`/app/operacao`)**:
+  - Ativado o menu **Operação** no menu lateral ([Sidebar.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/components/navigation/Sidebar.tsx#L47-L51)) e registrada a rota `/app/operacao` ([router/index.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/app/router/index.tsx#L44)).
+  - Criada a página compilada [HistoricoEventosPage.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/operacao/pages/HistoricoEventosPage.tsx) com busca multicritério por Empresa, Categoria (DEDICADO/SPOT), Status, Intervalo de Datas, Nome do Motorista ou Placa do Veículo.
+  - Disponibilizados cards de indicadores agregados (Total de Eventos, Indisponibilidades, Recursos em Rota, Programados) e tabela completa com autor da alteração, timestamp `America/Bahia` e justificativa.
+  - Adicionadas abas preparadas para a expansão futura do **Monitoramento em Rota (Mapa + Telemetria GPS)**.
+- **Blindagem de Exclusividade e Indisponibilidade de Recursos**:
+  - Implementadas as validações em `verificar_conflito_alocacao` ([app/agendamentos/services.py](file:///D:/Logtudo/Projetos/torre_de_controle/app/agendamentos/services.py#L67-L118)):
+    1. Bloqueio de alocação de motoristas ou veículos marcados como `INDISPONÍVEL` na data.
+    2. Bloqueio de alocação de motoristas ou veículos `DEDICADOS` em operações de outras empresas.
+    3. Exigência de veículo fixo contratual para motoristas dedicados.
+  - Implementada a filtragem inteligente nos dropdowns do modal SPOT ([AgendamentoDetalhesPage.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/agendamentos/pages/AgendamentoDetalhesPage.tsx#L552-L572)), ocultando recursos dedicados a outras empresas ou indisponíveis na data.
+  - Adicionado teste automatizado `test_bloqueio_motorista_indisponivel_e_exclusividade_dedicada` em `tests/test_agendamentos.py`.
+- **Exibição do Autor do Evento e Recursos no Feed da Torre**:
+  - Adicionadas as propriedades dinâmicas `usuario_nome`, `motorista_nome`, `veiculo_placa` e `empresa_nome` em `EventoOperacionalResponse` ([app/operacao/schemas.py](file:///D:/Logtudo/Projetos/torre_de_controle/app/operacao/schemas.py#L78)) e no modelo SQLAlchemy ([app/operacao/models.py](file:///D:/Logtudo/Projetos/torre_de_controle/app/operacao/models.py#L43)).
+  - Atualizado o card **Feed de Eventos Operacionais Imutáveis** ([HistoricoEventosTorre.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/torre/components/HistoricoEventosTorre.tsx#L58)) para exibir o nome do motorista e o responsável que efetuou a alteração (*"Alterado por: [Nome do Usuário]"*).
 - **Filtro Unificado por Empresa na Torre de Controle**:
   - Atualizado o endpoint `GET /api/v1/operacao/torre/resumo` ([app/operacao/routers.py](file:///D:/Logtudo/Projetos/torre_de_controle/app/operacao/routers.py#L116)) e o serviço `obter_resumo_geral` ([app/operacao/services.py](file:///D:/Logtudo/Projetos/torre_de_controle/app/operacao/services.py#L144)) para aceitar o parâmetro opcional `empresa_id`.
   - Conectada a seleção de empresa feita no card **Situação Operacional por Empresa** em `TorrePage.tsx` aos **KPIs Executivos** (`IndicadoresTorre`) e ao **Feed de Eventos Operacionais Imutáveis** (`HistoricoEventosTorre`), permitindo filtrar toda a página para uma visão refinada por empresa contratante.
