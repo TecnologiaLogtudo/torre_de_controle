@@ -120,6 +120,22 @@ class AgendamentoService:
     def criar_agendamento(db: Session, dados: AgendamentoCreate, usuario_id: UUID) -> Agendamento:
         AgendamentoService.validar_janela_criacao(db, dados.data)
 
+        # Valida se a empresa já possui um agendamento ativo/não-cancelado registrado para esta mesma data
+        agendamento_existente = (
+            db.query(Agendamento)
+            .filter(
+                Agendamento.empresa_id == dados.empresa_id,
+                Agendamento.data == dados.data,
+                Agendamento.status != "CANCELADO",
+            )
+            .first()
+        )
+        if agendamento_existente:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Já existe um agendamento ativo registrado para esta empresa na data {dados.data.strftime('%d/%m/%Y')}. Alterações na programação devem ser realizadas dentro da página de detalhes do agendamento existente.",
+            )
+
         # Captura a configuração contratual vigente na data do agendamento
         config_vigente = obter_configuracao_vigente(
             db, dados.empresa_id, datetime.combine(dados.data, time(0, 0, 0))

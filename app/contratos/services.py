@@ -11,6 +11,7 @@ from app.core.datetime_utils import para_utc, agora_local
 from app.auditoria.services import registrar_auditoria
 from app.empresas.models import Empresa
 from app.motoristas.models import Motorista
+from app.veiculos.models import Veiculo
 
 
 # ==========================================
@@ -26,6 +27,7 @@ def obter_contrato_configuracao_por_id(
         .filter(ContratoConfiguracao.id == config_id)
         .first()
     )
+
 
 
 def obter_configuracao_vigente(
@@ -225,7 +227,14 @@ def criar_vinculo_motorista(
         )
 
     # Valida se o veículo já está vinculado de forma ativa em qualquer empresa
+    tipo_veiculo = dados.tipo_veiculo
     if dados.veiculo_id:
+        veiculo_obj = db.query(Veiculo).filter(Veiculo.id == dados.veiculo_id).first()
+        if not veiculo_obj:
+            raise ValueError("O veículo informado não existe.")
+        if not tipo_veiculo:
+            tipo_veiculo = veiculo_obj.tipo_veiculo
+
         vinculo_veiculo = (
             db.query(MotoristaDedicadoVinculo)
             .filter(
@@ -239,12 +248,17 @@ def criar_vinculo_motorista(
                 "Este veículo já possui um vínculo dedicado ativo com outra empresa no momento."
             )
 
+    if not tipo_veiculo:
+        tipo_veiculo = "DEDICADO"
+
+    categoria_operacional = dados.categoria_operacional or "DEDICADO"
+
     vinculo = MotoristaDedicadoVinculo(
         empresa_id=dados.empresa_id,
         motorista_id=dados.motorista_id,
         veiculo_id=dados.veiculo_id,
-        tipo_veiculo=dados.tipo_veiculo,
-        categoria_operacional=dados.categoria_operacional,
+        tipo_veiculo=tipo_veiculo,
+        categoria_operacional=categoria_operacional,
         ativo=True,
     )
     db.add(vinculo)

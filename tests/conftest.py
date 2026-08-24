@@ -7,7 +7,9 @@ from app.core.database import Base, get_db
 from app.main import app
 
 # Conexão de teste apontando para o mesmo banco local (com transação isolada e rollback)
-engine_test = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+# Conexão de teste apontando para o banco de dados PostgreSQL de TESTES isolado (torre_de_controle_test)
+TEST_DATABASE_URL = settings.DATABASE_URL.replace("/torre_de_controle", "/torre_de_controle_test")
+engine_test = create_engine(TEST_DATABASE_URL, pool_pre_ping=True)
 SessionTesting = sessionmaker(
     autocommit=False, autoflush=False, bind=engine_test
 )
@@ -15,12 +17,18 @@ SessionTesting = sessionmaker(
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_db():
-    """Garante que as tabelas de teste existam no início e limpa no final."""
-    # Cria tabelas se não existirem (embora o Alembic já faça)
-    Base.metadata.create_all(bind=engine_test)
-    yield
-    # Limpa as tabelas ao final de todos os testes
+    """Garante ambiente 100% limpo e inicializado no banco PostgreSQL isolado de testes."""
+    from app.operacao.services import OperacaoService
     Base.metadata.drop_all(bind=engine_test)
+    Base.metadata.create_all(bind=engine_test)
+
+    # Seed dos dados padrão operacionais no banco de teste isolado
+    db_init = SessionTesting()
+    try:
+        OperacaoService.inicializar_dados_padrao(db_init)
+    finally:
+        db_init.close()
+    yield
 
 
 @pytest.fixture(name="db")

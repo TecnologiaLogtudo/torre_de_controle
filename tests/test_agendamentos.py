@@ -83,3 +83,27 @@ def test_criacao_e_janelas_de_agendamento(client):
         headers=headers,
     )
     assert res_alterar.status_code == status.HTTP_400_BAD_REQUEST
+
+
+def test_bloqueio_agendamento_duplicado_mesma_empresa_e_data(client):
+    headers = obter_headers_autenticados(client)
+    empresa_id = criar_empresa_teste(client, headers)
+    amanha = agora_local().date() + timedelta(days=1)
+
+    # 1. Primeiro agendamento ativo (deve ter sucesso)
+    res_1 = client.post(
+        "/api/v1/agendamentos",
+        json={"empresa_id": empresa_id, "data": str(amanha), "horario_inicio": "08:00:00"},
+        headers=headers,
+    )
+    assert res_1.status_code == status.HTTP_201_CREATED
+
+    # 2. Segundo agendamento para a mesma empresa na mesma data (deve falhar com 400 Bad Request)
+    res_2 = client.post(
+        "/api/v1/agendamentos",
+        json={"empresa_id": empresa_id, "data": str(amanha), "horario_inicio": "10:00:00"},
+        headers=headers,
+    )
+    assert res_2.status_code == status.HTTP_400_BAD_REQUEST
+    assert "Já existe um agendamento ativo registrado para esta empresa" in res_2.json()["detail"]
+

@@ -136,3 +136,53 @@ def test_fluxo_operacional_completo_torre_de_controle(client):
     assert len(eventos) >= 1
     assert eventos[0]["novo_status"] == "INDISPONIVEL"
     assert eventos[0]["motivo_indisponibilidade"] == "Avaria"
+
+
+def test_agendamento_cancelado_nao_entra_nos_kpis_da_torre(client):
+    headers = obter_headers_autenticados(client)
+
+    # 1. Cadastra Empresa
+    res_emp = client.post(
+        "/api/v1/empresas",
+        json={"nome": "Empresa Cancelamento Teste", "identificacao": "77.777.777/0001-77"},
+        headers=headers,
+    )
+    empresa_id = res_emp.json()["id"]
+
+    amanha = agora_local().date() + timedelta(days=1)
+    res_ag = client.post(
+        "/api/v1/agendamentos",
+        json={"empresa_id": empresa_id, "data": str(amanha), "horario_inicio": "08:00:00"},
+        headers=headers,
+    )
+    agendamento_id = res_ag.json()["id"]
+
+    # 2. Adiciona SPOT
+    res_mot_spot = client.post("/api/v1/motoristas", json={"nome": "Motorista Temp Cancelado"}, headers=headers)
+    res_veic_spot = client.post(
+        "/api/v1/veiculos",
+        json={"identificacao": "Fio-Cancel", "placa": "CNC9999", "tipo_veiculo": "Fiorino", "especialidade": "SECO"},
+        headers=headers,
+    )
+    client.post(
+        f"/api/v1/agendamentos/{agendamento_id}/spots",
+        json={"motorista_id": res_mot_spot.json()["id"], "veiculo_id": res_veic_spot.json()["id"], "categoria": "SPOT"},
+        headers=headers,
+    )
+
+    # Verifica que antes de cancelar, a alocação consta no detalhamento da Torre
+    res_det_antes = client.get(f"/api/v1/operacao/torre/detalhamento?data={amanha}&empresa_id={empresa_id}", headers=headers)
+    assert len(res_det_antes.json()) == 1
+
+    # 3. Cancela o agendamento
+    res_canc = client.post(f"/api/v1/agendamentos/{agendamento_id}/cancelar", headers=headers)
+    assert res_canc.status_code == status.HTTP_200_OK
+
+    # 4. Verifica que após o cancelamento, a alocação NÃO entra mais no detalhamento nem afeta os KPIs
+    res_det_depois = client.get(f"/api/v1/operacao/torre/detalhamento?data={amanha}&empresa_id={empresa_id}", headers=headers)
+    assert len(res_det_depois.json()) == 0
+
+    res_resumo_depois = client.get(f"/api/v1/operacao/torre/empresas-resumo?data={amanha}", headers=headers)
+    resumo_emp = next(e for e in res_resumo_depois.json() if e["empresa_id"] == empresa_id)
+    assert resumo_emp["total"] == 0
+

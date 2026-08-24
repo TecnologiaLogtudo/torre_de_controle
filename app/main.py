@@ -23,21 +23,24 @@ app = FastAPI(
 
 @app.on_event("startup")
 def startup_event():
+    from app.core.database import engine, Base
+    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
         OperacaoService.inicializar_dados_padrao(db)
     finally:
         db.close()
 
-# Configura o Middleware de CORS
-if settings.BACKEND_CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# Configura o Middleware de CORS (Suporte a preflight OPTIONS do frontend)
+origins = [str(origin) for origin in settings.BACKEND_CORS_ORIGINS] if settings.BACKEND_CORS_ORIGINS else ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Inclui os roteadores
 app.include_router(

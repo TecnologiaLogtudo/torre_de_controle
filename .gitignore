@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.env
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.DS_Store
+
+# Data / Scratch
+*.xlsx
+.pytest_cache/

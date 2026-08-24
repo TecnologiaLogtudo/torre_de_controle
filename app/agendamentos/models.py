@@ -3,7 +3,9 @@ from sqlalchemy import (
     ForeignKey,
     String,
     Date,
-    Time
+    Time,
+    Index,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -24,6 +26,17 @@ class Agendamento(BaseEntidade):
     criado_por = relationship("Usuario")
     contrato_configuracao = relationship("ContratoConfiguracao")
     alocacoes = relationship("AlocacaoOperacional", back_populates="agendamento", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        # Apenas um agendamento ativo por empresa em cada data
+        Index(
+            "idx_unique_empresa_data_agendamento_ativo",
+            "empresa_id",
+            "data",
+            unique=True,
+            postgresql_where=text("status != 'CANCELADO'"),
+        ),
+    )
 
     def __repr__(self) -> str:
         return f"<Agendamento id={self.id} empresa={self.empresa_id} data={self.data} status={self.status}>"

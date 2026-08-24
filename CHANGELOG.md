@@ -5,6 +5,88 @@ Todas as alterações relevantes para este projeto serão documentadas neste arq
 O formato é baseado no [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-08-23
+
+### Adicionado
+- **Filtro Unificado por Empresa na Torre de Controle**:
+  - Atualizado o endpoint `GET /api/v1/operacao/torre/resumo` ([app/operacao/routers.py](file:///D:/Logtudo/Projetos/torre_de_controle/app/operacao/routers.py#L116)) e o serviço `obter_resumo_geral` ([app/operacao/services.py](file:///D:/Logtudo/Projetos/torre_de_controle/app/operacao/services.py#L144)) para aceitar o parâmetro opcional `empresa_id`.
+  - Conectada a seleção de empresa feita no card **Situação Operacional por Empresa** em `TorrePage.tsx` aos **KPIs Executivos** (`IndicadoresTorre`) e ao **Feed de Eventos Operacionais Imutáveis** (`HistoricoEventosTorre`), permitindo filtrar toda a página para uma visão refinada por empresa contratante.
+- **Trava de Unicidade de Agendamento Diário por Empresa**:
+  - Implementada a validação em `AgendamentoService.criar_agendamento` ([app/agendamentos/services.py](file:///D:/Logtudo/Projetos/torre_de_controle/app/agendamentos/services.py#L120-L136)) que proíbe a criação de múltiplos agendamentos ativos para a mesma empresa na mesma data.
+  - Adicionado o índice condicional de unicidade `idx_unique_empresa_data_agendamento_ativo` em `Agendamento` ([app/agendamentos/models.py](file:///D:/Logtudo/Projetos/torre_de_controle/app/agendamentos/models.py#L27-L35)) garantindo consistência no banco de dados.
+  - Adicionado teste automatizado `test_bloqueio_agendamento_duplicado_mesma_empresa_e_data` em `tests/test_agendamentos.py`.
+- **Transição de Status Operacional e Registro de Indisponibilidade na UI**:
+  - Adicionado o botão **"Alterar Status Operacional"** / **"Alterar Status"** em cada vaga dedicada e alocação SPOT na tela de Detalhes do Agendamento ([AgendamentoDetalhesPage.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/agendamentos/pages/AgendamentoDetalhesPage.tsx)).
+  - Implementada a gaveta lateral (*Drawer*) de transição operacional com validação de regras de transição (`PROGRAMADO`, `EM_ROTA`, `INDISPONÍVEL`, `DISPONÍVEL`) e seleção obrigatória de **Motivo de Indisponibilidade** quando o status for alterado para `INDISPONÍVEL`.
+
+### Corrigido
+- **Compatibilidade de Schemas e Payloads de Contratos (BUG-CONTRATOS-422)**:
+  - Flexibilizados os schemas Pydantic `ContratoConfiguracaoCreate`, `ContratoConfiguracaoResponse`, `MotoristaDedicadoVinculoCreate` e `MotoristaDedicadoVinculoResponse` em `app/contratos/schemas.py` para harmonizar com as requisições enviadas pelo frontend.
+  - Implementada a inferência defensiva de `tipo_veiculo` (a partir do `veiculo_id`) e suporte unificado aos nomes `categoria` / `categoria_operacional` e `regras` / `capacidades`.
+  - Atualizados os serviços e formulários no frontend (`contratosService.ts`, `ContratosPage.tsx`) para enviar e processar ambos os formatos sem falhas de validação HTTP 422.
+
+## [1.0.0] - 2026-08-23
+
+### Adicionado & Consolidado (Fase 4.4 — Hardening, Auditoria Final, Integração e Encerramento)
+- **Otimização de Performance e Debounce em Filtros**:
+  - Implementado debounce de 300ms nos inputs de busca por `motorista_nome` e `placa` no detalhamento da Torre de Controle ([DetalhamentoTorre.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/torre/components/DetalhamentoTorre.tsx)), evitando requisições HTTP redundantes a cada tecla digitada.
+- **Acessibilidade e Usabilidade**:
+  - Validação e reforço do fechamento por tecla `Escape` em modais e gavetas laterais (`Drawer.tsx`, `Modal.tsx`), atributos `role="dialog"`, `aria-modal="true"` e rótulos `aria-label` nos botões de fechar.
+- **Isolamento de Banco de Testes**:
+  - Atualizada a fixture `setup_db` em `tests/conftest.py` com `Base.metadata.drop_all(bind=engine_test)` no início da sessão de testes, garantindo execução 100% reproduzível e verde da suíte `pytest` (32 testes).
+- **Validações Finais de Qualidade e Integração**:
+  - Compilação estrita `tsc && vite build` aprovada com 0 erros.
+  - Suíte Vitest frontend aprovada com 27 testes verdes.
+  - Suíte Pytest backend aprovada com 32 testes verdes.
+  - Atualização e consolidação da documentação em `frontend/README.md`.
+
+## [0.5.0] - 2026-08-21
+
+### Adicionado (Fase 4.3 — Torre de Controle Operacional, Dashboard, Indicadores e Monitoramento)
+- **Visualização da Torre de Controle (`/app/torre`)**:
+  - Implementada a rota `/app/torre` (substituindo o placeholder inicial) com visualização operacional dividida em hierarquia de decisão (Indicadores Executivos $\rightarrow$ Resumo por Empresa $\rightarrow$ Detalhamento de Frota $\rightarrow$ Feed de Eventos).
+- **Indicadores Operacionais Executivos**:
+  - Exibição de cards KPI numéricos dominantes consumindo `GET /api/v1/operacao/torre/resumo`: `Contratados`, `Programados`, `Em Rota`, `Disponíveis`, `Indisponíveis` e `Vagas Não Preenchidas` (respeitando estritamente a fórmula do backend: `CONTRATADOS = PROGRAMADOS + EM_ROTA + DISPONÍVEIS + INDISPONÍVEIS + VAGAS_NAO_PREENCHIDAS`).
+- **Resumo Operacional por Empresa**:
+  - Tabela/card interativo consumindo `GET /api/v1/operacao/torre/empresas-resumo`, permitindo ao operador selecionar uma empresa e filtrar instantaneamente a visão de detalhamento.
+- **Detalhamento Operacional de Frota & Filtros Combináveis**:
+  - Componente de detalhamento consumindo `GET /api/v1/operacao/torre/detalhamento` com filtros por `placa`, `motorista_nome`, `empresa_id`, `status`, `categoria`, `tipo_veiculo`, `especialidade`, `limite` e `offset`.
+- **Feed de Eventos Operacionais Imutáveis**:
+  - Painel de auditoria consumindo `GET /api/v1/operacao/historico-eventos` com conversão e exibição de timestamps em `America/Bahia`.
+- **Atualização Manual de Dados**:
+  - Botão "Atualizar Dados" com timestamp "Última atualização: HH:mm:ss" no fuso `America/Bahia`, preservando filtros selecionados.
+- **Concepção Visual via MCP Stitch**:
+  - Design da Torre concebido via projeto Stitch `projects/11302205133243501184` com aplicação estrita dos tokens de marca oficial Logtudo.
+- **Suíte de Testes Automatizados (Vitest)**:
+  - Criado `src/test/torre.test.tsx` com testes de renderização, indicadores, erros da API e gatilho de atualização manual. Suíte total do frontend: 27 testes verdes.
+
+## [0.4.0] - 2026-08-21
+
+### Adicionado (Fase 4.2 — Módulos Operacionais, Cadastros, Configurações e Agendamentos)
+- **Identidade Visual Oficial Logtudo**:
+  - Aplicação da paleta oficial (#185772, #757675, #6ca8c2, #0F2C3A, #13394A) e logotipos oficiais da marca.
+  - Componentização visual consistente com suporte a acessibilidade (StatusBadge combinando cor, texto e ícones para os estados `DISPONIVEL`, `PROGRAMADO`, `EM_ROTA`, `INDISPONIVEL`).
+- **Design System Operacional & Componentes de Feedback**:
+  - Implementação dos componentes `SearchInput`, `FilterBar`, `Pagination`, `Drawer` (gaveta lateral), `ConfirmDialog`, `Skeleton` e `StatusBadge`.
+- **Navegação Hierárquica Operacional**:
+  - Atualização dos componentes `Sidebar` e `Header` com suporte a seções colapsáveis por domínio, busca unificada de frota e indicação de fuso oficial `America/Bahia`.
+- **Módulos de Domínio e Gestão**:
+  - **Empresas (`/app/empresas`)**: Listagem, busca por CNPJ/CPF, formulários em gaveta lateral, visualização de detalhes e histórico de configurações de capacidade contratual.
+  - **Motoristas (`/app/motoristas`)**: Cadastro, edição, busca por nome/placa, filtros por categoria (`DEDICADO`/`SPOT`) e especialidade (`SECO`/`REFRIGERADO`).
+  - **Veículos (`/app/veiculos`)**: Gestão da frota física com validação e formatação de placas (Mercosul/tradicional) e associação a motoristas dedicados.
+  - **Contratos & Vínculos Dedicados (`/app/contratos`)**: Gestão de capacidades vigentes vs histórico de vigências e administração do binômio Motorista + Veículo Físico Dedicado.
+  - **Motivos de Indisponibilidade (`/app/configuracoes/motivos-indisponibilidade`)**: Cadastro e gestão de justificativas operacionais com controle de ativamento/desativamento sem exclusão destrutiva.
+  - **Usuários (`/app/usuarios`)**: Gestão administrativa dos operadores do sistema e edição de perfis/status.
+  - **Agendamentos (`/app/agendamentos` e `/app/agendamentos/:id`)**:
+    - Janela de agendamento (orientação visual Hoje vs Amanhã, horário padrão 08:00).
+    - Preenchimento contratual automático por vaga mantendo ocupadas as vagas com recursos dedicados indisponíveis.
+    - Gestão de SPOT: adição, remoção e substituição com lock pessimista (`POST /api/v1/agendamentos/alocacoes/{id}/substituir`).
+    - Trilha de histórico auditável do agendamento formatada em `America/Bahia`.
+- **Testes & Qualidade**:
+  - Suíte de 24 testes de integração do frontend em Vitest cobrindo fluxos críticos dos módulos operacionais.
+  - Compilação estrita `tsc && vite build` aprovada com zero erros.
+  - Manutenção da suíte de 32 testes do backend Python (pytest) 100% verde.
+
 ## [0.3.0] - 2026-08-20
 
 ### Adicionado & Consolidado (Fase 3)

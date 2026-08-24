@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 from datetime import date
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.auth.services import obter_usuario_atual
@@ -16,6 +16,7 @@ from app.operacao.schemas import (
     ResumoEmpresaTorreResponse,
     DetalhamentoOperacionalResponse,
     EventoOperacionalResponse,
+    ResultadoImportacaoResponse,
 )
 from app.operacao.services import OperacaoService
 
@@ -114,10 +115,11 @@ def atualizar_configuracao(
 )
 def obter_resumo_geral(
     data: Optional[date] = Query(None),
+    empresa_id: Optional[UUID] = Query(None),
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(obter_usuario_atual),
 ):
-    return OperacaoService.obter_resumo_geral(db, data_filtro=data)
+    return OperacaoService.obter_resumo_geral(db, data_filtro=data, empresa_id=empresa_id)
 
 
 @router.get(
@@ -205,3 +207,25 @@ def listar_eventos_operacionais(
         limite=limit,
         offset=offset,
     )
+
+
+# --- Importação de Planilha ---
+
+@router.post(
+    "/importar-planilha",
+    response_model=ResultadoImportacaoResponse,
+    summary="Importar planilha de motoristas e veículos (.xlsx ou .csv)",
+)
+async def importar_planilha(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(obter_usuario_atual),
+):
+    conteudo = await file.read()
+    return OperacaoService.importar_planilha_operacional(
+        db=db,
+        conteudo_arquivo=conteudo,
+        nome_arquivo=file.filename or "planilha.xlsx",
+        autor_id=usuario_atual.id,
+    )
+

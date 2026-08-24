@@ -91,3 +91,19 @@ class EventoOperacionalResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# --- Importação de Planilha ---
+class ItemIgnoradoImportacao(BaseModel):
+    linha: int
+    placa: str
+    motorista: str
+    motivo: str
+
+class ResultadoImportacaoResponse(BaseModel):
+    total_linhas: int
+    criados_veiculos: int
+    criados_motoristas: int
+    criadas_empresas: int
+    vinculos_dedicados_criados: int
+    ignorados_placa_existente: int
+    itens_ignorados: List[ItemIgnoradoImportacao] = []
