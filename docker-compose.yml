@@ -6,11 +6,9 @@ services:
     container_name: torre_de_controle_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres_logtudo_senha_segura
-      POSTGRES_DB: torre_de_controle
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-torre_de_controle}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,16 +23,27 @@ services:
       dockerfile: Dockerfile
     container_name: torre_de_controle_web
     restart: always
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     env_file:
       - .env
     environment:
       - POSTGRES_SERVER=db
-      - DATABASE_URL=postgresql+psycopg://postgres:postgres_logtudo_senha_segura@db:5432/torre_de_controle
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-torre_de_controle}
+      - ROOT_PATH=${ROOT_PATH}
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - '-c'
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
 volumes:
   postgres_data:

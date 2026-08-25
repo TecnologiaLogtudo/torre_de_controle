@@ -27,14 +27,14 @@ class Settings(BaseSettings):
     # PostgreSQL
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres_logtudo_senha_segura"
+    POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = "torre_de_controle"
     POSTGRES_PORT: int = 5432
-    DATABASE_URL: str = "postgresql+psycopg://postgres:postgres_logtudo_senha_segura@localhost:5432/torre_de_controle"
+    DATABASE_URL: str = ""
 
     # JWT
     # openssl rand -hex 32
-    JWT_SECRET_KEY: str = "945fa8b309db809f40824b22c7a3c3065a7e12726bbefb8c199583bcf3d84950"
+    JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
 

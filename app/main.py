@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
@@ -14,11 +15,14 @@ from app.agendamentos.routers import router as agendamentos_router
 from app.operacao.services import OperacaoService
 from app.core.database import SessionLocal
 
+ROOT_PATH = os.getenv("ROOT_PATH", "")
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
+    root_path=ROOT_PATH,
 )
 
 @app.on_event("startup")
