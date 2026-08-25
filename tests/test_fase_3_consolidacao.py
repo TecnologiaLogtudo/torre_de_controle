@@ -3,7 +3,7 @@ from datetime import date, time, datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from app.core.database import SessionLocal, engine
+from tests.conftest import SessionTesting as SessionLocal, engine_test as engine
 from app.agendamentos.services import AgendamentoService
 from app.agendamentos.schemas import AgendamentoCreate, AlocacaoOperacionalCreate
 from app.contratos.services import criar_contrato_configuracao

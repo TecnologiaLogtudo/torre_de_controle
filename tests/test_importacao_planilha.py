@@ -40,6 +40,18 @@ def test_importar_planilha_real_xlsx(client: TestClient):
     assert dados["total_linhas"] > 0
     assert dados["criados_veiculos"] > 0
     assert dados["criados_motoristas"] > 0
+    assert dados["vinculos_dedicados_criados"] > 0
+
+    # Valida via API de vínculos que os registros criados são SPOT e não possuem empresa vinculada
+    res_vinculos = client.get("/api/v1/motoristas/dedicados/vinculos?limite=100", headers=headers)
+    assert res_vinculos.status_code == 200
+    vinculos = res_vinculos.json()
+    vinculos_spot = [v for v in vinculos if v.get("categoria_operacional") == "SPOT"]
+    assert len(vinculos_spot) > 0
+    for v in vinculos_spot:
+        assert v.get("empresa_id") is None
+        assert v.get("motorista_id") is not None
+        assert v.get("veiculo_id") is not None
 
     # Segunda importação do mesmo arquivo: deve ignorar placas existentes
     with open(caminho_xlsx, "rb") as f:

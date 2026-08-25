@@ -25,7 +25,7 @@ export interface ContratoConfiguracaoCreatePayload {
 
 export interface MotoristaDedicadoVinculo {
   id: string
-  empresa_id: string
+  empresa_id?: string | null
   motorista_id: string
   veiculo_id: string
   tipo_veiculo?: string
@@ -37,7 +37,7 @@ export interface MotoristaDedicadoVinculo {
 }
 
 export interface MotoristaDedicadoVinculoCreatePayload {
-  empresa_id: string
+  empresa_id?: string | null
   motorista_id: string
   veiculo_id: string
   tipo_veiculo?: string

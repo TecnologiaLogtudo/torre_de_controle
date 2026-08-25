@@ -5,13 +5,39 @@ Todas as alterações relevantes para este projeto serão documentadas neste arq
 O formato é baseado no [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Alterado / Adicionado
+
+- **Pacote de Regras de Negócio e Bloqueios Operacionais (Torre de Controle)**:
+  - **Fase 1: Módulo de Contratos e Capacidade**:
+    - **Regra 2 (Ocultação de Dedicados)**: Motoristas e veículos já associados a vínculos dedicados ativos com qualquer empresa são ocultados dos seletores do modal de novos vínculos dedicados.
+    - **Regra 4 (Exigência de Capacidade Ativa)**: Bloqueio estrito (HTTP 400 no backend e banner informativo na interface) caso o operador tente vincular dedicados para uma empresa sem configuração de capacidade vigente ativa.
+    - **Regra 5 (Compatibilidade de Tipo de Veículo)**: Apenas veículos de tipos contratados na capacidade ativa aparecem elegíveis para vínculo dedicado.
+    - **Regra 6 (Teto de Vagas Contratadas)**: Validação e bloqueio caso a quantidade de vínculos dedicados ativos para aquele tipo de veículo atinja o limite contratado (`vagas_preenchidas >= vagas_contratadas`).
+    - **Regra 7 (Compatibilidade de Especialidade)**: Validação contra capacidades que exigem câmaras frigoríficas (`REFRIGERADO` ou `CONGELADO`), impedindo alocação de veículos incompatíveis (`SECO`).
+  - **Fase 2: Cadastros e Desativação em Cascata**:
+    - **Regra 10 (Encerramento em Cascata)**: Ao inativar um motorista ([app/motoristas/services.py](file:///d:/Logtudo/Projetos/torre_de_controle/app/motoristas/services.py)) ou um veículo ([app/veiculos/services.py](file:///d:/Logtudo/Projetos/torre_de_controle/app/veiculos/services.py)) no cadastro geral, todos os seus vínculos contratuais dedicados ativos são imediatamente inativados e auditados em cascata.
+  - **Fase 3: Motor Operacional e Agendamentos**:
+    - **Regras 1 & 3 (Disponibilidade Estrita Hoje e D+1)**: Bloqueio e ocultação automática nos seletores de agendamentos para motoristas/veículos com status diferente de `DISPONIVEL` (status `PROGRAMADO`, `EM_ROTA` ou `INDISPONIVEL` na data ou dia anterior pendente de liberação).
+    - **Regra 9 (Liberação Automática no Cancelamento)**: Ao cancelar um agendamento ([app/agendamentos/services.py](file:///d:/Logtudo/Projetos/torre_de_controle/app/agendamentos/services.py)), todas as alocações vinculadas que estavam `PROGRAMADO` retornam automaticamente para `DISPONIVEL`, registrando os respectivos eventos operacionais na central de auditoria.
+  - **Suíte de Testes Automatizados**: Criados novos testes unitários e de integração em [test_regras_bloqueio_contratos.py](file:///d:/Logtudo/Projetos/torre_de_controle/tests/test_regras_bloqueio_contratos.py) e [test_regras_bloqueio_operacao.py](file:///d:/Logtudo/Projetos/torre_de_controle/tests/test_regras_bloqueio_operacao.py), mantendo 100% de cobertura verde nas 47 suítes de backend e 29 suítes de frontend.
+
+### Corrigido
+
+- **Isolamento de Banco de Dados nos Testes de Concorrência**:
+  - Ajustados os arquivos [test_fase_2_9_hardening.py](file:///D:/Logtudo/Projetos/torre_de_controle/tests/test_fase_2_9_hardening.py) e [test_fase_3_consolidacao.py](file:///D:/Logtudo/Projetos/torre_de_controle/tests/test_fase_3_consolidacao.py) para utilizarem a sessão isolada de testes `SessionTesting` em vez de `SessionLocal`.
+  - Corrigida a lista `ids_criados` nos testes de concorrência para garantir limpeza total após execução, evitando contaminação de dados no banco de desenvolvimento.
+
 ## [1.0.1] - 2026-08-23
 
 ### Removido
+
 - **Botão Importar Planilha na Torre de Controle**:
   - Removido o botão *"Importar Planilha"* do cabeçalho da Torre de Controle ([TorreHeader.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/torre/components/TorreHeader.tsx)) e desativado o modal em `TorrePage.tsx`.
 
 ### Adicionado
+
 - **Central de Operação & Eventos Operacionais (`/app/operacao`)**:
   - Ativado o menu **Operação** no menu lateral ([Sidebar.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/components/navigation/Sidebar.tsx#L47-L51)) e registrada a rota `/app/operacao` ([router/index.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/app/router/index.tsx#L44)).
   - Criada a página compilada [HistoricoEventosPage.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/operacao/pages/HistoricoEventosPage.tsx) com busca multicritério por Empresa, Categoria (DEDICADO/SPOT), Status, Intervalo de Datas, Nome do Motorista ou Placa do Veículo.
@@ -39,6 +65,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
   - Implementada a gaveta lateral (*Drawer*) de transição operacional com validação de regras de transição (`PROGRAMADO`, `EM_ROTA`, `INDISPONÍVEL`, `DISPONÍVEL`) e seleção obrigatória de **Motivo de Indisponibilidade** quando o status for alterado para `INDISPONÍVEL`.
 
 ### Corrigido
+
 - **Compatibilidade de Schemas e Payloads de Contratos (BUG-CONTRATOS-422)**:
   - Flexibilizados os schemas Pydantic `ContratoConfiguracaoCreate`, `ContratoConfiguracaoResponse`, `MotoristaDedicadoVinculoCreate` e `MotoristaDedicadoVinculoResponse` em `app/contratos/schemas.py` para harmonizar com as requisições enviadas pelo frontend.
   - Implementada a inferência defensiva de `tipo_veiculo` (a partir do `veiculo_id`) e suporte unificado aos nomes `categoria` / `categoria_operacional` e `regras` / `capacidades`.
@@ -47,6 +74,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 ## [1.0.0] - 2026-08-23
 
 ### Adicionado & Consolidado (Fase 4.4 — Hardening, Auditoria Final, Integração e Encerramento)
+
 - **Otimização de Performance e Debounce em Filtros**:
   - Implementado debounce de 300ms nos inputs de busca por `motorista_nome` e `placa` no detalhamento da Torre de Controle ([DetalhamentoTorre.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/torre/components/DetalhamentoTorre.tsx)), evitando requisições HTTP redundantes a cada tecla digitada.
 - **Acessibilidade e Usabilidade**:
@@ -62,6 +90,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 ## [0.5.0] - 2026-08-21
 
 ### Adicionado (Fase 4.3 — Torre de Controle Operacional, Dashboard, Indicadores e Monitoramento)
+
 - **Visualização da Torre de Controle (`/app/torre`)**:
   - Implementada a rota `/app/torre` (substituindo o placeholder inicial) com visualização operacional dividida em hierarquia de decisão (Indicadores Executivos $\rightarrow$ Resumo por Empresa $\rightarrow$ Detalhamento de Frota $\rightarrow$ Feed de Eventos).
 - **Indicadores Operacionais Executivos**:
@@ -82,6 +111,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 ## [0.4.0] - 2026-08-21
 
 ### Adicionado (Fase 4.2 — Módulos Operacionais, Cadastros, Configurações e Agendamentos)
+
 - **Identidade Visual Oficial Logtudo**:
   - Aplicação da paleta oficial (#185772, #757675, #6ca8c2, #0F2C3A, #13394A) e logotipos oficiais da marca.
   - Componentização visual consistente com suporte a acessibilidade (StatusBadge combinando cor, texto e ícones para os estados `DISPONIVEL`, `PROGRAMADO`, `EM_ROTA`, `INDISPONIVEL`).
@@ -109,6 +139,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 ## [0.3.0] - 2026-08-20
 
 ### Adicionado & Consolidado (Fase 3)
+
 - **Autenticação (`/auth/me`)**:
   - Adicionada rota `GET /api/v1/auth/me` para retornar o perfil do usuário autenticado a partir do token JWT.
 - **Gestão de Usuários**:
@@ -130,6 +161,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 ## [0.2.1] - 2026-08-20
 
 ### Corrigido & Hardening (Fase 2.9)
+
 - **Exclusividade de Veículo Dedicado (BUG-CRIT-01)**:
   - Adicionado índice único parcial no banco de dados (`idx_unique_veiculo_dedicado_ativo`) em `motoristas_dedicados_vinculos` garantindo que um veículo só possa estar vinculado a uma empresa dedicada ativa por vez.
   - Implementada validação defensiva na camada de serviço e tratamento gracioso de `IntegrityError` na API devolvendo `HTTP 400 Bad Request`.
@@ -153,6 +185,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 ## [0.2.0] - 2026-08-20
 
 ### Adicionado
+
 - **Motor Operacional & Agendamentos**:
   - Modelos de dados para `Agendamento`, `AlocacaoOperacional` (Motorista + Veículo), `HistoricoAgendamento`.
   - Controle de janela de criação de agendamento: regra de dia atual (respeitando horário limite configurável `horario_limite_agendamento_dia_atual`, padrão `12:00`) e dia seguinte.
@@ -179,10 +212,11 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 ## [0.1.0] - 2026-08-19
 
 ### Adicionado
+
 - **Fundação de Arquitetura**: Documentos técnicos descrevendo a estrutura Modular Monolith, modelagem de banco de dados, regras de negócio e especificações de API na pasta `docs/`.
 - **Containers Docker**: Configuração de `Dockerfile` multiestágio de runtime otimizado e `docker-compose.yml` contendo o banco PostgreSQL 15 integrado com healthcheck.
 - **Ambiente Python**: Criação do arquivo `requirements.txt` e configuração do ambiente virtual `.venv` gerenciado via `uv`.
-- **Módulo Core**: 
+- **Módulo Core**:
   - Configurações do sistema via Pydantic Settings (`app/core/config.py`).
   - Conexão de banco e classe abstrata de chaves primárias e timestamps automáticos (`app/core/database.py`).
   - Segurança, criptografia de senhas com bcrypt e geração de JWT (`app/core/security.py`).

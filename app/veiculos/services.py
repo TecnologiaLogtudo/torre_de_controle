@@ -84,9 +84,26 @@ def atualizar_veiculo(
     veiculo.placa = dados.placa.upper()
     veiculo.tipo_veiculo = dados.tipo_veiculo
     veiculo.especialidade = dados.especialidade
+    estava_ativo = veiculo.ativo
     veiculo.ativo = dados.ativo
     db.commit()
     db.refresh(veiculo)
+
+    # Regra 10: Se inativado, encerra em cascata todos os vínculos contratuais ativos
+    if estava_ativo and not veiculo.ativo:
+        from app.contratos.models import MotoristaDedicadoVinculo
+        from app.contratos.services import desativar_vinculo_motorista
+
+        vinculos_ativos = (
+            db.query(MotoristaDedicadoVinculo)
+            .filter(
+                MotoristaDedicadoVinculo.veiculo_id == veiculo.id,
+                MotoristaDedicadoVinculo.ativo == True,
+            )
+            .all()
+        )
+        for vinc in vinculos_ativos:
+            desativar_vinculo_motorista(db, vinc, autor_id)
 
     estado_posterior = {
         "id": str(veiculo.id),

@@ -1,5 +1,5 @@
 import pytest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from fastapi import status
 from app.core.datetime_utils import agora_local
 
@@ -136,6 +136,15 @@ def test_bloqueio_motorista_indisponivel_e_exclusividade_dedicada(client):
         headers=headers,
     )
     veic_ded_id = res_veic_ded.json()["id"]
+
+    client.post(
+        f"/api/v1/contratos/empresas/{empresa_1_id}/configuracoes",
+        json={
+            "data_inicio": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
+            "capacidades": [{"tipo_veiculo": "HR", "especialidade": "SECO", "quantidade": 5}],
+        },
+        headers=headers,
+    )
 
     client.post(
         "/api/v1/motoristas/dedicados/vinculos",

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { contratosService } from '@/services/contratos/contratosService'
 import { empresasService } from '@/services/empresas/empresasService'
 import { motoristasService } from '@/services/motoristas/motoristasService'
@@ -25,6 +25,7 @@ export const ContratosPage: React.FC = () => {
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<string>('')
   const [configuracaoVigente, setConfiguracaoVigente] = useState<ContratoConfiguracao | null>(null)
   const [historicoConfiguracoes, setHistoricoConfiguracoes] = useState<ContratoConfiguracao[]>([])
+  const [todosOsVinculos, setTodosOsVinculos] = useState<MotoristaDedicadoVinculo[]>([])
   const [vinculosAtivos, setVinculosAtivos] = useState<MotoristaDedicadoVinculo[]>([])
   const [motoristas, setMotoristas] = useState<Motorista[]>([])
   const [veiculos, setVeiculos] = useState<Veiculo[]>([])
@@ -71,13 +72,14 @@ export const ContratosPage: React.FC = () => {
       const [vigt, hist, vincs, mList, vecList] = await Promise.all([
         contratosService.obterConfiguracaoVigente(empresaId).catch(() => null),
         contratosService.obterHistoricoConfiguracoes(empresaId).catch(() => []),
-        contratosService.listarVinculosAtivos().catch(() => []),
+        contratosService.listarVinculosAtivos(1000).catch(() => []),
         motoristasService.listar().catch(() => []),
         veiculosService.listar().catch(() => []),
       ])
 
       setConfiguracaoVigente(vigt)
       setHistoricoConfiguracoes(hist)
+      setTodosOsVinculos(vincs)
       setVinculosAtivos(vincs.filter(v => v.empresa_id === empresaId && v.ativo))
       setMotoristas(mList)
       setVeiculos(vecList)
@@ -137,10 +139,40 @@ export const ContratosPage: React.FC = () => {
 
   // --- Handlers de Novo Vínculo Dedicado ---
   const handleOpenNovoVinculo = () => {
+    if (!configuracaoVigente) {
+      setError('Para vincular motoristas dedicados, cadastre primeiro uma configuração de capacidade contratual vigente para esta empresa.')
+      return
+    }
     setMotoristaIdForm('')
     setVeiculoIdForm('')
     setFormVinculoError(null)
     setDrawerVinculoOpen(true)
+  }
+
+  const handleSelectMotorista = (motoristaId: string) => {
+    setMotoristaIdForm(motoristaId)
+    if (motoristaId) {
+      const vinculo = todosOsVinculos.find(v => v.motorista_id === motoristaId && v.ativo)
+      if (vinculo && vinculo.veiculo_id) {
+        const veiculoExiste = veiculos.some(v => v.id === vinculo.veiculo_id)
+        if (veiculoExiste) {
+          setVeiculoIdForm(vinculo.veiculo_id)
+        }
+      }
+    }
+  }
+
+  const handleSelectVeiculo = (veiculoId: string) => {
+    setVeiculoIdForm(veiculoId)
+    if (veiculoId) {
+      const vinculo = todosOsVinculos.find(v => v.veiculo_id === veiculoId && v.ativo)
+      if (vinculo && vinculo.motorista_id) {
+        const motoristaExiste = motoristas.some(m => m.id === vinculo.motorista_id)
+        if (motoristaExiste) {
+          setMotoristaIdForm(vinculo.motorista_id)
+        }
+      }
+    }
   }
 
   const handleSalvarVinculo = async (e: React.FormEvent) => {
@@ -178,9 +210,97 @@ export const ContratosPage: React.FC = () => {
       await contratosService.desativarVinculoDedicado(vinculoId)
       carregarDadosEmpresa(selectedEmpresaId)
     } catch (err: any) {
-      alert(err.message || 'Erro ao desativar vínculo.')
+      setError(err.message || 'Erro ao desativar vínculo dedicado.')
     }
   }
+
+  // --- Regras de Negócio e Filtros de Dedicados ---
+  // Resumo de vagas contratadas vs alocadas por tipo de veículo na empresa
+  const resumoVagasCapacidade = useMemo(() => {
+    if (!configuracaoVigente) return {}
+    const caps =
+      configuracaoVigente.capacidades ||
+      (configuracaoVigente.regras
+        ? Object.entries(configuracaoVigente.regras).map(([tipo, qtd]) => ({
+            tipo_veiculo: tipo,
+            especialidade: 'SECO' as const,
+            quantidade: qtd,
+          }))
+        : [])
+
+    const resumo: Record<
+      string,
+      { contratadas: number; vinculados: number; disponiveis: number; especialidades: string[] }
+    > = {}
+
+    for (const c of caps) {
+      const tipoUpper = c.tipo_veiculo.toUpperCase()
+      if (!resumo[tipoUpper]) {
+        resumo[tipoUpper] = { contratadas: 0, vinculados: 0, disponiveis: 0, especialidades: [] }
+      }
+      resumo[tipoUpper].contratadas += c.quantidade
+      if (c.especialidade && !resumo[tipoUpper].especialidades.includes(c.especialidade.toUpperCase())) {
+        resumo[tipoUpper].especialidades.push(c.especialidade.toUpperCase())
+      }
+    }
+
+    for (const vinc of vinculosAtivos) {
+      if (vinc.tipo_veiculo) {
+        const tipoUpper = vinc.tipo_veiculo.toUpperCase()
+        if (resumo[tipoUpper]) {
+          resumo[tipoUpper].vinculados += 1
+        }
+      }
+    }
+
+    for (const tipo in resumo) {
+      resumo[tipo].disponiveis = Math.max(0, resumo[tipo].contratadas - resumo[tipo].vinculados)
+    }
+
+    return resumo
+  }, [configuracaoVigente, vinculosAtivos])
+
+  // Regra 2: Ocultar motoristas que já possuem vínculo DEDICADO ativo em qualquer empresa
+  const motoristasElegiveisDedicados = useMemo(() => {
+    const motoristasDedicadosAtivos = new Set(
+      todosOsVinculos
+        .filter(v => v.ativo && (v.categoria_operacional === 'DEDICADO' || v.categoria === 'DEDICADO') && v.empresa_id)
+        .map(v => v.motorista_id)
+    )
+    return motoristas.filter(m => m.ativo && !motoristasDedicadosAtivos.has(m.id))
+  }, [motoristas, todosOsVinculos])
+
+  // Regras 5, 6 & 7: Filtrar veículos por tipo contratado, especialidade compatível e vagas abertas
+  const veiculosElegiveisDedicados = useMemo(() => {
+    if (!configuracaoVigente) return []
+
+    const veiculosDedicadosAtivos = new Set(
+      todosOsVinculos
+        .filter(v => v.ativo && (v.categoria_operacional === 'DEDICADO' || v.categoria === 'DEDICADO') && v.empresa_id)
+        .map(v => v.veiculo_id)
+    )
+
+    return veiculos.filter(v => {
+      if (!v.ativo) return false
+      if (veiculosDedicadosAtivos.has(v.id)) return false
+
+      const tipoUpper = v.tipo_veiculo.toUpperCase()
+      const infoVagas = resumoVagasCapacidade[tipoUpper]
+      if (!infoVagas) return false // Tipo não contratado nesta capacidade
+      if (infoVagas.disponiveis <= 0) return false // Vagas esgotadas para este tipo
+
+      // Compatibilidade de Especialidade
+      if (
+        infoVagas.especialidades.length > 0 &&
+        !infoVagas.especialidades.includes('SECO') &&
+        v.especialidade.toUpperCase() === 'SECO'
+      ) {
+        return false
+      }
+
+      return true
+    })
+  }, [configuracaoVigente, todosOsVinculos, veiculos, resumoVagasCapacidade])
 
   const empresaAtual = empresas.find(e => e.id === selectedEmpresaId)
 
@@ -218,6 +338,8 @@ export const ContratosPage: React.FC = () => {
             variant="primary"
             size="sm"
             onClick={handleOpenNovoVinculo}
+            disabled={!configuracaoVigente}
+            title={!configuracaoVigente ? 'Cadastre uma configuração de capacidade antes de vincular dedicados' : undefined}
             leftIcon={<UserCheck className="w-4 h-4" />}
           >
             Vincular Motorista Dedicado
@@ -226,6 +348,12 @@ export const ContratosPage: React.FC = () => {
       </div>
 
       {error && <Alert type="error">{error}</Alert>}
+
+      {!configuracaoVigente && !loading && (
+        <Alert type="warning" title="Configuração de Capacidade Contratual Necessária">
+          Para vincular motoristas dedicados, esta empresa precisa possuir uma <strong>Configuração de Capacidade Contratual Vigente</strong> ativa. Clique em <em>"Nova Configuração de Capacidade"</em> para registrar as vagas e tipos de veículos contratados.
+        </Alert>
+      )}
 
       {loading ? (
         <div className="space-y-4">
@@ -532,18 +660,18 @@ export const ContratosPage: React.FC = () => {
           <Select
             label="Motorista"
             value={motoristaIdForm}
-            onChange={e => setMotoristaIdForm(e.target.value)}
+            onChange={e => handleSelectMotorista(e.target.value)}
             placeholder="Selecione o motorista..."
-            options={motoristas.map(m => ({ value: m.id, label: m.nome }))}
+            options={motoristasElegiveisDedicados.map(m => ({ value: m.id, label: m.nome }))}
             required
           />
 
           <Select
-            label="Veículo Físico"
+            label="Veículo Físico (Apenas Tipos Contratados com Vagas Abertas)"
             value={veiculoIdForm}
-            onChange={e => setVeiculoIdForm(e.target.value)}
+            onChange={e => handleSelectVeiculo(e.target.value)}
             placeholder="Selecione o veículo..."
-            options={veiculos.map(v => ({
+            options={veiculosElegiveisDedicados.map(v => ({
               value: v.id,
               label: `${v.tipo_veiculo} - ${v.identificacao} [${v.placa}] (${v.especialidade})`,
             }))}

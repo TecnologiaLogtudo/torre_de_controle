@@ -62,9 +62,26 @@ def atualizar_motorista(
     }
 
     motorista.nome = dados.nome
+    estava_ativo = motorista.ativo
     motorista.ativo = dados.ativo
     db.commit()
     db.refresh(motorista)
+
+    # Regra 10: Se inativado, encerra em cascata todos os vínculos contratuais ativos
+    if estava_ativo and not motorista.ativo:
+        from app.contratos.models import MotoristaDedicadoVinculo
+        from app.contratos.services import desativar_vinculo_motorista
+
+        vinculos_ativos = (
+            db.query(MotoristaDedicadoVinculo)
+            .filter(
+                MotoristaDedicadoVinculo.motorista_id == motorista.id,
+                MotoristaDedicadoVinculo.ativo == True,
+            )
+            .all()
+        )
+        for vinc in vinculos_ativos:
+            desativar_vinculo_motorista(db, vinc, autor_id)
 
     estado_posterior = {
         "id": str(motorista.id),

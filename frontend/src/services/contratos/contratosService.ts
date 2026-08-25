@@ -68,7 +68,7 @@ export const contratosService = {
     return response.data
   },
 
-  async listarVinculosAtivos(limite = 50, offset = 0): Promise<MotoristaDedicadoVinculo[]> {
+  async listarVinculosAtivos(limite = 1000, offset = 0): Promise<MotoristaDedicadoVinculo[]> {
     const response = await apiClient.get<MotoristaDedicadoVinculo[]>(
       '/api/v1/motoristas/dedicados/vinculos',
       {

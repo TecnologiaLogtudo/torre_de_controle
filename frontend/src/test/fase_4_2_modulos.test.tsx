@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/app/providers/AuthProvider'
 import { empresasService } from '@/services/empresas/empresasService'
 import { motoristasService } from '@/services/motoristas/motoristasService'
@@ -9,6 +9,7 @@ import { contratosService } from '@/services/contratos/contratosService'
 import { motivosService } from '@/services/motivos/motivosService'
 import { usuariosService } from '@/services/usuarios/usuariosService'
 import { agendamentosService } from '@/services/agendamentos/agendamentosService'
+import { authService } from '@/services/auth/authService'
 import { storage } from '@/utils/storage'
 import { EmpresasPage } from '@/modules/empresas/pages/EmpresasPage'
 import { MotoristasPage } from '@/modules/motoristas/pages/MotoristasPage'
@@ -16,11 +17,111 @@ import { VeiculosPage } from '@/modules/veiculos/pages/VeiculosPage'
 import { MotivosIndisponibilidadePage } from '@/modules/operacao/pages/MotivosIndisponibilidadePage'
 import { UsuariosPage } from '@/modules/usuarios/pages/UsuariosPage'
 import { AgendamentosPage } from '@/modules/agendamentos/pages/AgendamentosPage'
+import { AgendamentoDetalhesPage } from '@/modules/agendamentos/pages/AgendamentoDetalhesPage'
+import { ContratosPage } from '@/modules/contratos/pages/ContratosPage'
 
 describe('Suíte de Testes da Fase 4.2 — Módulos Operacionais e Interações Críticas', () => {
   beforeEach(() => {
     storage.setToken('mock_valid_token')
     vi.restoreAllMocks()
+    vi.spyOn(authService, 'getMe').mockResolvedValue({
+      id: 'u-1',
+      nome: 'Admin Logtudo',
+      email: 'admin@logtudo.com',
+      ativo: true,
+      criado_em: '2026-08-21T10:00:00Z',
+      atualizado_em: '2026-08-21T10:00:00Z',
+    })
+  })
+
+  it('deve preencher automaticamente o veículo ao selecionar o motorista e vice-versa na ContratosPage', async () => {
+    vi.spyOn(empresasService, 'listar').mockResolvedValue([
+      {
+        id: 'emp-1',
+        nome: 'Empresa Teste Contratos',
+        identificacao: '12345678000199',
+        ativo: true,
+        criado_em: '2026-08-21T10:00:00Z',
+        atualizado_em: '2026-08-21T10:00:00Z',
+      },
+    ])
+    vi.spyOn(contratosService, 'obterConfiguracaoVigente').mockResolvedValue({
+      id: 'cfg-1',
+      empresa_id: 'emp-1',
+      data_inicio: '2026-08-01T00:00:00Z',
+      regras: { HR: 5 },
+      capacidades: [{ tipo_veiculo: 'HR', especialidade: 'SECO', quantidade: 5 }],
+      criado_em: '2026-08-01T00:00:00Z',
+      atualizado_em: '2026-08-01T00:00:00Z',
+    } as any)
+    vi.spyOn(contratosService, 'obterHistoricoConfiguracoes').mockResolvedValue([])
+    vi.spyOn(contratosService, 'listarVinculosAtivos').mockResolvedValue([
+      {
+        id: 'vinc-1',
+        empresa_id: null,
+        motorista_id: 'mot-1',
+        veiculo_id: 'vec-1',
+        tipo_veiculo: 'HR',
+        categoria_operacional: 'SPOT',
+        categoria: 'SPOT',
+        ativo: true,
+        criado_em: '2026-08-21T10:00:00Z',
+        atualizado_em: '2026-08-21T10:00:00Z',
+      },
+    ])
+    vi.spyOn(motoristasService, 'listar').mockResolvedValue([
+      {
+        id: 'mot-1',
+        nome: 'Geovane Ferreira',
+        ativo: true,
+        criado_em: '2026-08-21T10:00:00Z',
+        atualizado_em: '2026-08-21T10:00:00Z',
+      },
+    ])
+    vi.spyOn(veiculosService, 'listar').mockResolvedValue([
+      {
+        id: 'vec-1',
+        identificacao: 'HR-101',
+        placa: 'RDK8D49',
+        tipo_veiculo: 'HR',
+        especialidade: 'SECO',
+        ativo: true,
+        criado_em: '2026-08-21T10:00:00Z',
+        atualizado_em: '2026-08-21T10:00:00Z',
+      },
+    ])
+
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <ContratosPage />
+        </MemoryRouter>
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText(/vagas contratadas/i)).toBeInTheDocument()
+    })
+
+    // Abre o drawer de vincular motorista dedicado
+    const btnVincular = screen.getByRole('button', { name: /Vincular Motorista Dedicado/i })
+    fireEvent.click(btnVincular)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Motorista')).toBeInTheDocument()
+    })
+
+    // Seleciona o motorista -> deve auto-selecionar o veículo 'vec-1'
+    const selectMotorista = screen.getByLabelText('Motorista') as HTMLSelectElement
+    fireEvent.change(selectMotorista, { target: { value: 'mot-1' } })
+
+    const selectVeiculo = screen.getByLabelText(/Veículo Físico/i) as HTMLSelectElement
+    expect(selectVeiculo.value).toBe('vec-1')
+
+    // Limpa e seleciona o veículo -> deve auto-selecionar o motorista 'mot-1'
+    fireEvent.change(selectMotorista, { target: { value: '' } })
+    fireEvent.change(selectVeiculo, { target: { value: 'vec-1' } })
+    expect(selectMotorista.value).toBe('mot-1')
   })
 
   // --- Renderizações Iniciais ---
@@ -283,5 +384,98 @@ describe('Suíte de Testes da Fase 4.2 — Módulos Operacionais e Interações 
         categoria: 'SPOT',
       })
     ).rejects.toThrow('Motorista selecionado já possui alocação ativa neste horário.')
+  })
+
+  it('deve preencher automaticamente o veículo ao selecionar o motorista e vice-versa no modal SPOT de AgendamentoDetalhesPage', async () => {
+    vi.spyOn(agendamentosService, 'buscarPorId').mockResolvedValue({
+      id: 'ag-1',
+      empresa_id: 'emp-1',
+      data: '2026-08-25',
+      horario_inicio: '08:00',
+      status: 'EM_ANDAMENTO',
+      alocacoes: [],
+      criado_em: '2026-08-21T10:00:00Z',
+      atualizado_em: '2026-08-21T10:00:00Z',
+    })
+    vi.spyOn(empresasService, 'buscarPorId').mockResolvedValue({
+      id: 'emp-1',
+      nome: 'Empresa Teste Agendamento',
+      identificacao: '12345678000199',
+      ativo: true,
+      criado_em: '2026-08-21T10:00:00Z',
+      atualizado_em: '2026-08-21T10:00:00Z',
+    })
+    vi.spyOn(agendamentosService, 'obterHistorico').mockResolvedValue([])
+    vi.spyOn(motoristasService, 'listar').mockResolvedValue([
+      {
+        id: 'mot-spot-1',
+        nome: 'Tiago Santos Passos',
+        ativo: true,
+        criado_em: '2026-08-21T10:00:00Z',
+        atualizado_em: '2026-08-21T10:00:00Z',
+      },
+    ])
+    vi.spyOn(veiculosService, 'listar').mockResolvedValue([
+      {
+        id: 'vec-spot-1',
+        identificacao: 'HR-202',
+        placa: 'NTP4B36',
+        tipo_veiculo: 'HR',
+        especialidade: 'SECO',
+        ativo: true,
+        criado_em: '2026-08-21T10:00:00Z',
+        atualizado_em: '2026-08-21T10:00:00Z',
+      },
+    ])
+    vi.spyOn(motivosService, 'listarMotivos').mockResolvedValue([])
+    vi.spyOn(contratosService, 'listarVinculosAtivos').mockResolvedValue([
+      {
+        id: 'vinc-spot-1',
+        empresa_id: null,
+        motorista_id: 'mot-spot-1',
+        veiculo_id: 'vec-spot-1',
+        tipo_veiculo: 'HR',
+        categoria_operacional: 'SPOT',
+        categoria: 'SPOT',
+        ativo: true,
+        criado_em: '2026-08-21T10:00:00Z',
+        atualizado_em: '2026-08-21T10:00:00Z',
+      },
+    ])
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/agendamentos/ag-1']}>
+          <Routes>
+            <Route path="/agendamentos/:id" element={<AgendamentoDetalhesPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Empresa Teste Agendamento')).toBeInTheDocument()
+    })
+
+    // Abre o drawer de Adicionar SPOT
+    const btnAddSpot = screen.getByRole('button', { name: /Adicionar SPOT/i })
+    fireEvent.click(btnAddSpot)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Motorista SPOT/i)).toBeInTheDocument()
+    })
+
+    // 1. Seleciona o motorista -> deve auto-selecionar o veículo 'vec-spot-1'
+    const selectMotorista = screen.getByLabelText(/Motorista SPOT/i) as HTMLSelectElement
+    fireEvent.change(selectMotorista, { target: { value: 'mot-spot-1' } })
+
+    const selectVeiculo = screen.getByLabelText(/Veículo SPOT/i) as HTMLSelectElement
+    expect(selectVeiculo.value).toBe('vec-spot-1')
+
+    // 2. Limpa e seleciona o veículo -> deve auto-selecionar o motorista 'mot-spot-1'
+    fireEvent.change(selectMotorista, { target: { value: '' } })
+    fireEvent.change(selectVeiculo, { target: { value: 'vec-spot-1' } })
+
+    expect(selectMotorista.value).toBe('mot-spot-1')
   })
 })

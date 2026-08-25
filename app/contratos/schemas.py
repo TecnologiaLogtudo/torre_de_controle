@@ -13,7 +13,7 @@ class CapacidadeItemSchema(BaseModel):
 
 class ContratoConfiguracaoBase(BaseModel):
     data_inicio: datetime
-    regras: Dict[str, int] = Field(
+    regras: Any = Field(
         default_factory=dict,
         description="Mapeamento de capacidade de veículos, ex: {'HR': 4, 'Fiorino': 2}",
     )
@@ -33,6 +33,8 @@ class ContratoConfiguracaoBase(BaseModel):
                         qtd = item.get("quantidade", 1)
                         if tipo:
                             nova_regras[tipo] = nova_regras.get(tipo, 0) + int(qtd)
+                    elif hasattr(item, "tipo_veiculo"):
+                        nova_regras[item.tipo_veiculo] = nova_regras.get(item.tipo_veiculo, 0) + int(item.quantidade)
                 values["regras"] = nova_regras
         return values
 
@@ -52,7 +54,20 @@ class ContratoConfiguracaoResponse(ContratoConfiguracaoBase):
 
     @model_validator(mode="after")
     def preencher_capacidades(self) -> "ContratoConfiguracaoResponse":
-        if self.capacidades is None and self.regras:
+        if isinstance(self.regras, list):
+            regras_dict = {}
+            caps = []
+            for item in self.regras:
+                if isinstance(item, dict):
+                    tipo = item.get("tipo_veiculo", "")
+                    qtd = int(item.get("quantidade", 1))
+                    esp = item.get("especialidade", "SECO")
+                    regras_dict[tipo] = regras_dict.get(tipo, 0) + qtd
+                    caps.append(CapacidadeItemSchema(tipo_veiculo=tipo, especialidade=esp, quantidade=qtd))
+            self.regras = regras_dict
+            if not self.capacidades:
+                self.capacidades = caps
+        elif self.capacidades is None and isinstance(self.regras, dict):
             self.capacidades = [
                 CapacidadeItemSchema(tipo_veiculo=k, especialidade="SECO", quantidade=v)
                 for k, v in self.regras.items()
@@ -73,7 +88,7 @@ class ContratoConfiguracaoResponse(ContratoConfiguracaoBase):
 
 
 class MotoristaDedicadoVinculoCreate(BaseModel):
-    empresa_id: UUID
+    empresa_id: Optional[UUID] = None
     motorista_id: UUID
     veiculo_id: Optional[UUID] = None
     tipo_veiculo: Optional[str] = None
@@ -84,14 +99,16 @@ class MotoristaDedicadoVinculoCreate(BaseModel):
     @classmethod
     def normalizar_categoria(cls, values: Any) -> Any:
         if isinstance(values, dict):
-            cat = values.get("categoria_operacional") or values.get("categoria") or "DEDICADO"
+            cat = values.get("categoria_operacional") or values.get("categoria")
+            if not cat:
+                cat = "DEDICADO" if values.get("empresa_id") else "SPOT"
             values["categoria_operacional"] = cat
         return values
 
 
 class MotoristaDedicadoVinculoResponse(BaseModel):
     id: UUID
-    empresa_id: UUID
+    empresa_id: Optional[UUID] = None
     motorista_id: UUID
     veiculo_id: Optional[UUID] = None
     tipo_veiculo: str

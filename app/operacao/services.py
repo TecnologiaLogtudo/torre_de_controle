@@ -180,8 +180,17 @@ class OperacaoService:
             # Obtém a configuração de capacidade contratual vigente na data
             dt_ref = datetime.combine(data_ref, time(0, 0, 0))
             config_vigente = obter_configuracao_vigente(db, emp.id, dt_ref)
-            regras = config_vigente.regras if config_vigente and config_vigente.regras else {}
-            contratados = sum(int(v) for v in regras.values()) if regras else 0
+            regras_dict = {}
+            if config_vigente and config_vigente.regras:
+                if isinstance(config_vigente.regras, list):
+                    for item in config_vigente.regras:
+                        if isinstance(item, dict):
+                            tipo = str(item.get("tipo_veiculo", ""))
+                            qtd = int(item.get("quantidade", 1))
+                            regras_dict[tipo] = regras_dict.get(tipo, 0) + qtd
+                elif isinstance(config_vigente.regras, dict):
+                    regras_dict = {str(k): int(v) for k, v in config_vigente.regras.items()}
+            contratados = sum(regras_dict.values())
 
             query = db.query(AlocacaoOperacional).join(Agendamento).filter(
                 Agendamento.empresa_id == emp.id,
@@ -208,7 +217,7 @@ class OperacaoService:
                     em_rota=em_rota,
                     indisponiveis=indisponiveis,
                     vagas_nao_preenchidas=vagas_nao_preenchidas,
-                    regras_capacidade=regras,
+                    regras_capacidade=regras_dict,
                 )
             )
 
@@ -520,19 +529,26 @@ class OperacaoService:
                     criadas_empresas += 1
                 empresa_id = empresa.id
 
-            # 4. Vínculo Dedicado (se categoria for DEDICADO - Regra A3)
-            categoria = get_val(idx_categoria).upper()
-            if categoria == "DEDICADO" and empresa_id:
-                vinculo = MotoristaDedicadoVinculo(
-                    empresa_id=empresa_id,
-                    motorista_id=motorista.id,
-                    veiculo_id=veiculo.id,
-                    tipo_veiculo=tipo_veiculo,
-                    categoria_operacional="DEDICADO",
-                    ativo=ativo,
-                )
-                db.add(vinculo)
-                vinculos_dedicados_criados += 1
+            if not empresa_id:
+                empresa_padrao = db.query(Empresa).first()
+                if empresa_padrao:
+                    empresa_id = empresa_padrao.id
+
+            # 4. Vínculo entre Motorista e Veículo (Exigência: Motorista e Veículo permanecem vinculados)
+            categoria_raw = get_val(idx_categoria).upper()
+            categoria_op = "DEDICADO" if "DEDICADO" in categoria_raw else "SPOT"
+            vinculo_empresa_id = empresa_id if categoria_op == "DEDICADO" else None
+
+            vinculo = MotoristaDedicadoVinculo(
+                empresa_id=vinculo_empresa_id,
+                motorista_id=motorista.id,
+                veiculo_id=veiculo.id,
+                tipo_veiculo=tipo_veiculo,
+                categoria_operacional=categoria_op,
+                ativo=ativo,
+            )
+            db.add(vinculo)
+            vinculos_dedicados_criados += 1
 
         db.commit()
 

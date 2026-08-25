@@ -6,12 +6,14 @@ import { motoristasService } from '@/services/motoristas/motoristasService'
 import { veiculosService } from '@/services/veiculos/veiculosService'
 import { motivosService } from '@/services/motivos/motivosService'
 import { contratosService } from '@/services/contratos/contratosService'
+import { torreService } from '@/services/torre/torreService'
 import { Agendamento, HistoricoAgendamento } from '@/types/agendamentos'
 import { Empresa } from '@/types/empresas'
 import { Motorista } from '@/types/motoristas'
 import { Veiculo } from '@/types/veiculos'
 import { MotivoIndisponibilidade } from '@/types/motivos'
 import { MotoristaDedicadoVinculo } from '@/types/contratos'
+import { DetalhamentoOperacional } from '@/types/torre'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -49,6 +51,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
   const [veiculos, setVeiculos] = useState<Veiculo[]>([])
   const [motivos, setMotivos] = useState<MotivoIndisponibilidade[]>([])
   const [vinculosDedicados, setVinculosDedicados] = useState<MotoristaDedicadoVinculo[]>([])
+  const [detalhamentoTorre, setDetalhamentoTorre] = useState<DetalhamentoOperacional[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -80,13 +83,14 @@ export const AgendamentoDetalhesPage: React.FC = () => {
       const agData = await agendamentosService.buscarPorId(id)
       setAgendamento(agData)
 
-      const [empData, histData, mList, vList, motList, vincList] = await Promise.all([
+      const [empData, histData, mList, vList, motList, vincList, torreList] = await Promise.all([
         empresasService.buscarPorId(agData.empresa_id).catch(() => null),
         agendamentosService.obterHistorico(agData.id).catch(() => []),
         motoristasService.listar().catch(() => []),
         veiculosService.listar().catch(() => []),
         motivosService.listarMotivos(true).catch(() => []),
         contratosService.listarVinculosAtivos().catch(() => []),
+        torreService.obterDetalhamento({ data: agData.data }).catch(() => []),
       ])
 
       setEmpresa(empData)
@@ -95,6 +99,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
       setVeiculos(vList)
       setMotivos(motList)
       setVinculosDedicados(vincList)
+      setDetalhamentoTorre(torreList)
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar detalhes do agendamento.')
     } finally {
@@ -108,58 +113,117 @@ export const AgendamentoDetalhesPage: React.FC = () => {
 
   // Motoristas elegíveis para inclusão SPOT:
   // 1. Não pode ter vínculo DEDICADO ativo com NENHUMA empresa
-  // 2. Não pode estar INDISPONÍVEL nem alocado no agendamento atual
+  // 2. Não pode estar PROGRAMADO, EM_ROTA ou INDISPONÍVEL na data do agendamento
   const motoristasSpotElegiveis = useMemo(() => {
     if (!agendamento) return []
     
     // IDs de motoristas com vínculo DEDICADO ativo
     const motoristasDedicadosSet = new Set(
       vinculosDedicados
-        .filter(v => v.ativo && (v.categoria === 'DEDICADO' || v.categoria_operacional === 'DEDICADO'))
+        .filter(v => v.ativo && (v.categoria === 'DEDICADO' || v.categoria_operacional === 'DEDICADO') && v.empresa_id)
         .map(v => v.motorista_id)
     )
 
-    // IDs de motoristas já alocados no agendamento atual
+    // IDs de motoristas já alocados no agendamento atual (exceto o próprio alvo em caso de substituição)
     const motoristasAlocadosNoAgendamento = new Set(
       agendamento.alocacoes
         .filter(a => targetAlocacaoId ? a.id !== targetAlocacaoId : true)
         .map(a => a.motorista_id)
     )
 
+    // IDs de motoristas ocupados ou indisponíveis na Torre de Controle na data
+    const motoristasOcupadosNaTorre = new Set(
+      detalhamentoTorre
+        .filter(d => {
+          if (targetAlocacaoId && d.agendamento_id === agendamento.id) {
+            const alocAlvo = agendamento.alocacoes.find(a => a.id === targetAlocacaoId)
+            if (alocAlvo && alocAlvo.motorista_id === d.motorista_id) {
+              return false
+            }
+          }
+          return ['PROGRAMADO', 'EM_ROTA', 'INDISPONIVEL'].includes(d.status_operacional)
+        })
+        .map(d => d.motorista_id)
+    )
+
     return motoristas.filter(m => {
       if (!m.ativo) return false
       if (motoristasDedicadosSet.has(m.id)) return false
       if (motoristasAlocadosNoAgendamento.has(m.id)) return false
+      if (motoristasOcupadosNaTorre.has(m.id)) return false
       return true
     })
-  }, [agendamento, vinculosDedicados, motoristas, targetAlocacaoId])
+  }, [agendamento, vinculosDedicados, motoristas, detalhamentoTorre, targetAlocacaoId])
 
   // Veículos elegíveis para inclusão SPOT:
   // 1. Não pode ter vínculo DEDICADO ativo com NENHUMA empresa
-  // 2. Não pode estar alocado no agendamento atual
+  // 2. Não pode estar PROGRAMADO, EM_ROTA ou INDISPONÍVEL na data do agendamento
   const veiculosSpotElegiveis = useMemo(() => {
     if (!agendamento) return []
 
     // IDs de veículos com vínculo DEDICADO ativo
     const veiculosDedicadosSet = new Set(
       vinculosDedicados
-        .filter(v => v.ativo && (v.categoria === 'DEDICADO' || v.categoria_operacional === 'DEDICADO'))
+        .filter(v => v.ativo && (v.categoria === 'DEDICADO' || v.categoria_operacional === 'DEDICADO') && v.empresa_id)
         .map(v => v.veiculo_id)
     )
 
-    // IDs de veículos já alocados no agendamento atual
+    // IDs de veículos já alocados no agendamento atual (exceto o próprio alvo em caso de substituição)
     const veiculosAlocadosNoAgendamento = new Set(
       agendamento.alocacoes
         .filter(a => targetAlocacaoId ? a.id !== targetAlocacaoId : true)
         .map(a => a.veiculo_id)
     )
 
+    // IDs de veículos ocupados ou indisponíveis na Torre de Controle na data
+    const veiculosOcupadosNaTorre = new Set(
+      detalhamentoTorre
+        .filter(d => {
+          if (targetAlocacaoId && d.agendamento_id === agendamento.id) {
+            const alocAlvo = agendamento.alocacoes.find(a => a.id === targetAlocacaoId)
+            if (alocAlvo && alocAlvo.veiculo_id === d.veiculo_id) {
+              return false
+            }
+          }
+          return ['PROGRAMADO', 'EM_ROTA', 'INDISPONIVEL'].includes(d.status_operacional)
+        })
+        .map(d => d.veiculo_id)
+    )
+
     return veiculos.filter(v => {
+      if (!v.ativo) return false
       if (veiculosDedicadosSet.has(v.id)) return false
       if (veiculosAlocadosNoAgendamento.has(v.id)) return false
+      if (veiculosOcupadosNaTorre.has(v.id)) return false
       return true
     })
-  }, [agendamento, vinculosDedicados, veiculos, targetAlocacaoId])
+  }, [agendamento, vinculosDedicados, veiculos, detalhamentoTorre, targetAlocacaoId])
+
+  const handleSelectMotoristaSpot = (motId: string) => {
+    setMotoristaSpotId(motId)
+    if (motId) {
+      const vinculo = vinculosDedicados.find(v => v.motorista_id === motId && v.ativo)
+      if (vinculo && vinculo.veiculo_id) {
+        const veiculoDisponivel = veiculosSpotElegiveis.some(v => v.id === vinculo.veiculo_id)
+        if (veiculoDisponivel) {
+          setVeiculoSpotId(vinculo.veiculo_id)
+        }
+      }
+    }
+  }
+
+  const handleSelectVeiculoSpot = (vecId: string) => {
+    setVeiculoSpotId(vecId)
+    if (vecId) {
+      const vinculo = vinculosDedicados.find(v => v.veiculo_id === vecId && v.ativo)
+      if (vinculo && vinculo.motorista_id) {
+        const motoristaDisponivel = motoristasSpotElegiveis.some(m => m.id === vinculo.motorista_id)
+        if (motoristaDisponivel) {
+          setMotoristaSpotId(vinculo.motorista_id)
+        }
+      }
+    }
+  }
 
   const handleOpenAdicionarSpot = () => {
     setTargetAlocacaoId(null)
@@ -554,7 +618,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           <Select
             label="Motorista SPOT (Apenas Não-Dedicados e Livres)"
             value={motoristaSpotId}
-            onChange={e => setMotoristaSpotId(e.target.value)}
+            onChange={e => handleSelectMotoristaSpot(e.target.value)}
             placeholder="Selecione o motorista..."
             options={motoristasSpotElegiveis.map(m => ({ value: m.id, label: m.nome }))}
             required
@@ -563,7 +627,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           <Select
             label="Veículo SPOT (Apenas Não-Dedicados e Livres)"
             value={veiculoSpotId}
-            onChange={e => setVeiculoSpotId(e.target.value)}
+            onChange={e => handleSelectVeiculoSpot(e.target.value)}
             placeholder="Selecione o veículo..."
             options={veiculosSpotElegiveis.map(v => ({
               value: v.id,

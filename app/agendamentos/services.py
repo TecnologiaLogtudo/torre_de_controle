@@ -1,6 +1,7 @@
 from datetime import datetime, date, time, timedelta
 from typing import List, Optional
 from uuid import UUID
+from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.core.datetime_utils import agora_local
@@ -115,13 +116,16 @@ class AgendamentoService:
                 detail="O veículo informado é DEDICADO exclusivo de outra empresa e não pode ser escalado nesta empresa.",
             )
 
-        # 3. Regra de Indisponibilidade na mesma data (Motorista)
+        # 3. Regra de Indisponibilidade na data ou dia anterior (Motorista)
+        from datetime import timedelta
+        data_anterior = agendamento_alvo.data - timedelta(days=1)
+
         indisponivel_motorista = (
             db.query(AlocacaoOperacional)
             .join(Agendamento)
             .filter(
                 AlocacaoOperacional.motorista_id == motorista_id,
-                Agendamento.data == agendamento_alvo.data,
+                Agendamento.data.in_([agendamento_alvo.data, data_anterior]),
                 Agendamento.status != "CANCELADO",
                 AlocacaoOperacional.status_operacional == "INDISPONIVEL",
             )
@@ -130,16 +134,16 @@ class AgendamentoService:
         if indisponivel_motorista:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="O motorista informado está marcado como INDISPONÍVEL nesta data. Ele só poderá ser alocado quando seu status for alterado.",
+                detail="O motorista informado está marcado como INDISPONÍVEL. Ele só poderá ser agendado após seu status ser regularizado para DISPONÍVEL.",
             )
 
-        # 4. Regra de Indisponibilidade na mesma data (Veículo)
+        # 4. Regra de Indisponibilidade na data ou dia anterior (Veículo)
         indisponivel_veiculo = (
             db.query(AlocacaoOperacional)
             .join(Agendamento)
             .filter(
                 AlocacaoOperacional.veiculo_id == veiculo_id,
-                Agendamento.data == agendamento_alvo.data,
+                Agendamento.data.in_([agendamento_alvo.data, data_anterior]),
                 Agendamento.status != "CANCELADO",
                 AlocacaoOperacional.status_operacional == "INDISPONIVEL",
             )
@@ -148,7 +152,7 @@ class AgendamentoService:
         if indisponivel_veiculo:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="O veículo informado está marcado como INDISPONÍVEL nesta data. Ele só poderá ser alocado quando seu status for alterado.",
+                detail="O veículo informado está marcado como INDISPONÍVEL. Ele só poderá ser agendado após seu status ser regularizado para DISPONÍVEL.",
             )
 
         # 5. Conflito de Alocação Ativa (Motorista)
@@ -158,16 +162,21 @@ class AgendamentoService:
             .filter(
                 AlocacaoOperacional.motorista_id == motorista_id,
                 AlocacaoOperacional.agendamento_id != agendamento_id,
-                Agendamento.data == agendamento_alvo.data,
                 Agendamento.status.in_(["PROGRAMADO", "EM_EXECUCAO"]),
-                AlocacaoOperacional.status_operacional.in_(["PROGRAMADO", "EM_ROTA"]),
+                or_(
+                    and_(
+                        Agendamento.data == agendamento_alvo.data,
+                        AlocacaoOperacional.status_operacional.in_(["PROGRAMADO", "EM_ROTA"]),
+                    ),
+                    AlocacaoOperacional.status_operacional == "EM_ROTA",
+                ),
             )
             .first()
         )
         if conflito_motorista:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="O motorista informado já está alocado e ativo em outra operação simultânea.",
+                detail="O motorista informado já está alocado ou com status diferente de DISPONÍVEL (programado ou em rota ativa). Ele só poderá ser agendado após a liberação operacional.",
             )
 
         # 6. Conflito de Alocação Ativa (Veículo)
@@ -177,16 +186,21 @@ class AgendamentoService:
             .filter(
                 AlocacaoOperacional.veiculo_id == veiculo_id,
                 AlocacaoOperacional.agendamento_id != agendamento_id,
-                Agendamento.data == agendamento_alvo.data,
                 Agendamento.status.in_(["PROGRAMADO", "EM_EXECUCAO"]),
-                AlocacaoOperacional.status_operacional.in_(["PROGRAMADO", "EM_ROTA"]),
+                or_(
+                    and_(
+                        Agendamento.data == agendamento_alvo.data,
+                        AlocacaoOperacional.status_operacional.in_(["PROGRAMADO", "EM_ROTA"]),
+                    ),
+                    AlocacaoOperacional.status_operacional == "EM_ROTA",
+                ),
             )
             .first()
         )
         if conflito_veiculo:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="O veículo informado já está alocado e ativo em outra operação simultânea.",
+                detail="O veículo informado já está alocado ou com status diferente de DISPONÍVEL (programado ou em rota ativa). Ele só poderá ser agendado após a liberação operacional.",
             )
 
     @staticmethod
@@ -344,6 +358,26 @@ class AgendamentoService:
                 )
             alteracoes.append(f"Status alterado de {status_atual} para {novo_status}")
             agendamento.status = novo_status
+
+            # Regra 9: Liberação em cascata das alocações que estavam PROGRAMADO para DISPONIVEL
+            if novo_status == "CANCELADO":
+                for aloc in agendamento.alocacoes:
+                    if aloc.status_operacional == "PROGRAMADO":
+                        status_ant = aloc.status_operacional
+                        aloc.status_operacional = "DISPONIVEL"
+                        evento = EventoOperacional(
+                            empresa_id=agendamento.empresa_id,
+                            motorista_id=aloc.motorista_id,
+                            veiculo_id=aloc.veiculo_id,
+                            agendamento_id=agendamento.id,
+                            categoria=aloc.categoria,
+                            status_anterior=status_ant,
+                            novo_status="DISPONIVEL",
+                            motivo_indisponibilidade="Liberação por Cancelamento de Agendamento",
+                            usuario_id=usuario_id,
+                            origem_alteracao="CANCELAMENTO_AGENDAMENTO",
+                        )
+                        db.add(evento)
 
         if alteracoes:
             db.commit()

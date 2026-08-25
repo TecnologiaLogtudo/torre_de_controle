@@ -36,6 +36,12 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
     summary="Definir Configuração de Capacidade Contratual",
 )
+@router.post(
+    "/contratos/empresas/{empresa_id}/configuracoes",
+    response_model=ContratoConfiguracaoResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Definir Configuração de Capacidade Contratual (Alias)",
+)
 def cadastrar_contrato_configuracao(
     empresa_id: UUID,
     dados: ContratoConfiguracaoCreate,
@@ -137,7 +143,7 @@ def cadastrar_vinculo_motorista(
 def obter_vinculos_ativos(
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(obter_usuario_atual),
-    limite: int = 50,
+    limite: int = 1000,
     offset: int = 0,
 ):
     """Lista todos os vínculos ativos de motoristas dedicados."""

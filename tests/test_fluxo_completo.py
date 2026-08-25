@@ -283,6 +283,25 @@ def test_vinculo_de_motoristas_dedicados(client: TestClient, db: Session):
     emp_a_id = res_emp_a.json()["id"]
     emp_b_id = res_emp_b.json()["id"]
 
+    # Setup de Configurações de Contrato para as Empresas
+    from datetime import datetime, timezone, timedelta
+    client.post(
+        f"/api/v1/contratos/empresas/{emp_a_id}/configuracoes",
+        json={
+            "data_inicio": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
+            "capacidades": [{"tipo_veiculo": "HR", "especialidade": "SECO", "quantidade": 5}],
+        },
+        headers=headers,
+    )
+    client.post(
+        f"/api/v1/contratos/empresas/{emp_b_id}/configuracoes",
+        json={
+            "data_inicio": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
+            "capacidades": [{"tipo_veiculo": "Fiorino", "especialidade": "SECO", "quantidade": 5}],
+        },
+        headers=headers,
+    )
+
     # Setup de Motorista
     res_mot = client.post(
         "/api/v1/motoristas", json={"nome": "João Dedicado"}, headers=headers

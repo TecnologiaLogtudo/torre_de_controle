@@ -1,19 +1,24 @@
 import pytest
 import uuid
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from zoneinfo import ZoneInfo
 
-from app.core.database import SessionLocal, Base, engine
+from app.core.database import Base
+from tests.conftest import SessionTesting as SessionLocal, engine_test as engine
 from app.core.datetime_utils import TZ_BAHIA, para_utc, inicio_do_dia_utc, fim_do_dia_utc
 from app.empresas.models import Empresa
 from app.motoristas.models import Motorista
 from app.veiculos.models import Veiculo
 from app.usuarios.models import Usuario
 from app.contratos.models import MotoristaDedicadoVinculo, ContratoConfiguracao
-from app.contratos.schemas import MotoristaDedicadoVinculoCreate, ContratoConfiguracaoCreate
+from app.contratos.schemas import (
+    MotoristaDedicadoVinculoCreate,
+    ContratoConfiguracaoCreate,
+    CapacidadeItemSchema,
+)
 from app.contratos.services import criar_vinculo_motorista, desativar_vinculo_motorista, criar_contrato_configuracao
 from app.agendamentos.models import Agendamento, AlocacaoOperacional, HistoricoAgendamento
 from app.agendamentos.schemas import (
@@ -54,6 +59,29 @@ def setup_dados_base(db: Session):
         motivo = MotivoIndisponibilidade(nome="Avaria", ativo=True)
         db.add(motivo)
         db.flush()
+
+    criar_contrato_configuracao(
+        db,
+        empresa_a.id,
+        ContratoConfiguracaoCreate(
+            data_inicio=datetime(2025, 1, 1, 0, 0, tzinfo=timezone.utc),
+            capacidades=[
+                CapacidadeItemSchema(tipo_veiculo="HR", especialidade="SECO", quantidade=5)
+            ],
+        ),
+        autor_id=usuario.id,
+    )
+    criar_contrato_configuracao(
+        db,
+        empresa_b.id,
+        ContratoConfiguracaoCreate(
+            data_inicio=datetime(2025, 1, 1, 0, 0, tzinfo=timezone.utc),
+            capacidades=[
+                CapacidadeItemSchema(tipo_veiculo="HR", especialidade="SECO", quantidade=5)
+            ],
+        ),
+        autor_id=usuario.id,
+    )
 
     return {
         "empresa_a": empresa_a,
@@ -188,7 +216,7 @@ def test_concorrencia_alocacao_simultanea_mesmo_motorista():
         ids_criados = {
             "agendamento_ids": [ag1_id, ag2_id],
             "empresa_ids": [base["empresa_a"].id, base["empresa_b"].id],
-            "motorista_ids": [m1_id],
+            "motorista_ids": [m1_id, base["motorista_2"].id],
             "veiculo_ids": [v1_id, v2_id],
             "usuario_id": usr_id,
         }
@@ -268,7 +296,7 @@ def test_concorrencia_alocacao_simultanea_mesmo_veiculo():
             "agendamento_ids": [ag1_id, ag2_id],
             "empresa_ids": [base["empresa_a"].id, base["empresa_b"].id],
             "motorista_ids": [m1_id, m2_id],
-            "veiculo_ids": [v1_id],
+            "veiculo_ids": [v1_id, base["veiculo_2"].id],
             "usuario_id": usr_id,
         }
     finally:

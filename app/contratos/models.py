@@ -53,7 +53,7 @@ class MotoristaDedicadoVinculo(BaseEntidade):
     __tablename__ = "motoristas_dedicados_vinculos"
 
     empresa_id = Column(
-        ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("empresas.id", ondelete="CASCADE"), nullable=True
     )
     motorista_id = Column(
         ForeignKey("motoristas.id", ondelete="CASCADE"), nullable=False

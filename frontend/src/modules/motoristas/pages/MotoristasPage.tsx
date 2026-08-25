@@ -131,14 +131,15 @@ export const MotoristasPage: React.FC = () => {
     }
 
     const veiculo = veiculos.find(v => v.id === vinculo.veiculo_id)
-    const empresa = empresas.find(e => e.id === vinculo.empresa_id)
+    const empresa = vinculo.empresa_id ? empresas.find(e => e.id === vinculo.empresa_id) : null
+    const categoria = vinculo.categoria || vinculo.categoria_operacional || (vinculo.empresa_id ? 'DEDICADO' : 'SPOT')
 
     return {
-      categoria: vinculo.categoria || 'DEDICADO',
+      categoria,
       veiculoPlaca: veiculo?.placa || 'Sem placa',
       veiculoTipo: veiculo?.tipo_veiculo || '-',
       especialidade: veiculo?.especialidade || '-',
-      empresaNome: empresa?.nome || 'Empresa Parceira',
+      empresaNome: empresa?.nome || (categoria === 'SPOT' ? 'Recurso SPOT Livre' : 'Empresa Parceira'),
     }
   }
 

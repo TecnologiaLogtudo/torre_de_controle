@@ -131,12 +131,19 @@ def criar_contrato_configuracao(
                     "A data de início da nova configuração sobrepõe uma vigência fechada existente."
                 )
 
+    regras_armazenadas = dados.regras
+    if dados.capacidades:
+        regras_armazenadas = [
+            c.model_dump() if hasattr(c, "model_dump") else dict(c)
+            for c in dados.capacidades
+        ]
+
     # Cria a nova configuração
     nova_config = ContratoConfiguracao(
         empresa_id=empresa_id,
         data_inicio=nova_data_inicio_utc,
         data_fim=None,
-        regras=dados.regras,
+        regras=regras_armazenadas,
     )
     db.add(nova_config)
     db.commit()
@@ -150,13 +157,13 @@ def criar_contrato_configuracao(
         "data_fim": None,
         "regras": nova_config.regras,
     }
-
     registrar_auditoria(
         db=db,
         usuario_id=autor_id,
         entidade_afetada="contratos_configuracoes",
         entidade_id=nova_config.id,
         acao="CRIAR",
+        estado_anterior=None,
         estado_posterior=estado_posterior,
     )
 
@@ -181,7 +188,7 @@ def obter_vinculo_motorista_por_id(
 def obter_vinculo_ativo_motorista(
     db: Session, motorista_id: uuid.UUID
 ) -> Optional[MotoristaDedicadoVinculo]:
-    """Retorna o vínculo ativo (se houver) de um motorista específico."""
+    """Retorna o vínculo ativo (seja dedicado ou spot) de um motorista."""
     return (
         db.query(MotoristaDedicadoVinculo)
         .filter(
@@ -193,13 +200,14 @@ def obter_vinculo_ativo_motorista(
 
 
 def listar_vinculos_ativos(
-    db: Session, limite: int = 50, offset: int = 0
+    db: Session, limite: int = 1000, offset: int = 0
 ) -> List[MotoristaDedicadoVinculo]:
+    """Lista todos os vínculos ativos de motoristas (dedicados e spot)."""
     return (
         db.query(MotoristaDedicadoVinculo)
         .filter(MotoristaDedicadoVinculo.ativo == True)
-        .offset(offset)
         .limit(limite)
+        .offset(offset)
         .all()
     )
 
@@ -207,34 +215,161 @@ def listar_vinculos_ativos(
 def criar_vinculo_motorista(
     db: Session, dados: MotoristaDedicadoVinculoCreate, autor_id: uuid.UUID
 ) -> MotoristaDedicadoVinculo:
-    """Cria um vínculo de motorista dedicado, garantindo a exclusividade de vínculo ativo."""
-    # Valida existência de empresa e motorista
-    empresa = db.query(Empresa).filter(Empresa.id == dados.empresa_id).first()
-    if not empresa:
-        raise ValueError("A empresa informada não existe.")
-
+    """Cria um vínculo de motorista (dedicado ou spot), garantindo a consistência de vínculos ativos e regras de capacidade."""
+    # Valida existência de motorista
     motorista = (
         db.query(Motorista).filter(Motorista.id == dados.motorista_id).first()
     )
     if not motorista:
         raise ValueError("O motorista informado não existe.")
+    if not motorista.ativo:
+        raise ValueError("O motorista informado está inativo no cadastro geral.")
 
-    # Valida se o motorista já está vinculado de forma ativa em qualquer empresa
-    vinculo_existente = obter_vinculo_ativo_motorista(db, dados.motorista_id)
-    if vinculo_existente:
-        raise ValueError(
-            "Este motorista já possui um vínculo ativo com outra empresa no momento."
-        )
-
-    # Valida se o veículo já está vinculado de forma ativa em qualquer empresa
+    # Valida existência de veículo se informado
+    veiculo_obj = None
     tipo_veiculo = dados.tipo_veiculo
     if dados.veiculo_id:
         veiculo_obj = db.query(Veiculo).filter(Veiculo.id == dados.veiculo_id).first()
         if not veiculo_obj:
             raise ValueError("O veículo informado não existe.")
+        if not veiculo_obj.ativo:
+            raise ValueError("O veículo informado está inativo no cadastro geral.")
         if not tipo_veiculo:
             tipo_veiculo = veiculo_obj.tipo_veiculo
 
+    if not tipo_veiculo:
+        tipo_veiculo = "SPOT" if not dados.empresa_id else "DEDICADO"
+
+    # Se informado com empresa_id, valida regras de capacidade contratual ativa
+    if dados.empresa_id:
+        empresa = db.query(Empresa).filter(Empresa.id == dados.empresa_id).first()
+        if not empresa:
+            raise ValueError("A empresa informada não existe.")
+        if not empresa.ativo:
+            raise ValueError("A empresa informada está inativa.")
+
+        # Regra 4: Exigência de Configuração de Capacidade Ativa
+        configuracao_vigente = obter_configuracao_vigente(db, dados.empresa_id)
+        if not configuracao_vigente or not configuracao_vigente.regras:
+            raise ValueError(
+                "A empresa selecionada não possui uma configuração de capacidade contratual vigente ativa."
+            )
+
+        capacidades_contratadas: List[dict] = []
+        regras_data = configuracao_vigente.regras
+        if isinstance(regras_data, list):
+            for item in regras_data:
+                if isinstance(item, dict):
+                    capacidades_contratadas.append({
+                        "tipo_veiculo": str(item.get("tipo_veiculo", "")).upper(),
+                        "especialidade": str(item.get("especialidade") or "SECO").upper(),
+                        "quantidade": int(item.get("quantidade", 1)),
+                    })
+        elif isinstance(regras_data, dict):
+            for tipo, qtd in regras_data.items():
+                capacidades_contratadas.append({
+                    "tipo_veiculo": str(tipo).upper(),
+                    "especialidade": "SECO",
+                    "quantidade": int(qtd),
+                })
+
+        if not capacidades_contratadas:
+            raise ValueError(
+                "A empresa selecionada não possui uma configuração de capacidade contratual vigente ativa."
+            )
+
+        # Regra 5 & 7: Validação do Tipo de Veículo e Especialidade contra a capacidade contratada
+        tipos_contratados = {c["tipo_veiculo"] for c in capacidades_contratadas}
+        if tipo_veiculo.upper() not in tipos_contratados:
+            raise ValueError(
+                f"O tipo de veículo '{tipo_veiculo}' não faz parte da configuração de capacidade contratada para esta empresa ({', '.join(sorted(tipos_contratados))})."
+            )
+
+        # Especialidade (se o veículo tiver especialidade e a capacidade exigir compatibilidade)
+        if veiculo_obj and veiculo_obj.especialidade:
+            especialidades_compativeis = {
+                c["especialidade"]
+                for c in capacidades_contratadas
+                if c["tipo_veiculo"] == tipo_veiculo.upper()
+            }
+            if (
+                "SECO" not in especialidades_compativeis
+                and veiculo_obj.especialidade.upper() == "SECO"
+            ):
+                raise ValueError(
+                    f"A capacidade contratada para veículos do tipo '{tipo_veiculo}' exige especialidade ({', '.join(sorted(especialidades_compativeis))}), mas o veículo selecionado possui especialidade '{veiculo_obj.especialidade}'."
+                )
+
+        # Regra 6: Teto de Vagas por Tipo de Veículo Contratado
+        vagas_contratadas = sum(
+            c["quantidade"]
+            for c in capacidades_contratadas
+            if c["tipo_veiculo"] == tipo_veiculo.upper()
+        )
+        vinculos_ativos_count = (
+            db.query(MotoristaDedicadoVinculo)
+            .filter(
+                MotoristaDedicadoVinculo.empresa_id == dados.empresa_id,
+                MotoristaDedicadoVinculo.ativo == True,
+                MotoristaDedicadoVinculo.tipo_veiculo == tipo_veiculo,
+                MotoristaDedicadoVinculo.motorista_id != dados.motorista_id,
+            )
+            .count()
+        )
+        if vinculos_ativos_count >= vagas_contratadas:
+            raise ValueError(
+                f"A capacidade contratada para veículos do tipo '{tipo_veiculo}' já foi totalmente preenchida ({vinculos_ativos_count}/{vagas_contratadas}). Atualize a configuração contratual antes de vincular novos dedicados."
+            )
+
+    # Valida se o motorista já está vinculado de forma ativa
+    vinculo_existente = obter_vinculo_ativo_motorista(db, dados.motorista_id)
+    if vinculo_existente:
+        if vinculo_existente.categoria_operacional == "SPOT" and dados.empresa_id:
+            # Transição: Motorista SPOT adicionado a vínculo de empresa muda para DEDICADO
+            estado_anterior = {
+                "id": str(vinculo_existente.id),
+                "empresa_id": str(vinculo_existente.empresa_id) if vinculo_existente.empresa_id else None,
+                "motorista_id": str(vinculo_existente.motorista_id),
+                "veiculo_id": str(vinculo_existente.veiculo_id) if vinculo_existente.veiculo_id else None,
+                "tipo_veiculo": vinculo_existente.tipo_veiculo,
+                "categoria_operacional": vinculo_existente.categoria_operacional,
+                "ativo": vinculo_existente.ativo,
+            }
+            vinculo_existente.empresa_id = dados.empresa_id
+            if dados.veiculo_id:
+                vinculo_existente.veiculo_id = dados.veiculo_id
+            if tipo_veiculo:
+                vinculo_existente.tipo_veiculo = tipo_veiculo
+            vinculo_existente.categoria_operacional = "DEDICADO"
+            db.commit()
+            db.refresh(vinculo_existente)
+
+            estado_posterior = {
+                "id": str(vinculo_existente.id),
+                "empresa_id": str(vinculo_existente.empresa_id) if vinculo_existente.empresa_id else None,
+                "motorista_id": str(vinculo_existente.motorista_id),
+                "veiculo_id": str(vinculo_existente.veiculo_id) if vinculo_existente.veiculo_id else None,
+                "tipo_veiculo": vinculo_existente.tipo_veiculo,
+                "categoria_operacional": vinculo_existente.categoria_operacional,
+                "ativo": vinculo_existente.ativo,
+            }
+            registrar_auditoria(
+                db=db,
+                usuario_id=autor_id,
+                entidade_afetada="motoristas_dedicados_vinculos",
+                entidade_id=vinculo_existente.id,
+                acao="ATUALIZAR",
+                estado_anterior=estado_anterior,
+                estado_posterior=estado_posterior,
+            )
+            return vinculo_existente
+        else:
+            raise ValueError(
+                "Este motorista já possui um vínculo ativo no momento."
+            )
+
+    # Valida se o veículo já está vinculado de forma ativa
+    if dados.veiculo_id:
         vinculo_veiculo = (
             db.query(MotoristaDedicadoVinculo)
             .filter(
@@ -243,15 +378,13 @@ def criar_vinculo_motorista(
             )
             .first()
         )
-        if vinculo_veiculo:
+        if vinculo_veiculo and vinculo_veiculo.categoria_operacional == "DEDICADO" and dados.empresa_id:
             raise ValueError(
                 "Este veículo já possui um vínculo dedicado ativo com outra empresa no momento."
             )
 
-    if not tipo_veiculo:
-        tipo_veiculo = "DEDICADO"
-
-    categoria_operacional = dados.categoria_operacional or "DEDICADO"
+    # Se informado com empresa_id, torna-se DEDICADO; caso contrário, respeita categoria ou padrão SPOT
+    categoria_operacional = "DEDICADO" if dados.empresa_id else (dados.categoria_operacional or "SPOT")
 
     vinculo = MotoristaDedicadoVinculo(
         empresa_id=dados.empresa_id,
@@ -267,8 +400,9 @@ def criar_vinculo_motorista(
 
     estado_posterior = {
         "id": str(vinculo.id),
-        "empresa_id": str(vinculo.empresa_id),
+        "empresa_id": str(vinculo.empresa_id) if vinculo.empresa_id else None,
         "motorista_id": str(vinculo.motorista_id),
+        "veiculo_id": str(vinculo.veiculo_id) if vinculo.veiculo_id else None,
         "tipo_veiculo": vinculo.tipo_veiculo,
         "categoria_operacional": vinculo.categoria_operacional,
         "ativo": vinculo.ativo,
@@ -289,11 +423,12 @@ def criar_vinculo_motorista(
 def desativar_vinculo_motorista(
     db: Session, vinculo: MotoristaDedicadoVinculo, autor_id: uuid.UUID
 ) -> MotoristaDedicadoVinculo:
-    """Inativa o vínculo do motorista dedicado, liberando-o para novos contratos."""
+    """Inativa o vínculo do motorista, liberando-o para novos contratos ou alocações."""
     estado_anterior = {
         "id": str(vinculo.id),
-        "empresa_id": str(vinculo.empresa_id),
+        "empresa_id": str(vinculo.empresa_id) if vinculo.empresa_id else None,
         "motorista_id": str(vinculo.motorista_id),
+        "veiculo_id": str(vinculo.veiculo_id) if vinculo.veiculo_id else None,
         "tipo_veiculo": vinculo.tipo_veiculo,
         "categoria_operacional": vinculo.categoria_operacional,
         "ativo": vinculo.ativo,
@@ -305,8 +440,9 @@ def desativar_vinculo_motorista(
 
     estado_posterior = {
         "id": str(vinculo.id),
-        "empresa_id": str(vinculo.empresa_id),
+        "empresa_id": str(vinculo.empresa_id) if vinculo.empresa_id else None,
         "motorista_id": str(vinculo.motorista_id),
+        "veiculo_id": str(vinculo.veiculo_id) if vinculo.veiculo_id else None,
         "tipo_veiculo": vinculo.tipo_veiculo,
         "categoria_operacional": vinculo.categoria_operacional,
         "ativo": vinculo.ativo,

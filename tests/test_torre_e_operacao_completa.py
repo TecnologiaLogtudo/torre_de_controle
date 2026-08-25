@@ -39,7 +39,18 @@ def test_fluxo_operacional_completo_torre_de_controle(client):
     assert res_emp.status_code == status.HTTP_201_CREATED
     empresa_id = res_emp.json()["id"]
 
-    # 2. Cadastra Motorista e Veículo Físico
+    # 2. Configura Capacidade do Contrato para a Empresa
+    from datetime import datetime, timezone, timedelta
+    client.post(
+        f"/api/v1/contratos/empresas/{empresa_id}/configuracoes",
+        json={
+            "data_inicio": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
+            "capacidades": [{"tipo_veiculo": "HR", "especialidade": "SECO", "quantidade": 5}],
+        },
+        headers=headers,
+    )
+
+    # 3. Cadastra Motorista e Veículo Físico
     res_mot = client.post("/api/v1/motoristas", json={"nome": "Carlos Dedicado"}, headers=headers)
     motorista_id = res_mot.json()["id"]
 
@@ -50,7 +61,7 @@ def test_fluxo_operacional_completo_torre_de_controle(client):
     )
     veiculo_id = res_veic.json()["id"]
 
-    # 3. Cria vínculo dedicado entre Empresa, Motorista e Veículo Físico
+    # 4. Cria vínculo dedicado entre Empresa, Motorista e Veículo Físico
     res_vinc = client.post(
         "/api/v1/motoristas/dedicados/vinculos",
         json={
