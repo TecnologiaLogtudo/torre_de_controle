@@ -117,6 +117,19 @@ export const MotoristasPage: React.FC = () => {
     }
   }
 
+  const handleToggleStatus = async (m: Motorista) => {
+    try {
+      setError(null)
+      await motoristasService.atualizar(m.id, {
+        nome: m.nome,
+        ativo: !m.ativo,
+      })
+      await carregarDados()
+    } catch (err: any) {
+      setError(err.message || 'Erro ao alterar status do motorista.')
+    }
+  }
+
   // Mapeamento auxiliar do vínculo dedicado
   const getInfoVinculo = (motoristaId: string) => {
     const vinculo = vinculos.find(v => v.motorista_id === motoristaId && v.ativo)
@@ -245,7 +258,7 @@ export const MotoristasPage: React.FC = () => {
               <TableHeadCell>Empresa Vinculada</TableHeadCell>
               <TableHeadCell>Veículo / Placa</TableHeadCell>
               <TableHeadCell>Especialidade</TableHeadCell>
-              <TableHeadCell>Status Operacional</TableHeadCell>
+              <TableHeadCell>Status</TableHeadCell>
               <TableHeadCell className="text-right">Ações</TableHeadCell>
             </TableRow>
           </TableHeader>
@@ -273,7 +286,11 @@ export const MotoristasPage: React.FC = () => {
                   </TableCell>
                   <TableCell className="text-slate-300">{info.especialidade}</TableCell>
                   <TableCell>
-                    <StatusBadge status={m.ativo ? 'DISPONIVEL' : 'INDISPONIVEL'} />
+                    <StatusBadge
+                      status={m.ativo ? 'ATIVO' : 'INATIVO'}
+                      onClick={() => handleToggleStatus(m)}
+                      title="Clique para alternar entre Ativo e Inativo"
+                    />
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

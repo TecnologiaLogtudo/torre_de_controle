@@ -7,6 +7,8 @@ interface StatusBadgeProps {
   size?: 'sm' | 'md'
   showIcon?: boolean
   className?: string
+  onClick?: (e: React.MouseEvent<HTMLSpanElement>) => void
+  title?: string
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
@@ -14,6 +16,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   size = 'md',
   showIcon = true,
   className = '',
+  onClick,
+  title,
 }) => {
   const config: Record<
     string,
@@ -47,6 +51,20 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       border: 'border-red-800/60',
       icon: <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />,
     },
+    ATIVO: {
+      label: 'Ativo',
+      bg: 'bg-emerald-950/60',
+      text: 'text-emerald-400',
+      border: 'border-emerald-800/60',
+      icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />,
+    },
+    INATIVO: {
+      label: 'Inativo',
+      bg: 'bg-red-950/60',
+      text: 'text-red-400',
+      border: 'border-red-800/60',
+      icon: <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />,
+    },
   }
 
   const current = config[status.toUpperCase()] || {
@@ -62,10 +80,16 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     md: 'px-2.5 py-1 text-xs gap-1.5',
   }
 
+  const interactiveClasses = onClick
+    ? 'cursor-pointer hover:opacity-80 active:scale-95 transition-all select-none'
+    : ''
+
   return (
     <span
       aria-label={`Status: ${current.label}`}
-      className={`inline-flex items-center font-semibold rounded-md border ${current.bg} ${current.text} ${current.border} ${sizeClasses[size]} ${className}`}
+      title={title}
+      onClick={onClick}
+      className={`inline-flex items-center font-semibold rounded-md border ${current.bg} ${current.text} ${current.border} ${sizeClasses[size]} ${interactiveClasses} ${className}`}
     >
       {showIcon && current.icon}
       <span>{current.label}</span>

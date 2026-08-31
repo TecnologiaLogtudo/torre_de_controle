@@ -9,6 +9,11 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ### Alterado / Adicionado
 
+- **Status nas Páginas de Cadastro de Motoristas e Veículos**:
+  - Alterada a exibição do status nas tabelas de cadastro em [MotoristasPage.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/motoristas/pages/MotoristasPage.tsx) e [VeiculosPage.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/veiculos/pages/VeiculosPage.tsx) de `Disponível` / `Indisponível` para `Ativo` / `Inativo`, representando adequadamente a situação cadastral perante a empresa.
+  - Implementada a funcionalidade de alteração direta do status com 1 clique sobre o badge `StatusBadge` nas listas de motoristas e veículos.
+  - Atualizado o componente [StatusBadge.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/components/ui/StatusBadge.tsx) com suporte aos status `ATIVO` e `INATIVO` e propriedades de clique interativo.
+
 - **Pacote de Regras de Negócio e Bloqueios Operacionais (Torre de Controle)**:
   - **Fase 1: Módulo de Contratos e Capacidade**:
     - **Regra 2 (Ocultação de Dedicados)**: Motoristas e veículos já associados a vínculos dedicados ativos com qualquer empresa são ocultados dos seletores do modal de novos vínculos dedicados.

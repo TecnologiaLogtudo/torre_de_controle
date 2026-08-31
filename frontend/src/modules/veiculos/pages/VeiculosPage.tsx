@@ -130,6 +130,22 @@ export const VeiculosPage: React.FC = () => {
     }
   }
 
+  const handleToggleStatus = async (v: Veiculo) => {
+    try {
+      setError(null)
+      await veiculosService.atualizar(v.id, {
+        identificacao: v.identificacao,
+        placa: v.placa,
+        tipo_veiculo: v.tipo_veiculo,
+        especialidade: v.especialidade,
+        ativo: !v.ativo,
+      })
+      await carregarDados()
+    } catch (err: any) {
+      setError(err.message || 'Erro ao alterar status do veículo.')
+    }
+  }
+
   const getMotoristaVinculado = (veiculoId: string) => {
     const vinculo = vinculos.find(v => v.veiculo_id === veiculoId && v.ativo)
     if (!vinculo) return null
@@ -252,7 +268,11 @@ export const VeiculosPage: React.FC = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={v.ativo ? 'DISPONIVEL' : 'INDISPONIVEL'} />
+                    <StatusBadge
+                      status={v.ativo ? 'ATIVO' : 'INATIVO'}
+                      onClick={() => handleToggleStatus(v)}
+                      title="Clique para alternar entre Ativo e Inativo"
+                    />
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

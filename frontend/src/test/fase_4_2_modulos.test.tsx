@@ -393,6 +393,7 @@ describe('Suíte de Testes da Fase 4.2 — Módulos Operacionais e Interações 
       data: '2026-08-25',
       horario_inicio: '08:00',
       status: 'EM_ANDAMENTO',
+      criado_por_id: 'usr-1',
       alocacoes: [],
       criado_em: '2026-08-21T10:00:00Z',
       atualizado_em: '2026-08-21T10:00:00Z',
