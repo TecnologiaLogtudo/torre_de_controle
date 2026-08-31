@@ -9,6 +9,12 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ### Alterado / Adicionado
 
+- **Infraestrutura e Deploy Multi-Container (Coolify / Docker Compose)**:
+  - **Containerização do Frontend React SPA**: Criado [frontend/Dockerfile](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/Dockerfile) multi-estágio (`node:20-alpine` para build e `nginx:alpine` para runtime em produção) e a configuração [frontend/nginx.conf](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/nginx.conf) com suporte a rotas do React Router (`try_files`), compressão Gzip e cache de ativos estáticos.
+  - **Orquestração Docker Compose**: Atualizado [docker-compose.yml](file:///D:/Logtudo/Projetos/torre_de_controle/docker-compose.yml) para orquestrar os 3 serviços (`db` PostgreSQL, `web` FastAPI Backend na porta 8000 e `frontend` Nginx na porta 80).
+  - **Resiliência da URL do Banco de Dados no Backend**: Adicionado `@model_validator` em [app/core/config.py](file:///D:/Logtudo/Projetos/torre_de_controle/app/core/config.py) para que a `DATABASE_URL` seja automaticamente construída a partir de `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_SERVER`, `POSTGRES_PORT` e `POSTGRES_DB` caso não seja declarada individualmente.
+  - **Documentação de Variáveis de Ambiente**: Atualizado [.env.example](file:///D:/Logtudo/Projetos/torre_de_controle/.env.example) incluindo a nova variável do frontend `VITE_API_URL` e instruções claras para configuração no Coolify.
+
 - **Status nas Páginas de Cadastro de Motoristas e Veículos**:
   - Alterada a exibição do status nas tabelas de cadastro em [MotoristasPage.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/motoristas/pages/MotoristasPage.tsx) e [VeiculosPage.tsx](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/veiculos/pages/VeiculosPage.tsx) de `Disponível` / `Indisponível` para `Ativo` / `Inativo`, representando adequadamente a situação cadastral perante a empresa.
   - Implementada a funcionalidade de alteração direta do status com 1 clique sobre o badge `StatusBadge` nas listas de motoristas e veículos.

@@ -1,5 +1,5 @@
 from typing import List, Union
-from pydantic import AnyHttpUrl, BeforeValidator
+from pydantic import AnyHttpUrl, BeforeValidator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Annotated
 
@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     DATABASE_URL: str = ""
 
+    @model_validator(mode="after")
+    def assemble_db_connection(self) -> "Settings":
+        if not self.DATABASE_URL:
+            self.DATABASE_URL = (
+                f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+                f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+            )
+        return self
+
     # JWT
     # openssl rand -hex 32
     JWT_SECRET_KEY: str = ""
@@ -45,3 +54,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+

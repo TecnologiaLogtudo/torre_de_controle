@@ -23,6 +23,8 @@ services:
       dockerfile: Dockerfile
     container_name: torre_de_controle_web
     restart: always
+    ports:
+      - "8000:8000"
     expose:
       - "8000"
     env_file:
@@ -44,6 +46,19 @@ services:
       timeout: 10s
       retries: 5
       start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    container_name: torre_de_controle_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - web
 
 volumes:
   postgres_data:
