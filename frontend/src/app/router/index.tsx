@@ -17,7 +17,7 @@ import { HistoricoEventosPage } from '@/modules/operacao/pages/HistoricoEventosP
 
 export const AppRouter: React.FC = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/torre-de-controle">
       <Routes>
         {/* Rota Pública de Login */}
         <Route
