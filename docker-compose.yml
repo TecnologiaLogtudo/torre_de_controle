@@ -3,7 +3,6 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
-    container_name: torre_de_controle_db
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -21,10 +20,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: torre_de_controle_web
     restart: always
-    ports:
-      - "8000:8000"
     expose:
       - "8000"
     env_file:
@@ -53,10 +49,9 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
-    container_name: torre_de_controle_frontend
     restart: always
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     depends_on:
       - web
 
