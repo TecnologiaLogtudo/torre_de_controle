@@ -36,6 +36,13 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ### Corrigido
 
+- **Fase 1: Correção de Bugs Críticos e Padronização de Timezone (Frontend)**:
+  - **Tratamento de Opções no `Intl.DateTimeFormat` ([date.ts](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/utils/date.ts))**: Corrigida a colisão de opções de estilo (`dateStyle` e `timeStyle`) com os parâmetros padrão de componentes (`year`, `month`, etc.), sanando a exceção `TypeError: Invalid option : option` que silenciava a atualização de horário em [TorrePage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/torre/pages/TorrePage.tsx).
+  - **Eliminação de Divergência de Fuso Horário Local/UTC**: Criada a função utilitária `getHojeBahiaIso(offsetDays)` garantindo data exata no fuso oficial `America/Bahia` (UTC-3), substituindo chamadas incorretas a `new Date().toISOString().split('T')[0]` em [AgendamentosPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/agendamentos/pages/AgendamentosPage.tsx), [ContratosPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/contratos/pages/ContratosPage.tsx), [HistoricoEventosPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/operacao/pages/HistoricoEventosPage.tsx), [StatusMotoristasPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/motoristas/pages/StatusMotoristasPage.tsx) e [TorrePage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/torre/pages/TorrePage.tsx).
+  - **Eliminação de Chamadas Bloqueantes `window.confirm` e `window.alert`**: Substituídas as chamadas de janela em [AgendamentoDetalhesPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/agendamentos/pages/AgendamentoDetalhesPage.tsx) pela integração com o componente controlado [ConfirmDialog.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/components/ui/ConfirmDialog.tsx) e captura de erros em estado reativo.
+  - **Consistência de Componentes em Filtros**: Substituído o `<input type="date">` nativo na página [StatusMotoristasPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/motoristas/pages/StatusMotoristasPage.tsx) pelo componente padronizado do Design System `<Input>`.
+  - **Expansão da Suíte de Testes de Timezone**: Adicionados testes unitários em [date.test.ts](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/test/date.test.ts) cobrindo opções de estilo, descarte de propriedades `undefined` e cálculo de offset de dias em `America/Bahia`.
+
 - **Isolamento de Banco de Dados nos Testes de Concorrência**:
   - Ajustados os arquivos [test_fase_2_9_hardening.py](file:///D:/Logtudo/Projetos/torre_de_controle/tests/test_fase_2_9_hardening.py) e [test_fase_3_consolidacao.py](file:///D:/Logtudo/Projetos/torre_de_controle/tests/test_fase_3_consolidacao.py) para utilizarem a sessão isolada de testes `SessionTesting` em vez de `SessionLocal`.
   - Corrigida a lista `ids_criados` nos testes de concorrência para garantir limpeza total após execução, evitando contaminação de dados no banco de desenvolvimento.
@@ -242,3 +249,11 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
   - **Vínculos de Motoristas Dedicados**: Regra de exclusividade de alocação de motoristas ativos em contratos de empresas, com desativação histórica de vínculos.
   - **Auditoria**: Trilha de auditoria explícita na camada de serviço capturando estados anteriores e posteriores em formato `JSONB`.
 - **Testes Automatizados**: Suíte de testes integrados em `tests/` cobrindo autenticação, vigências, relacionamentos, exclusividades e auditoria usando banco de dados PostgreSQL transacional (com rollback automático).
+
+## [4.1.1] — 2026-09-17 — S1 Melhoria geral de layout/interface
+- Alinhamento à Identidade Visual Logtudo: Button primário, Spinner, foco de Input/Select/SearchInput e avatar do Header migrados de `sky-*` para a paleta institucional (`logtudo-primary/hover/accent/border/surface`).
+- Novo componente `TableSkeleton` (components/ui) substituindo os skeletons ad-hoc duplicados em Motoristas, Veículos, Empresas e Agendamentos.
+- Densidade de tabelas padronizada: `TableHeadCell`/`TableCell` `px-4 py-3` → `px-3 py-2.5`, cabeçalho com `whitespace-nowrap`.
+- Responsividade: padding principal do layout `p-6` → `p-4 md:p-6` (validado sem overflow horizontal em 768px e 390px).
+- Scrollbar global alinhada à paleta institucional.
+- Verificado: tsc limpo, 29/29 testes Vitest, build de produção OK, 9 módulos auditados no browser antes/depois.

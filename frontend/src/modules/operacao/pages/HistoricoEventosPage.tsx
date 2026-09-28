@@ -20,7 +20,7 @@ import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Alert } from '@/components/ui/Alert'
-import { formatToBahia } from '@/utils/date'
+import { formatToBahia, getHojeBahiaIso } from '@/utils/date'
 import {
   Activity,
   Building2,
@@ -34,7 +34,7 @@ import {
 } from 'lucide-react'
 
 export const HistoricoEventosPage: React.FC = () => {
-  const hojeStr = new Date().toISOString().split('T')[0]
+  const hojeStr = getHojeBahiaIso()
 
   const [activeTab, setActiveTab] = useState<'eventos' | 'mapa'>('eventos')
 

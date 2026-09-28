@@ -17,7 +17,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHeadCell, TableCell } fro
 import { Drawer } from '@/components/ui/Drawer'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { formatToBahia } from '@/utils/date'
+import { formatToBahia, getHojeBahiaIso } from '@/utils/date'
 import { FileText, Plus, UserCheck, XCircle } from 'lucide-react'
 
 export const ContratosPage: React.FC = () => {
@@ -34,7 +34,7 @@ export const ContratosPage: React.FC = () => {
 
   // Modal/Drawer Nova Configuração de Capacidade
   const [drawerConfigOpen, setDrawerConfigOpen] = useState(false)
-  const [dataInicioForm, setDataInicioForm] = useState(new Date().toISOString().split('T')[0])
+  const [dataInicioForm, setDataInicioForm] = useState(getHojeBahiaIso())
   const [capacidadesForm, setCapacidadesForm] = useState<CapacidadeItem[]>([
     { tipo_veiculo: 'HR', especialidade: 'SECO', quantidade: 2 },
   ])

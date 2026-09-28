@@ -9,7 +9,21 @@
 export const TIMEZONE_OFICIAL = 'America/Bahia'
 
 /**
+ * Remove propriedades com valor undefined de um objeto de opções.
+ */
+function cleanDefinedOptions(opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormatOptions {
+  const result: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(opts)) {
+    if (value !== undefined) {
+      result[key] = value
+    }
+  }
+  return result as Intl.DateTimeFormatOptions
+}
+
+/**
  * Formata um timestamp (string ISO UTC ou objeto Date) no fuso horário America/Bahia.
+ * Trata conflito entre dateStyle/timeStyle e opções de componentes individuais do Intl.DateTimeFormat.
  */
 export function formatToBahia(
   dateInput: string | Date | null | undefined,
@@ -21,19 +35,26 @@ export function formatToBahia(
     const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
     if (isNaN(date.getTime())) return '-'
 
-    const defaultOptions: Intl.DateTimeFormatOptions = {
-      timeZone: TIMEZONE_OFICIAL,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-      ...options,
-    }
+    const userOptions = options ? cleanDefinedOptions(options) : {}
+    const hasAnyUserOption = Object.keys(userOptions).length > 0
 
-    return new Intl.DateTimeFormat('pt-BR', defaultOptions).format(date)
+    const finalOptions: Intl.DateTimeFormatOptions = hasAnyUserOption
+      ? {
+          timeZone: TIMEZONE_OFICIAL,
+          ...userOptions,
+        }
+      : {
+          timeZone: TIMEZONE_OFICIAL,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        }
+
+    return new Intl.DateTimeFormat('pt-BR', cleanDefinedOptions(finalOptions)).format(date)
   } catch (error) {
     console.error('Erro ao formatar data para America/Bahia:', error)
     return '-'
@@ -48,9 +69,6 @@ export function formatDateBahia(dateInput: string | Date | null | undefined): st
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    hour: undefined,
-    minute: undefined,
-    second: undefined,
   })
 }
 
@@ -59,12 +77,21 @@ export function formatDateBahia(dateInput: string | Date | null | undefined): st
  */
 export function formatTimeBahia(dateInput: string | Date | null | undefined): string {
   return formatToBahia(dateInput, {
-    year: undefined,
-    month: undefined,
-    day: undefined,
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
   })
+}
+
+/**
+ * Retorna a data atual no fuso America/Bahia no formato ISO YYYY-MM-DD.
+ * @param offsetDays Quantidade de dias a adicionar/subtrair em relação à data atual (ex: 1 para amanhã).
+ */
+export function getHojeBahiaIso(offsetDays = 0): string {
+  const date = new Date()
+  if (offsetDays !== 0) {
+    date.setDate(date.getDate() + offsetDays)
+  }
+  return date.toLocaleDateString('en-CA', { timeZone: TIMEZONE_OFICIAL })
 }

@@ -75,6 +75,10 @@ export const AgendamentoDetalhesPage: React.FC = () => {
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [canceling, setCanceling] = useState(false)
 
+  // Modal de Remover SPOT
+  const [spotParaRemoverId, setSpotParaRemoverId] = useState<string | null>(null)
+  const [removendoSpot, setRemovendoSpot] = useState(false)
+
   const carregarDetalhes = useCallback(async () => {
     if (!id) return
     setLoading(true)
@@ -273,25 +277,36 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     }
   }
 
-  const handleRemoverSpot = async (alocacaoId: string) => {
-    if (!confirm('Deseja realmente remover esta alocação SPOT?')) return
+  const handleRemoverSpot = (alocacaoId: string) => {
+    setSpotParaRemoverId(alocacaoId)
+  }
+
+  const handleConfirmarRemoverSpot = async () => {
+    if (!spotParaRemoverId) return
+    setRemovendoSpot(true)
+    setError(null)
     try {
-      await agendamentosService.removerSpot(alocacaoId)
+      await agendamentosService.removerSpot(spotParaRemoverId)
+      setSpotParaRemoverId(null)
       carregarDetalhes()
     } catch (err: any) {
-      alert(err.message || 'Erro ao remover alocação SPOT.')
+      setError(err.message || 'Erro ao remover alocação SPOT.')
+      setSpotParaRemoverId(null)
+    } finally {
+      setRemovendoSpot(false)
     }
   }
 
   const handleConfirmarCancelamento = async () => {
     if (!agendamento) return
     setCanceling(true)
+    setError(null)
     try {
       await agendamentosService.cancelar(agendamento.id)
       setCancelModalOpen(false)
       carregarDetalhes()
     } catch (err: any) {
-      alert(err.message || 'Erro ao cancelar agendamento.')
+      setError(err.message || 'Erro ao cancelar agendamento.')
     } finally {
       setCanceling(false)
     }
@@ -714,6 +729,19 @@ export const AgendamentoDetalhesPage: React.FC = () => {
         cancelText="Voltar"
         variant="danger"
         isLoading={canceling}
+      />
+
+      {/* Modal de Confirmação de Remoção SPOT */}
+      <ConfirmDialog
+        isOpen={!!spotParaRemoverId}
+        onClose={() => setSpotParaRemoverId(null)}
+        onConfirm={handleConfirmarRemoverSpot}
+        title="Remover Alocação SPOT"
+        message="Tem certeza que deseja remover esta alocação SPOT? O recurso retornará para o banco de disponíveis."
+        confirmText="Sim, Remover"
+        cancelText="Voltar"
+        variant="danger"
+        isLoading={removendoSpot}
       />
     </div>
   )

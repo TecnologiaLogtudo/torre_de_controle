@@ -16,9 +16,9 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Pagination } from '@/components/ui/Pagination'
 import { Drawer } from '@/components/ui/Drawer'
 import { Alert } from '@/components/ui/Alert'
-import { Skeleton } from '@/components/ui/Skeleton'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { formatToBahia } from '@/utils/date'
+import { formatToBahia, getHojeBahiaIso } from '@/utils/date'
 import { Calendar, Plus, Eye, Clock, CheckCircle2, AlertTriangle, Building2 } from 'lucide-react'
 
 export const AgendamentosPage: React.FC = () => {
@@ -45,10 +45,8 @@ export const AgendamentosPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
-  const hojeBahiaStr = new Date().toISOString().split('T')[0]
-  const amanhaDate = new Date()
-  amanhaDate.setDate(amanhaDate.getDate() + 1)
-  const amanhaBahiaStr = amanhaDate.toISOString().split('T')[0]
+  const hojeBahiaStr = getHojeBahiaIso()
+  const amanhaBahiaStr = getHojeBahiaIso(1)
 
   const carregarEmpresas = useCallback(async () => {
     try {
@@ -200,21 +198,18 @@ export const AgendamentosPage: React.FC = () => {
           }}
           placeholder="Status (Todos)"
           options={[
-            { value: 'DISPONIVEL', label: 'DISPONIVEL' },
+            { value: 'RASCUNHO', label: 'RASCUNHO' },
             { value: 'PROGRAMADO', label: 'PROGRAMADO' },
-            { value: 'EM_ROTA', label: 'EM_ROTA' },
-            { value: 'INDISPONIVEL', label: 'INDISPONIVEL' },
+            { value: 'EM_EXECUCAO', label: 'EM_EXECUCAO' },
+            { value: 'CONCLUIDO', label: 'CONCLUIDO' },
+            { value: 'CANCELADO', label: 'CANCELADO' },
           ]}
           className="w-44"
         />
       </FilterBar>
 
       {loading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
+        <TableSkeleton rows={6} />
       ) : agendamentos.length === 0 ? (
         <EmptyState
           icon={<Calendar className="w-12 h-12 text-slate-600" />}
@@ -302,8 +297,10 @@ export const AgendamentosPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Data da Programação"
+              label="Data da Programação (Hoje ou D+1)"
               type="date"
+              min={hojeBahiaStr}
+              max={amanhaBahiaStr}
               value={dataForm}
               onChange={e => setDataForm(e.target.value)}
               required

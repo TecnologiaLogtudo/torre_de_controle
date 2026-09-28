@@ -15,10 +15,10 @@ import { ResumoEmpresasTorre } from '../components/ResumoEmpresasTorre'
 import { DetalhamentoTorre } from '../components/DetalhamentoTorre'
 import { HistoricoEventosTorre } from '../components/HistoricoEventosTorre'
 import { Alert } from '@/components/ui/Alert'
-import { formatToBahia } from '@/utils/date'
+import { getHojeBahiaIso, formatTimeBahia } from '@/utils/date'
 
 export const TorrePage: React.FC = () => {
-  const hojeStr = new Date().toISOString().split('T')[0]
+  const hojeStr = getHojeBahiaIso()
   const [dataFiltro, setDataFiltro] = useState(hojeStr)
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState<string | null>(null)
 
@@ -61,7 +61,7 @@ export const TorrePage: React.FC = () => {
       setEmpresasResumo(empResData)
       setDetalhamento(detData)
       setHistoricoEventos(histData)
-      setUltimaAtualizacao(formatToBahia(new Date().toISOString(), { dateStyle: undefined, timeStyle: 'medium' }))
+      setUltimaAtualizacao(formatTimeBahia(new Date()))
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar os dados da Torre de Controle.')
     } finally {
