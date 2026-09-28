@@ -4,6 +4,7 @@ import { Button } from './Button'
 import { Alert } from './Alert'
 import { torreService } from '@/services/torre/torreService'
 import { ResultadoImportacao } from '@/types/torre'
+import { getErrorMessage } from '@/services/api/errors'
 import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, XCircle, RefreshCw } from 'lucide-react'
 
 export interface ImportModalProps {
@@ -54,8 +55,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
       const res = await torreService.importarPlanilha(selectedFile)
       setResultado(res)
       if (onSuccess) onSuccess()
-    } catch (err: any) {
-      setError(err.message || 'Erro ao importar a planilha. Verifique o formato do arquivo.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao importar a planilha. Verifique o formato do arquivo.'))
     } finally {
       setUploading(false)
     }

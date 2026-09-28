@@ -19,6 +19,7 @@ import { Alert } from '@/components/ui/Alert'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { toast } from '@/components/feedback/Toaster'
+import { getErrorMessage } from '@/services/api/errors'
 import { Truck, Plus, Edit } from 'lucide-react'
 
 export const VeiculosPage: React.FC = () => {
@@ -56,8 +57,8 @@ export const VeiculosPage: React.FC = () => {
       setVeiculos(vList)
       setVinculos(vincList)
       setMotoristas(mList)
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar lista de veículos.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao carregar lista de veículos.'))
     } finally {
       setLoading(false)
     }
@@ -126,8 +127,8 @@ export const VeiculosPage: React.FC = () => {
       }
       setDrawerOpen(false)
       carregarDados()
-    } catch (err: any) {
-      const msg = err.message || 'Erro ao salvar dados do veículo.'
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao salvar dados do veículo.')
       setFormError(msg)
       toast.error(msg)
     } finally {
@@ -148,8 +149,8 @@ export const VeiculosPage: React.FC = () => {
       })
       toast.success(`Veículo "${v.placa}" ${novoStatus ? 'ativado' : 'inativado'} com sucesso.`)
       await carregarDados()
-    } catch (err: any) {
-      const msg = err.message || 'Erro ao alterar status do veículo.'
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao alterar status do veículo.')
       setError(msg)
       toast.error(msg)
     }

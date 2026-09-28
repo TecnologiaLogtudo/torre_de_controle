@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Alert } from '@/components/ui/Alert'
 import { formatToBahia, getHojeBahiaIso } from '@/utils/date'
+import { getErrorMessage } from '@/services/api/errors'
 import {
   Activity,
   Building2,
@@ -65,8 +66,8 @@ export const HistoricoEventosPage: React.FC = () => {
     try {
       const data = await torreService.listarHistoricoEventos(filtros)
       setEventos(data)
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar o histórico compilado de eventos operacionais.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao carregar o histórico compilado de eventos operacionais.'))
     } finally {
       setLoading(false)
     }

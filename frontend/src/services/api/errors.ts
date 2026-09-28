@@ -91,6 +91,21 @@ export function parseApiError(error: unknown): ApiError {
   }
 }
 
-function isAxiosError(error: unknown): error is AxiosError {
+export function isAxiosError(error: unknown): error is AxiosError {
   return typeof error === 'object' && error !== null && 'isAxiosError' in error
+}
+
+export function isApiError(error: unknown): error is ApiError {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as Record<string, unknown>).message === 'string'
+  )
+}
+
+export function getErrorMessage(error: unknown, fallback = 'Ocorreu um erro inesperado.'): string {
+  if (!error) return fallback
+  const parsed = parseApiError(error)
+  return parsed.detail || parsed.message || fallback
 }

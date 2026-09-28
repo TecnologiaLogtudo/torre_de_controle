@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Input } from '@/components/ui/Input'
 import { getHojeBahiaIso } from '@/utils/date'
+import { getErrorMessage } from '@/services/api/errors'
 import { RefreshCw, UserCheck } from 'lucide-react'
 
 const SEM_ALOCACAO_LABEL = 'Sem Alocação'
@@ -49,8 +50,8 @@ export const StatusMotoristasPage: React.FC = () => {
       ])
       setStatusData(status)
       setEmpresas(empList)
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar status dos motoristas.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao carregar status dos motoristas.'))
     } finally {
       setLoading(false)
     }

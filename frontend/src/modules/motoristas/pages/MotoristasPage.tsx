@@ -22,6 +22,7 @@ import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ImportModal } from '@/components/ui/ImportModal'
 import { toast } from '@/components/feedback/Toaster'
+import { getErrorMessage } from '@/services/api/errors'
 import { UserCheck, Plus, Edit, Upload } from 'lucide-react'
 
 export const MotoristasPage: React.FC = () => {
@@ -63,8 +64,8 @@ export const MotoristasPage: React.FC = () => {
       setVinculos(vList)
       setVeiculos(vecList)
       setEmpresas(empList)
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar lista de motoristas.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao carregar lista de motoristas.'))
     } finally {
       setLoading(false)
     }
@@ -113,8 +114,8 @@ export const MotoristasPage: React.FC = () => {
       }
       setDrawerOpen(false)
       carregarDados()
-    } catch (err: any) {
-      const msg = err.message || 'Erro ao salvar motorista.'
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao salvar motorista.')
       setFormError(msg)
       toast.error(msg)
     } finally {
@@ -132,8 +133,8 @@ export const MotoristasPage: React.FC = () => {
       })
       toast.success(`Motorista "${m.nome}" ${novoStatus ? 'ativado' : 'inativado'} com sucesso.`)
       await carregarDados()
-    } catch (err: any) {
-      const msg = err.message || 'Erro ao alterar status do motorista.'
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao alterar status do motorista.')
       setError(msg)
       toast.error(msg)
     }

@@ -20,6 +20,7 @@ import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatToBahia, getHojeBahiaIso, formatDateBahia } from '@/utils/date'
 import { toast } from '@/components/feedback/Toaster'
+import { getErrorMessage } from '@/services/api/errors'
 import { Calendar, Plus, Eye, Clock, CheckCircle2, AlertTriangle, Building2 } from 'lucide-react'
 
 export const AgendamentosPage: React.FC = () => {
@@ -72,15 +73,10 @@ export const AgendamentosPage: React.FC = () => {
         paginado: true,
       })
 
-      if ('items' in res) {
-        setAgendamentos(res.items)
-        setTotalItems(res.total)
-      } else {
-        setAgendamentos(res as Agendamento[])
-        setTotalItems((res as Agendamento[]).length)
-      }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar lista de agendamentos.')
+      setAgendamentos(res.items)
+      setTotalItems(res.total)
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao carregar lista de agendamentos.'))
     } finally {
       setLoading(false)
     }
@@ -135,8 +131,8 @@ export const AgendamentosPage: React.FC = () => {
       })
       setDrawerOpen(false)
       navigate(`/app/agendamentos/${novo.id}`)
-    } catch (err: any) {
-      const msg = err.message || 'Erro ao criar agendamento.'
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao criar agendamento.')
       setFormError(msg)
       toast.error(msg)
     } finally {

@@ -17,6 +17,7 @@ import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatToBahia } from '@/utils/date'
 import { toast } from '@/components/feedback/Toaster'
+import { getErrorMessage } from '@/services/api/errors'
 import { Building2, Plus, Edit, Eye, History, FileText } from 'lucide-react'
 
 export const EmpresasPage: React.FC = () => {
@@ -46,8 +47,8 @@ export const EmpresasPage: React.FC = () => {
     try {
       const data = await empresasService.listar()
       setEmpresas(data)
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar lista de empresas.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao carregar lista de empresas.'))
     } finally {
       setLoading(false)
     }
@@ -101,8 +102,8 @@ export const EmpresasPage: React.FC = () => {
       }
       setDrawerOpen(false)
       carregarEmpresas()
-    } catch (err: any) {
-      const msg = err.message || 'Erro ao salvar dados da empresa.'
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao salvar dados da empresa.')
       setFormError(msg)
       toast.error(msg)
     } finally {

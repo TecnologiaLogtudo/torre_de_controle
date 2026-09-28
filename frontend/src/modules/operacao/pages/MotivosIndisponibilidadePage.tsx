@@ -13,6 +13,7 @@ import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { toast } from '@/components/feedback/Toaster'
+import { getErrorMessage } from '@/services/api/errors'
 import { ShieldCheck, Plus, Edit } from 'lucide-react'
 
 export const MotivosIndisponibilidadePage: React.FC = () => {
@@ -36,8 +37,8 @@ export const MotivosIndisponibilidadePage: React.FC = () => {
     try {
       const data = await motivosService.listarMotivos(false)
       setMotivos(data)
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar motivos de indisponibilidade.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao carregar motivos de indisponibilidade.'))
     } finally {
       setLoading(false)
     }
@@ -92,8 +93,8 @@ export const MotivosIndisponibilidadePage: React.FC = () => {
       }
       setDrawerOpen(false)
       carregarMotivos()
-    } catch (err: any) {
-      const msg = err.message || 'Erro ao salvar motivo de indisponibilidade.'
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao salvar motivo de indisponibilidade.')
       setFormError(msg)
       toast.error(msg)
     } finally {

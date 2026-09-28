@@ -10,13 +10,32 @@ import {
   HistoricoAgendamento,
 } from '@/types/agendamentos'
 
-export interface ListarAgendamentosParams {
+export interface ListarAgendamentosParamsBase {
   empresa_id?: string
   data?: string
   status?: string
   limite?: number
   offset?: number
-  paginado?: boolean
+}
+
+export interface ListarAgendamentosParamsPaginado extends ListarAgendamentosParamsBase {
+  paginado: true
+}
+
+export interface ListarAgendamentosParamsNaoPaginado extends ListarAgendamentosParamsBase {
+  paginado?: false
+}
+
+export type ListarAgendamentosParams = ListarAgendamentosParamsPaginado | ListarAgendamentosParamsNaoPaginado
+
+async function listar(params: ListarAgendamentosParamsPaginado): Promise<AgendamentoPaginadoResponse>
+async function listar(params?: ListarAgendamentosParamsNaoPaginado): Promise<Agendamento[]>
+async function listar(params?: ListarAgendamentosParams): Promise<Agendamento[] | AgendamentoPaginadoResponse>
+async function listar(params: ListarAgendamentosParams = {}): Promise<Agendamento[] | AgendamentoPaginadoResponse> {
+  const response = await apiClient.get<Agendamento[] | AgendamentoPaginadoResponse>('/api/v1/agendamentos', {
+    params,
+  })
+  return response.data
 }
 
 export const agendamentosService = {
@@ -26,12 +45,7 @@ export const agendamentosService = {
     return response.data
   },
 
-  async listar(params: ListarAgendamentosParams = {}): Promise<Agendamento[] | AgendamentoPaginadoResponse> {
-    const response = await apiClient.get<Agendamento[] | AgendamentoPaginadoResponse>('/api/v1/agendamentos', {
-      params,
-    })
-    return response.data
-  },
+  listar,
 
   async buscarPorId(id: string): Promise<Agendamento> {
     const response = await apiClient.get<Agendamento>(`/api/v1/agendamentos/${id}`)

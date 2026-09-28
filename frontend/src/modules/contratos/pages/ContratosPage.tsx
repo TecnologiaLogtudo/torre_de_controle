@@ -6,7 +6,7 @@ import { veiculosService } from '@/services/veiculos/veiculosService'
 import { Empresa } from '@/types/empresas'
 import { ContratoConfiguracao, MotoristaDedicadoVinculo, CapacidadeItem } from '@/types/contratos'
 import { Motorista } from '@/types/motoristas'
-import { Veiculo } from '@/types/veiculos'
+import { Veiculo, EspecialidadeVeiculo } from '@/types/veiculos'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
@@ -19,6 +19,7 @@ import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { formatToBahia, getHojeBahiaIso } from '@/utils/date'
 import { toast } from '@/components/feedback/Toaster'
+import { getErrorMessage } from '@/services/api/errors'
 import { FileText, Plus, UserCheck, XCircle } from 'lucide-react'
 
 export const ContratosPage: React.FC = () => {
@@ -56,8 +57,8 @@ export const ContratosPage: React.FC = () => {
       if (data.length > 0 && !selectedEmpresaId) {
         setSelectedEmpresaId(data[0].id)
       }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar lista de empresas.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao carregar lista de empresas.'))
     }
   }, [selectedEmpresaId])
 
@@ -84,8 +85,8 @@ export const ContratosPage: React.FC = () => {
       setVinculosAtivos(vincs.filter(v => v.empresa_id === empresaId && v.ativo))
       setMotoristas(mList)
       setVeiculos(vecList)
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar configurações contratuais.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao carregar configurações contratuais.'))
     } finally {
       setLoading(false)
     }
@@ -132,8 +133,8 @@ export const ContratosPage: React.FC = () => {
       toast.success('Configuração de capacidade contratual cadastrada com sucesso!')
       setDrawerConfigOpen(false)
       carregarDadosEmpresa(selectedEmpresaId)
-    } catch (err: any) {
-      const msg = err.message || 'Erro ao registrar configuração contratual.'
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao registrar configuração contratual.')
       setFormConfigError(msg)
       toast.error(msg)
     } finally {
@@ -203,8 +204,8 @@ export const ContratosPage: React.FC = () => {
       toast.success('Vínculo dedicado associado com sucesso!')
       setDrawerVinculoOpen(false)
       carregarDadosEmpresa(selectedEmpresaId)
-    } catch (err: any) {
-      const msg = err.message || 'Erro ao vincular motorista dedicado.'
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao vincular motorista dedicado.')
       setFormVinculoError(msg)
       toast.error(msg)
     } finally {
@@ -217,8 +218,8 @@ export const ContratosPage: React.FC = () => {
       await contratosService.desativarVinculoDedicado(vinculoId)
       toast.success('Vínculo dedicado desativado com sucesso.')
       carregarDadosEmpresa(selectedEmpresaId)
-    } catch (err: any) {
-      const msg = err.message || 'Erro ao desativar vínculo dedicado.'
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao desativar vínculo dedicado.')
       setError(msg)
       toast.error(msg)
     }
@@ -603,7 +604,7 @@ export const ContratosPage: React.FC = () => {
                       label="Especialidade"
                       value={item.especialidade}
                       onChange={e => {
-                        const val = e.target.value as any
+                        const val = e.target.value as EspecialidadeVeiculo
                         setCapacidadesForm(prev =>
                           prev.map((c, i) => (i === index ? { ...c, especialidade: val } : c))
                         )

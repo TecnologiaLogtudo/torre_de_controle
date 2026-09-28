@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatToBahia } from '@/utils/date'
 import { toast } from '@/components/feedback/Toaster'
+import { getErrorMessage } from '@/services/api/errors'
 import { Users, Plus, Edit } from 'lucide-react'
 
 export const UsuariosPage: React.FC = () => {
@@ -38,8 +39,8 @@ export const UsuariosPage: React.FC = () => {
     try {
       const data = await usuariosService.listar()
       setUsuarios(data)
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar lista de usuários.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao carregar lista de usuários.'))
     } finally {
       setLoading(false)
     }
@@ -98,8 +99,8 @@ export const UsuariosPage: React.FC = () => {
       }
       setDrawerOpen(false)
       carregarUsuarios()
-    } catch (err: any) {
-      const msg = err.message || 'Erro ao salvar usuário.'
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao salvar usuário.')
       setFormError(msg)
       toast.error(msg)
     } finally {
