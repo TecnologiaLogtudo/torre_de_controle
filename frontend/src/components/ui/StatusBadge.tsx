@@ -65,6 +65,20 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       border: 'border-red-800/60',
       icon: <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />,
     },
+    SECO: {
+      label: 'Seco',
+      bg: 'bg-red-950/40',
+      text: 'text-red-500 font-bold',
+      border: 'border-red-800/40',
+      icon: null,
+    },
+    REFRIGERADO: {
+      label: 'Refrigerado',
+      bg: 'bg-blue-950/40',
+      text: 'text-blue-500 font-bold',
+      border: 'border-blue-800/40',
+      icon: null,
+    },
   }
 
   const current = config[status.toUpperCase()] || {
@@ -93,6 +107,46 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     >
       {showIcon && current.icon}
       <span>{current.label}</span>
+    </span>
+  )
+}
+
+interface PerfilBadgeProps {
+  perfil?: string | null
+  className?: string
+}
+
+export const PerfilBadge: React.FC<PerfilBadgeProps> = ({ perfil, className = '' }) => {
+  if (!perfil) return <span className={`text-slate-400 text-xs ${className}`}>-</span>
+
+  const isSeco = perfil.toUpperCase() === 'SECO'
+  const isRefrigerado = perfil.toUpperCase() === 'REFRIGERADO'
+
+  if (isSeco) {
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold text-red-500 bg-red-950/30 border border-red-800/40 ${className}`}
+      >
+        Seco
+      </span>
+    )
+  }
+
+  if (isRefrigerado) {
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold text-blue-500 bg-blue-950/30 border border-blue-800/40 ${className}`}
+      >
+        Refrigerado
+      </span>
+    )
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-slate-300 bg-slate-800/50 border border-slate-700/50 ${className}`}
+    >
+      {perfil}
     </span>
   )
 }

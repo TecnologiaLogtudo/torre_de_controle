@@ -11,8 +11,7 @@ import { SearchInput } from '@/components/ui/SearchInput'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { Select } from '@/components/ui/Select'
 import { Table, TableHeader, TableBody, TableRow, TableHeadCell, TableCell } from '@/components/ui/Table'
-import { StatusBadge } from '@/components/ui/StatusBadge'
-import { Badge } from '@/components/ui/Badge'
+import { StatusBadge, PerfilBadge } from '@/components/ui/StatusBadge'
 import { Drawer } from '@/components/ui/Drawer'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
@@ -262,9 +261,7 @@ export const VeiculosPage: React.FC = () => {
                   <TableCell className="font-semibold text-slate-200">{v.identificacao}</TableCell>
                   <TableCell className="text-slate-300">{v.tipo_veiculo}</TableCell>
                   <TableCell>
-                    <Badge variant={v.especialidade === 'REFRIGERADO' ? 'PROGRAMADO' : 'NEUTRO'}>
-                      {v.especialidade}
-                    </Badge>
+                    <PerfilBadge perfil={v.especialidade} />
                   </TableCell>
                   <TableCell className="text-slate-300">
                     {motorista ? (

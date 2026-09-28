@@ -14,6 +14,7 @@ from app.agendamentos.schemas import (
     AlocacaoOperacionalCreate,
     AlocacaoOperacionalResponse,
     StatusOperacionalUpdate,
+    TrocaVeiculoDedicadoPayload,
     HistoricoAgendamentoResponse,
 )
 from app.agendamentos.services import AgendamentoService
@@ -155,6 +156,22 @@ def remover_spot(
     usuario_atual: Usuario = Depends(obter_usuario_atual),
 ):
     AgendamentoService.remover_spot(db, alocacao_id, usuario_atual.id)
+
+
+@router.put(
+    "/alocacoes/{alocacao_id}/trocar-veiculo",
+    response_model=AlocacaoOperacionalResponse,
+    summary="Trocar temporariamente o veículo de uma alocação DEDICADO",
+)
+def trocar_veiculo_dedicado(
+    alocacao_id: UUID,
+    dados: TrocaVeiculoDedicadoPayload,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(obter_usuario_atual),
+):
+    return AgendamentoService.trocar_veiculo_dedicado(
+        db=db, alocacao_id=alocacao_id, dados=dados, usuario_id=usuario_atual.id
+    )
 
 
 # --- Transições de Status Operacional ---

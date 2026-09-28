@@ -29,7 +29,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             ref={ref}
             className={`w-full bg-slate-950 border ${
-              error ? 'border-red-500/80 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-sky-500 focus:ring-sky-500/20'
+              error ? 'border-red-500/80 focus:border-red-500 focus:ring-red-500/20' : 'border-logtudo-border focus:border-logtudo-accent focus:ring-logtudo-accent/20'
             } rounded-lg text-sm text-slate-100 placeholder-slate-500 transition-colors focus:outline-none focus:ring-2 disabled:bg-slate-900 disabled:opacity-60 disabled:cursor-not-allowed ${
               leftIcon ? 'pl-9' : 'pl-3'
             } ${rightIcon ? 'pr-9' : 'pr-3'} py-2 ${className}`}

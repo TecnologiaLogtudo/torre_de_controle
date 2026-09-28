@@ -7,6 +7,7 @@ import {
   AlocacaoOperacional,
   AlocacaoOperacionalCreatePayload,
   StatusOperacionalUpdatePayload,
+  TrocaVeiculoDedicadoPayload,
   HistoricoAgendamento,
 } from '@/types/agendamentos'
 
@@ -83,6 +84,18 @@ export const agendamentosService = {
 
   async removerSpot(alocacaoId: string): Promise<void> {
     await apiClient.delete(`/api/v1/agendamentos/alocacoes/${alocacaoId}`)
+  },
+
+  // --- Troca de Veículo Dedicado ---
+  async trocarVeiculoDedicado(
+    alocacaoId: string,
+    payload: TrocaVeiculoDedicadoPayload
+  ): Promise<AlocacaoOperacional> {
+    const response = await apiClient.put<AlocacaoOperacional>(
+      `/api/v1/agendamentos/alocacoes/${alocacaoId}/trocar-veiculo`,
+      payload
+    )
+    return response.data
   },
 
   // --- Status Operacional ---

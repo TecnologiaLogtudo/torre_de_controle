@@ -342,9 +342,52 @@ export function useAgendamentoDetalhes(id: string | undefined) {
     }
   }
 
+  // Drawer de Trocar Veículo Dedicado Provisoriamente
+  const [drawerTrocaVeiculoOpen, setDrawerTrocaVeiculoOpen] = useState(false)
+  const [targetAlocacaoTrocaId, setTargetAlocacaoTrocaId] = useState<string | null>(null)
+  const [novoVeiculoIdForm, setNovoVeiculoIdForm] = useState('')
+  const [motivoTrocaForm, setMotivoTrocaForm] = useState('')
+  const [submittingTroca, setSubmittingTroca] = useState(false)
+  const [trocaFormError, setTrocaFormError] = useState<string | null>(null)
+
+  const handleOpenTrocarVeiculo = (alocacaoId: string) => {
+    setTargetAlocacaoTrocaId(alocacaoId)
+    setNovoVeiculoIdForm('')
+    setMotivoTrocaForm('')
+    setTrocaFormError(null)
+    setDrawerTrocaVeiculoOpen(true)
+  }
+
+  const handleSalvarTrocaVeiculo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!targetAlocacaoTrocaId || !novoVeiculoIdForm) {
+      setTrocaFormError('Selecione o novo veículo substituto.')
+      return
+    }
+
+    setSubmittingTroca(true)
+    setTrocaFormError(null)
+    try {
+      await agendamentosService.trocarVeiculoDedicado(targetAlocacaoTrocaId, {
+        veiculo_id: novoVeiculoIdForm,
+        motivo: motivoTrocaForm || undefined,
+      })
+      toast.success('Veículo do dedicado alterado provisoriamente com sucesso!')
+      setDrawerTrocaVeiculoOpen(false)
+      carregarDetalhes()
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao trocar veículo dedicado.')
+      setTrocaFormError(msg)
+      toast.error(msg)
+    } finally {
+      setSubmittingTroca(false)
+    }
+  }
+
   const getMotoristaNome = (mId: string) => motoristas.find(m => m.id === mId)?.nome || 'Motorista'
+  const getVeiculoObj = (vId: string) => veiculos.find(ve => ve.id === vId)
   const getVeiculoInfo = (vId: string) => {
-    const v = veiculos.find(ve => ve.id === vId)
+    const v = getVeiculoObj(vId)
     return v ? `${v.tipo_veiculo} [${v.placa}]` : 'Veículo'
   }
 
@@ -389,6 +432,17 @@ export function useAgendamentoDetalhes(id: string | undefined) {
     statusFormError,
     handleOpenAlterarStatus,
     handleSalvarStatusOperacional,
+    // Troca de Veículo Dedicado
+    drawerTrocaVeiculoOpen,
+    setDrawerTrocaVeiculoOpen,
+    novoVeiculoIdForm,
+    setNovoVeiculoIdForm,
+    motivoTrocaForm,
+    setMotivoTrocaForm,
+    submittingTroca,
+    trocaFormError,
+    handleOpenTrocarVeiculo,
+    handleSalvarTrocaVeiculo,
     // Remover Spot
     spotParaRemoverId,
     setSpotParaRemoverId,
@@ -403,6 +457,7 @@ export function useAgendamentoDetalhes(id: string | undefined) {
     // Helpers
     getMotoristaNome,
     getVeiculoInfo,
+    getVeiculoObj,
     getPermittedNextStatuses,
   }
 }

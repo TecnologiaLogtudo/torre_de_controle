@@ -24,6 +24,15 @@ class StatusOperacionalUpdate(BaseModel):
     motivo_indisponibilidade_id: Optional[UUID] = None
     origem_alteracao: Optional[str] = "painel_operacional"
 
+class TrocaVeiculoDedicadoPayload(BaseModel):
+    veiculo_id: UUID
+    motivo: Optional[str] = Field(None, description="Motivo da substituição temporária do veículo do dedicado")
+
+class AlocacaoInicialPayload(BaseModel):
+    motorista_id: UUID
+    veiculo_id: UUID
+    categoria: Optional[str] = "SPOT"
+
 class AlocacaoOperacionalResponse(AlocacaoOperacionalBase):
     id: UUID
     agendamento_id: UUID
@@ -42,7 +51,7 @@ class AgendamentoBase(BaseModel):
     horario_inicio: Optional[time] = Field(default=time(8, 0, 0))
 
 class AgendamentoCreate(AgendamentoBase):
-    pass
+    alocacoes_iniciais: Optional[List[AlocacaoInicialPayload]] = None
 
 class AgendamentoUpdate(BaseModel):
     horario_inicio: Optional[time] = None
@@ -51,6 +60,7 @@ class AgendamentoUpdate(BaseModel):
 class AgendamentoResponse(AgendamentoBase):
     id: UUID
     status: str
+    versao: int = 1
     criado_por_id: UUID
     contrato_configuracao_id: Optional[UUID] = None
     alocacoes: List[AlocacaoOperacionalResponse] = []

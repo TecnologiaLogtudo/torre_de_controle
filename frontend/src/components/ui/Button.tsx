@@ -20,14 +20,14 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-50 disabled:cursor-not-allowed select-none'
+  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-logtudo-accent/60 disabled:opacity-50 disabled:cursor-not-allowed select-none'
 
   const variantClasses = {
-    primary: 'bg-sky-600 hover:bg-sky-500 text-white shadow-sm active:bg-sky-700',
-    secondary: 'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700',
-    outline: 'bg-transparent hover:bg-slate-800/60 text-slate-300 border border-slate-700',
+    primary: 'bg-logtudo-primary hover:bg-logtudo-hover text-white shadow-sm active:bg-logtudo-deep',
+    secondary: 'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-logtudo-border',
+    outline: 'bg-transparent hover:bg-logtudo-hover/40 text-slate-300 border border-logtudo-border',
     danger: 'bg-red-600 hover:bg-red-500 text-white shadow-sm active:bg-red-700',
-    ghost: 'bg-transparent hover:bg-slate-800/40 text-slate-300',
+    ghost: 'bg-transparent hover:bg-logtudo-hover/40 text-slate-300',
   }
 
   const sizeClasses = {

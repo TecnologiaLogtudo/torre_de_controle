@@ -220,3 +220,263 @@ def test_bloqueio_motorista_indisponivel_e_exclusividade_dedicada(client):
     assert "INDISPONÍVEL" in res_indisp_err.json()["detail"]
 
 
+
+
+def test_trava_duplicidade_spot_mesmo_agendamento(client):
+    """Regra: motorista ou veículo já alocado no MESMO agendamento não pode ser alocado novamente."""
+    headers = obter_headers_autenticados(client)
+
+    res_emp = client.post(
+        "/api/v1/empresas",
+        json={"nome": "Empresa Dup Spot", "identificacao": "33.333.333/0001-33"},
+        headers=headers,
+    )
+    empresa_id = res_emp.json()["id"]
+
+    res_mot = client.post("/api/v1/motoristas", json={"nome": "Motorista Dup Teste"}, headers=headers)
+    mot_id = res_mot.json()["id"]
+
+    res_veic = client.post(
+        "/api/v1/veiculos",
+        json={"identificacao": "DUP-001", "placa": "DUP1A11", "tipo_veiculo": "HR", "especialidade": "SECO"},
+        headers=headers,
+    )
+    veic_id = res_veic.json()["id"]
+
+    amanha = agora_local().date() + timedelta(days=1)
+    res_ag = client.post(
+        "/api/v1/agendamentos",
+        json={"empresa_id": empresa_id, "data": str(amanha), "horario_inicio": "08:00:00"},
+        headers=headers,
+    )
+    assert res_ag.status_code == status.HTTP_201_CREATED
+    ag_id = res_ag.json()["id"]
+
+    # 1. Adiciona o primeiro SPOT com o par (motorista, veículo)
+    res_add1 = client.post(
+        f"/api/v1/agendamentos/{ag_id}/spots",
+        json={"motorista_id": mot_id, "veiculo_id": veic_id, "categoria": "SPOT"},
+        headers=headers,
+    )
+    assert res_add1.status_code == status.HTTP_201_CREATED
+
+    # Cria segundo motorista e veículo livres
+    res_mot2 = client.post("/api/v1/motoristas", json={"nome": "Motorista Dup Teste 2"}, headers=headers)
+    mot2_id = res_mot2.json()["id"]
+    res_veic2 = client.post(
+        "/api/v1/veiculos",
+        json={"identificacao": "DUP-002", "placa": "DUP2A11", "tipo_veiculo": "HR", "especialidade": "SECO"},
+        headers=headers,
+    )
+    veic2_id = res_veic2.json()["id"]
+
+    # 2. Motorista duplicado (com veículo diferente) deve falhar
+    res_dup_mot = client.post(
+        f"/api/v1/agendamentos/{ag_id}/spots",
+        json={"motorista_id": mot_id, "veiculo_id": veic2_id, "categoria": "SPOT"},
+        headers=headers,
+    )
+    assert res_dup_mot.status_code == status.HTTP_400_BAD_REQUEST
+    assert "mesma programação" in res_dup_mot.json()["detail"]
+
+    # 3. Veículo duplicado (com motorista diferente) deve falhar
+    res_dup_veic = client.post(
+        f"/api/v1/agendamentos/{ag_id}/spots",
+        json={"motorista_id": mot2_id, "veiculo_id": veic_id, "categoria": "SPOT"},
+        headers=headers,
+    )
+    assert res_dup_veic.status_code == status.HTTP_400_BAD_REQUEST
+    assert "mesma programação" in res_dup_veic.json()["detail"]
+
+    # 4. Remoção do SPOT em agendamento CONCLUÍDO deve falhar
+    res_concluir = client.put(
+        f"/api/v1/agendamentos/{ag_id}",
+        json={"status": "EM_EXECUCAO"},
+        headers=headers,
+    )
+    assert res_concluir.status_code == status.HTTP_200_OK
+    res_concluir = client.put(
+        f"/api/v1/agendamentos/{ag_id}",
+        json={"status": "CONCLUIDO"},
+        headers=headers,
+    )
+    assert res_concluir.status_code == status.HTTP_200_OK
+
+    res_rm = client.delete(
+        f"/api/v1/agendamentos/alocacoes/{res_add1.json()['id']}",
+        headers=headers,
+    )
+    assert res_rm.status_code == status.HTTP_400_BAD_REQUEST
+    assert "CONCLUIDO" in res_rm.json()["detail"]
+
+
+def test_versionamento_consecutivo_agendamento(client):
+    """Regra: Cada alteração no agendamento deve incrementar a versão consecutivamente (v1, v2, v3...)."""
+    headers = obter_headers_autenticados(client)
+
+    res_emp = client.post(
+        "/api/v1/empresas",
+        json={"nome": "Empresa Versao Teste", "identificacao": "44.444.444/0001-44"},
+        headers=headers,
+    )
+    empresa_id = res_emp.json()["id"]
+
+    res_mot1 = client.post("/api/v1/motoristas", json={"nome": "Mot Versao 1"}, headers=headers)
+    mot1_id = res_mot1.json()["id"]
+    res_veic1 = client.post(
+        "/api/v1/veiculos",
+        json={"identificacao": "VRS-001", "placa": "VRS1A11", "tipo_veiculo": "HR", "especialidade": "SECO"},
+        headers=headers,
+    )
+    veic1_id = res_veic1.json()["id"]
+
+    # Cria vínculo dedicado
+    client.post(
+        "/api/v1/motoristas/dedicados/vinculos",
+        json={
+            "empresa_id": empresa_id,
+            "motorista_id": mot1_id,
+            "veiculo_id": veic1_id,
+            "tipo_veiculo": "HR",
+            "categoria_operacional": "DEDICADO",
+        },
+        headers=headers,
+    )
+
+    data_ag = (agora_local() + timedelta(days=2)).date().isoformat()
+    res_ag = client.post(
+        "/api/v1/agendamentos",
+        json={"empresa_id": empresa_id, "data": data_ag, "horario_inicio": "08:00:00"},
+        headers=headers,
+    )
+    assert res_ag.status_code == status.HTTP_201_CREATED
+    ag_id = res_ag.json()["id"]
+    assert res_ag.json().get("versao") == 1
+    aloc_dedicada_id = res_ag.json()["alocacoes"][0]["id"]
+
+    # 1. Adicionar SPOT -> versão 2
+    res_mot2 = client.post("/api/v1/motoristas", json={"nome": "Mot Versao 2"}, headers=headers)
+    mot2_id = res_mot2.json()["id"]
+    res_veic2 = client.post(
+        "/api/v1/veiculos",
+        json={"identificacao": "VRS-002", "placa": "VRS2A11", "tipo_veiculo": "HR", "especialidade": "SECO"},
+        headers=headers,
+    )
+    veic2_id = res_veic2.json()["id"]
+
+    res_spot = client.post(
+        f"/api/v1/agendamentos/{ag_id}/spots",
+        json={"motorista_id": mot2_id, "veiculo_id": veic2_id, "categoria": "SPOT"},
+        headers=headers,
+    )
+    assert res_spot.status_code == status.HTTP_201_CREATED
+    aloc_spot_id = res_spot.json()["id"]
+
+    res_ag_v2 = client.get(f"/api/v1/agendamentos/{ag_id}", headers=headers)
+    assert res_ag_v2.json()["versao"] == 2
+
+    # 2. Trocar veículo do dedicado -> versão 3
+    res_veic3 = client.post(
+        "/api/v1/veiculos",
+        json={"identificacao": "VRS-003", "placa": "VRS3A11", "tipo_veiculo": "HR", "especialidade": "SECO"},
+        headers=headers,
+    )
+    veic3_id = res_veic3.json()["id"]
+
+    res_troca = client.put(
+        f"/api/v1/agendamentos/alocacoes/{aloc_dedicada_id}/trocar-veiculo",
+        json={"veiculo_id": veic3_id, "motivo": "Veículo original em manutenção preventiva"},
+        headers=headers,
+    )
+    assert res_troca.status_code == status.HTTP_200_OK
+    assert res_troca.json()["veiculo_id"] == veic3_id
+    assert res_troca.json()["categoria"] == "DEDICADO"
+
+    res_ag_v3 = client.get(f"/api/v1/agendamentos/{ag_id}", headers=headers)
+    assert res_ag_v3.json()["versao"] == 3
+
+    # 3. Atualizar status operacional -> versão 4
+    res_status = client.put(
+        f"/api/v1/agendamentos/alocacoes/{aloc_dedicada_id}/status",
+        json={"novo_status": "EM_ROTA"},
+        headers=headers,
+    )
+    assert res_status.status_code == status.HTTP_200_OK
+
+    res_ag_v4 = client.get(f"/api/v1/agendamentos/{ag_id}", headers=headers)
+    assert res_ag_v4.json()["versao"] == 4
+
+    # 4. Remover SPOT -> versão 5
+    res_del = client.delete(f"/api/v1/agendamentos/alocacoes/{aloc_spot_id}", headers=headers)
+    assert res_del.status_code == status.HTTP_204_NO_CONTENT
+
+    res_ag_v5 = client.get(f"/api/v1/agendamentos/{ag_id}", headers=headers)
+    assert res_ag_v5.json()["versao"] == 5
+
+
+def test_auto_alocacao_dedicado_indisponivel_com_alerta(client):
+    """Regra Q2: Motorista dedicado indisponível é auto-alocado com status INDISPONIVEL e flag de alerta sem bloquear criação."""
+    headers = obter_headers_autenticados(client)
+
+    res_emp = client.post(
+        "/api/v1/empresas",
+        json={"nome": "Empresa Indisp Dedicado", "identificacao": "55.555.555/0001-55"},
+        headers=headers,
+    )
+    empresa_id = res_emp.json()["id"]
+
+    res_mot = client.post("/api/v1/motoristas", json={"nome": "Mot Indisp Auto"}, headers=headers)
+    mot_id = res_mot.json()["id"]
+    res_veic = client.post(
+        "/api/v1/veiculos",
+        json={"identificacao": "IND-001", "placa": "IND1A11", "tipo_veiculo": "HR", "especialidade": "SECO"},
+        headers=headers,
+    )
+    veic_id = res_veic.json()["id"]
+
+    # Cria vínculo dedicado
+    client.post(
+        "/api/v1/motoristas/dedicados/vinculos",
+        json={
+            "empresa_id": empresa_id,
+            "motorista_id": mot_id,
+            "veiculo_id": veic_id,
+            "tipo_veiculo": "HR",
+            "categoria_operacional": "DEDICADO",
+        },
+        headers=headers,
+    )
+
+    # Cria agendamento D+1 e marca o motorista como INDISPONIVEL
+    data_d1 = (agora_local() + timedelta(days=1)).date().isoformat()
+    res_ag1 = client.post(
+        "/api/v1/agendamentos",
+        json={"empresa_id": empresa_id, "data": data_d1, "horario_inicio": "08:00:00"},
+        headers=headers,
+    )
+    assert res_ag1.status_code == status.HTTP_201_CREATED
+    aloc1_id = res_ag1.json()["alocacoes"][0]["id"]
+
+    res_motivos = client.get("/api/v1/operacao/motivos-indisponibilidade", headers=headers)
+    motivo_id = res_motivos.json()[0]["id"]
+
+    client.put(
+        f"/api/v1/agendamentos/alocacoes/{aloc1_id}/status",
+        json={"novo_status": "INDISPONIVEL", "motivo_indisponibilidade_id": motivo_id},
+        headers=headers,
+    )
+
+    # Cria agendamento para D+2 (dia seguinte da indisponibilidade)
+    # Anteriormente isso falhava com HTTP 400. Agora deve auto-alocar com status INDISPONIVEL
+    data_d2 = (agora_local() + timedelta(days=2)).date().isoformat()
+    res_ag2 = client.post(
+        "/api/v1/agendamentos",
+        json={"empresa_id": empresa_id, "data": data_d2, "horario_inicio": "08:00:00"},
+        headers=headers,
+    )
+    assert res_ag2.status_code == status.HTTP_201_CREATED
+    dados_ag2 = res_ag2.json()
+    assert len(dados_ag2["alocacoes"]) == 1
+    assert dados_ag2["alocacoes"][0]["status_operacional"] == "INDISPONIVEL"
+    assert dados_ag2["alocacoes"][0]["categoria"] == "DEDICADO"
+

@@ -6,6 +6,8 @@ import {
   EventoOperacional,
   FiltrosDetalhamentoTorre,
   FiltrosHistoricoEventos,
+  FiltrosStatusMotoristas,
+  MotoristasStatus,
   ResultadoImportacao,
 } from '@/types/torre'
 
@@ -29,6 +31,13 @@ export const torreService = {
 
   async obterDetalhamento(params: FiltrosDetalhamentoTorre = {}): Promise<DetalhamentoOperacional[]> {
     const response = await apiClient.get<DetalhamentoOperacional[]>('/api/v1/operacao/torre/detalhamento', {
+      params,
+    })
+    return response.data
+  },
+
+  async obterStatusMotoristas(params: FiltrosStatusMotoristas = {}): Promise<MotoristasStatus> {
+    const response = await apiClient.get<MotoristasStatus>('/api/v1/operacao/motoristas-status', {
       params,
     })
     return response.data

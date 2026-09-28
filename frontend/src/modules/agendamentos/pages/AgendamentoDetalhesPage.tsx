@@ -5,9 +5,10 @@ import { StatusOperacional } from '@/types/agendamentos'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { StatusBadge } from '@/components/ui/StatusBadge'
+import { StatusBadge, PerfilBadge } from '@/components/ui/StatusBadge'
 import { Badge } from '@/components/ui/Badge'
 import { Select } from '@/components/ui/Select'
+import { Input } from '@/components/ui/Input'
 import { Drawer } from '@/components/ui/Drawer'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Alert } from '@/components/ui/Alert'
@@ -64,6 +65,16 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     statusFormError,
     handleOpenAlterarStatus,
     handleSalvarStatusOperacional,
+    drawerTrocaVeiculoOpen,
+    setDrawerTrocaVeiculoOpen,
+    novoVeiculoIdForm,
+    setNovoVeiculoIdForm,
+    motivoTrocaForm,
+    setMotivoTrocaForm,
+    submittingTroca,
+    trocaFormError,
+    handleOpenTrocarVeiculo,
+    handleSalvarTrocaVeiculo,
     spotParaRemoverId,
     setSpotParaRemoverId,
     removendoSpot,
@@ -75,6 +86,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     handleConfirmarCancelamento,
     getMotoristaNome,
     getVeiculoInfo,
+    getVeiculoObj,
     getPermittedNextStatuses,
   } = useAgendamentoDetalhes(id)
 
@@ -112,7 +124,17 @@ export const AgendamentoDetalhesPage: React.FC = () => {
         <PageHeader
           title={`Agendamento #${agendamento.id.slice(0, 8)}`}
           subtitle={`Programação para ${empresa?.nome || 'Empresa'}`}
-          badge={<StatusBadge status={agendamento.status} />}
+          badge={
+            <div className="flex items-center gap-2">
+              <span
+                className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-sky-950/60 text-sky-400 border border-sky-800/60"
+                title="Versão do Agendamento (incrementada a cada alteração)"
+              >
+                v{agendamento.versao || 1}
+              </span>
+              <StatusBadge status={agendamento.status} />
+            </div>
+          }
           actions={
             agendamento.status !== 'CANCELADO' && (
               <Button
@@ -176,6 +198,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
             {alocacoesDedicadas.map((aloc, idx) => {
               const isIndisponivel = aloc.status_operacional === 'INDISPONIVEL'
               const motivo = motivos.find(m => m.id === aloc.motivo_indisponibilidade_id)
+              const veiculoObj = getVeiculoObj(aloc.veiculo_id)
 
               return (
                 <div
@@ -199,29 +222,51 @@ export const AgendamentoDetalhesPage: React.FC = () => {
                       <span>{getMotoristaNome(aloc.motorista_id)}</span>
                     </div>
 
-                    <div className="flex items-center gap-2 font-mono text-sky-400">
+                    <div className="flex items-center gap-2 font-mono text-sky-400 flex-wrap">
                       <Truck className="w-4 h-4 text-sky-400 shrink-0" />
                       <span>{getVeiculoInfo(aloc.veiculo_id)}</span>
+                      <PerfilBadge perfil={veiculoObj?.especialidade} />
                     </div>
 
                     {isIndisponivel && (
-                      <div className="p-2 bg-red-950/60 border border-red-800/60 rounded text-[11px] text-red-300 flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                        <span>
-                          <strong>RECURSO INDISPONÍVEL:</strong> {motivo?.nome || 'Motivo operacional registrado'} (A vaga permanece ocupada pela composição contratual).
-                        </span>
+                      <div className="p-3 bg-red-950/60 border border-red-800/60 rounded text-[11px] text-red-300 space-y-2">
+                        <div className="flex items-center gap-1.5 font-bold">
+                          <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                          <span>RECURSO INDISPONÍVEL</span>
+                        </div>
+                        <p className="text-red-200">
+                          Motivo: <strong>{motivo?.nome || 'Motivo operacional registrado'}</strong>. A vaga permanece ocupada no contrato, mas necessita de cobertura SPOT para a rota.
+                        </p>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={handleOpenAdicionarSpot}
+                          leftIcon={<Plus className="w-3.5 h-3.5" />}
+                          className="bg-red-600 hover:bg-red-500 border-red-500 text-white"
+                        >
+                          Cobrir Vaga com SPOT
+                        </Button>
                       </div>
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-slate-800/60 flex items-center justify-end">
+                  <div className="pt-2 border-t border-slate-800/60 flex items-center justify-end gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenTrocarVeiculo(aloc.id)}
+                      leftIcon={<Truck className="w-3.5 h-3.5 text-sky-400" />}
+                      title="Substituir provisoriamente o veículo deste dedicado mantendo o contrato"
+                    >
+                      Trocar Veículo
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenAlterarStatus(aloc.id, aloc.status_operacional)}
                       leftIcon={<Activity className="w-3.5 h-3.5" />}
                     >
-                      Alterar Status Operacional
+                      Alterar Status
                     </Button>
                   </div>
                 </div>
@@ -264,8 +309,9 @@ export const AgendamentoDetalhesPage: React.FC = () => {
                       {getMotoristaNome(spot.motorista_id)}
                     </span>
                   </div>
-                  <div className="font-mono text-sky-400">
-                    {getVeiculoInfo(spot.veiculo_id)}
+                  <div className="font-mono text-sky-400 flex items-center gap-2 flex-wrap">
+                    <span>{getVeiculoInfo(spot.veiculo_id)}</span>
+                    <PerfilBadge perfil={getVeiculoObj(spot.veiculo_id)?.especialidade} />
                   </div>
                 </div>
 
@@ -423,6 +469,50 @@ export const AgendamentoDetalhesPage: React.FC = () => {
             </Button>
             <Button variant="primary" size="sm" isLoading={submittingStatus} type="submit">
               Confirmar Alteração
+            </Button>
+          </div>
+        </form>
+      </Drawer>
+
+      {/* Drawer de Trocar Veículo Dedicado Provisoriamente */}
+      <Drawer
+        isOpen={drawerTrocaVeiculoOpen}
+        onClose={() => setDrawerTrocaVeiculoOpen(false)}
+        title="Trocar Veículo Dedicado Provisoriamente"
+        subtitle="Substituição temporária do veículo mantendo o vínculo e categoria DEDICADO"
+      >
+        <form onSubmit={handleSalvarTrocaVeiculo} className="space-y-4">
+          {trocaFormError && <Alert type="error">{trocaFormError}</Alert>}
+
+          <Select
+            label="Novo Veículo Substituto"
+            value={novoVeiculoIdForm}
+            onChange={e => setNovoVeiculoIdForm(e.target.value)}
+            placeholder="Selecione o veículo..."
+            options={veiculosSpotElegiveis.map(v => ({
+              value: v.id,
+              label: `${v.tipo_veiculo} - ${v.placa} (${v.especialidade})`,
+            }))}
+            required
+          />
+
+          <Input
+            label="Motivo da Troca Provisória (Opcional)"
+            value={motivoTrocaForm}
+            onChange={e => setMotivoTrocaForm(e.target.value)}
+            placeholder="Ex: Manutenção preventiva, quebra mecânica, vistoria..."
+          />
+
+          <div className="p-3 bg-sky-950/40 border border-sky-800/60 rounded-lg text-xs text-sky-300">
+            <strong>Regra Q5:</strong> A troca é registrada na trilha de auditoria com versionamento consecutivo e preserva a categoria <code>DEDICADO</code> no agendamento.
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+            <Button variant="outline" size="sm" onClick={() => setDrawerTrocaVeiculoOpen(false)} type="button">
+              Cancelar
+            </Button>
+            <Button variant="primary" size="sm" isLoading={submittingTroca} type="submit">
+              Confirmar Troca de Veículo
             </Button>
           </div>
         </form>

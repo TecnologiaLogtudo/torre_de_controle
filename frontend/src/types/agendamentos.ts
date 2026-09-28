@@ -25,12 +25,24 @@ export interface StatusOperacionalUpdatePayload {
   origem_alteracao?: string
 }
 
+export interface TrocaVeiculoDedicadoPayload {
+  veiculo_id: string
+  motivo?: string
+}
+
+export interface AlocacaoInicialPayload {
+  motorista_id: string
+  veiculo_id: string
+  categoria?: CategoriaAlocacao
+}
+
 export interface Agendamento {
   id: string
   empresa_id: string
   data: string
   horario_inicio: string
   status: string
+  versao: number
   criado_por_id: string
   contrato_configuracao_id?: string | null
   alocacoes: AlocacaoOperacional[]
@@ -42,6 +54,7 @@ export interface AgendamentoCreatePayload {
   empresa_id: string
   data: string
   horario_inicio?: string
+  alocacoes_iniciais?: AlocacaoInicialPayload[]
 }
 
 export interface AgendamentoUpdatePayload {

@@ -9,6 +9,26 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ### Alterado / Adicionado
 
+- **Melhorias de Agendamento, Versionamento Consecutivo, Troca de Veículo e Cockpit de Motoristas**:
+  - **Versionamento Consecutivo do Agendamento**:
+    - Adicionado campo `versao: int = 1` no modelo `Agendamento` ([app/agendamentos/models.py](file:///d:/Logtudo/Projetos/torre_de_controle/app/agendamentos/models.py)) e schema ([app/agendamentos/schemas.py](file:///d:/Logtudo/Projetos/torre_de_controle/app/agendamentos/schemas.py)), incrementado consecutivamente (`versao += 1`) a cada mutação (inclusão de SPOT, substituição de SPOT, remoção de SPOT, troca provisória de veículo dedicado, atualização de status operacional e alterações no agendamento).
+    - Exibição de badge com a versão (`v1`, `v2`, etc.) na listagem de agendamentos e no cabeçalho da página de detalhes.
+  - **Auto-Alocação com Flag de Indisponibilidade (Regra Q2)**:
+    - Motoristas dedicados com indisponibilidade ativa na data ou dia anterior são auto-alocados no agendamento com `status_operacional = "INDISPONIVEL"`, preservando o vínculo contratual sem disparar erro HTTP 400.
+    - Exibição de banner com alerta de déficit e botão de ação rápida "Cobrir Vaga com SPOT" na página de detalhes do agendamento.
+  - **Troca Provisória de Veículo Dedicado (Regra Q5)**:
+    - Novo endpoint `PUT /api/v1/agendamentos/alocacoes/{alocacao_id}/trocar-veiculo` e método `trocar_veiculo_dedicado`.
+    - Permite a substituição temporária do veículo do motorista dedicado preservando a categoria `DEDICADO` no contrato e auditando a alteração no histórico.
+    - Drawer "Trocar Veículo Dedicado Provisoriamente" integrado em [AgendamentoDetalhesPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/agendamentos/pages/AgendamentoDetalhesPage.tsx).
+  - **Diferenciação de Cor por Perfil**:
+    - Componente [PerfilBadge](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/components/ui/StatusBadge.tsx): perfil **SECO escrito em vermelho** (`text-red-500 font-bold`) e perfil **REFRIGERADO escrito em azul** (`text-blue-500 font-bold`).
+    - Propagado para o Cockpit de Status de Motoristas, Detalhamento da Torre de Controle, Cadastro de Veículos e Detalhes de Agendamento.
+  - **Cockpit de Status de Motoristas**:
+    - Elevado a item de primeiro nível na barra lateral ([Sidebar.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/components/navigation/Sidebar.tsx)).
+    - Cards de resumo clicáveis atuando como filtros rápidos (Total, Disponíveis, Programados, Em Rota, Indisponíveis, Sem Alocação), busca por nome e coluna de perfil de veículo em [StatusMotoristasPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/motoristas/pages/StatusMotoristasPage.tsx).
+  - **Janela de Agendamentos Parametrizável (Regra Q1)**:
+    - Suporte a agendamentos D+0 sem bloqueio de horário e limite futuro parametrizável via chave `dias_antecedencia_maxima_agendamento` (padrão 7 dias).
+
 - **Fase 3: Tipagem Estrita Matt Pocock & Extração de Hooks Operacionais**:
   - **Eliminação Completa de `any` no Frontend**: Substituídos 100% dos blocos `catch (err: any)` e type casts inseguros `as any` por `catch (err: unknown)` com type-narrowing rigoroso via `getErrorMessage` e `isApiError` em [errors.ts](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/services/api/errors.ts).
   - **Sobrecargas e Discriminação de Retorno em Services**: Implementadas sobrecargas em `agendamentosService.listar` ([agendamentosService.ts](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/services/agendamentos/agendamentosService.ts)) discriminando em tempo de compilação o retorno `AgendamentoPaginadoResponse` para `paginado: true` e `Agendamento[]` para requisições simples, eliminando verificações de runtime redundantes (`'items' in res`) e type casts manuais em [AgendamentosPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/agendamentos/pages/AgendamentosPage.tsx).

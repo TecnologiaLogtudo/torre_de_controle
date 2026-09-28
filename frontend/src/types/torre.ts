@@ -63,6 +63,39 @@ export interface FiltrosDetalhamentoTorre {
   offset?: number
 }
 
+// --- Status de Motoristas (Visão Consolidada) ---
+export interface MotoristaStatus {
+  motorista_id: string
+  motorista_nome: string
+  empresa_id?: string | null
+  empresa_nome?: string | null
+  veiculo_id?: string | null
+  veiculo_placa?: string | null
+  veiculo_tipo?: string | null
+  veiculo_especialidade?: string | null
+  categoria?: string | null
+  status_operacional: 'DISPONIVEL' | 'PROGRAMADO' | 'EM_ROTA' | 'INDISPONIVEL' | 'SEM_ALOCACAO'
+  motivo_indisponibilidade?: string | null
+  agendamento_id?: string | null
+}
+
+export interface MotoristasStatus {
+  data: string
+  total: number
+  disponiveis: number
+  programados: number
+  em_rota: number
+  indisponiveis: number
+  sem_alocacao: number
+  motoristas: MotoristaStatus[]
+}
+
+export interface FiltrosStatusMotoristas {
+  data?: string
+  empresa_id?: string
+  motorista_nome?: string
+}
+
 export interface FiltrosHistoricoEventos {
   empresa_id?: string
   data_inicio?: string

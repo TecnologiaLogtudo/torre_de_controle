@@ -21,7 +21,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { formatToBahia, getHojeBahiaIso, formatDateBahia } from '@/utils/date'
 import { toast } from '@/components/feedback/Toaster'
 import { getErrorMessage } from '@/services/api/errors'
-import { Calendar, Plus, Eye, Clock, CheckCircle2, AlertTriangle, Building2 } from 'lucide-react'
+import { Calendar, Plus, Eye, Clock, CheckCircle2, Building2 } from 'lucide-react'
 
 export const AgendamentosPage: React.FC = () => {
   const navigate = useNavigate()
@@ -231,7 +231,7 @@ export const AgendamentosPage: React.FC = () => {
                 <TableHeadCell>Empresa Contratante</TableHeadCell>
                 <TableHeadCell>Data Operacional</TableHeadCell>
                 <TableHeadCell>Horário de Início</TableHeadCell>
-                <TableHeadCell>Status Geral</TableHeadCell>
+                <TableHeadCell>Status & Versão</TableHeadCell>
                 <TableHeadCell>Recursos Alocados</TableHeadCell>
                 <TableHeadCell className="text-right">Ação</TableHeadCell>
               </TableRow>
@@ -249,10 +249,27 @@ export const AgendamentosPage: React.FC = () => {
                     {ag.horario_inicio || '08:00:00'}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={ag.status || 'PROGRAMADO'} />
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-sky-950/60 text-sky-400 border border-sky-800/60"
+                        title="Versão do Agendamento (consecutiva a cada alteração)"
+                      >
+                        v{ag.versao || 1}
+                      </span>
+                      <StatusBadge status={ag.status || 'PROGRAMADO'} />
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs text-slate-300">
-                    <span className="font-bold text-sky-300">{ag.alocacoes.length}</span> veículos/motoristas
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>
+                        <strong className="text-sky-300">{ag.alocacoes.length}</strong> recursos
+                      </span>
+                      {ag.alocacoes.some(a => a.status_operacional === 'INDISPONIVEL') && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-950/40 border border-amber-800/60 px-1.5 py-0.5 rounded">
+                          ⚠️ Indisponível
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -283,7 +300,7 @@ export const AgendamentosPage: React.FC = () => {
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title="Novo Agendamento Operacional"
-        subtitle="Abertura de programação diária com alocação automática de dedicados"
+        subtitle="Abertura de programação diária com auto-alocação de dedicados (v1 inicial)"
         size="lg"
       >
         <form onSubmit={handleSalvarAgendamento} className="space-y-5">
@@ -299,10 +316,10 @@ export const AgendamentosPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Data da Programação (Hoje ou D+1)"
+              label="Data da Programação (D+0 sem corte a D+7)"
               type="date"
               min={hojeBahiaStr}
-              max={amanhaBahiaStr}
+              max={getHojeBahiaIso(7)}
               value={dataForm}
               onChange={e => setDataForm(e.target.value)}
               required
@@ -317,22 +334,22 @@ export const AgendamentosPage: React.FC = () => {
             />
           </div>
 
-          {/* Orientação Visual de Regra de Data */}
+          {/* Orientação Visual da Janela */}
           <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg flex items-center gap-3">
             <Clock className="w-5 h-5 text-sky-400 shrink-0" />
             <div className="text-xs">
-              <span className="font-bold text-slate-200 block">Orientação da Janela:</span>
+              <span className="font-bold text-slate-200 block">Janela Operacional:</span>
               {isHoje ? (
                 <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 inline" /> Agendamento para HOJE (Sujeito ao horário limite)
+                  <CheckCircle2 className="w-3.5 h-3.5 inline" /> Agendamento para HOJE (D+0 liberado)
                 </span>
               ) : isAmanha ? (
                 <span className="text-sky-400 font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 inline" /> Agendamento para AMANHÃ (Janela padrão aberta)
+                  <CheckCircle2 className="w-3.5 h-3.5 inline" /> Agendamento para AMANHÃ (D+1 padrão)
                 </span>
               ) : (
-                <span className="text-amber-400 font-semibold flex items-center gap-1">
-                  <AlertTriangle className="w-3.5 h-3.5 inline" /> Data selecionada: {dataForm}
+                <span className="text-sky-300 font-semibold flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 inline" /> Agendamento futuro ({dataForm})
                 </span>
               )}
             </div>
@@ -340,14 +357,21 @@ export const AgendamentosPage: React.FC = () => {
 
           {/* Prévia da Composição Contratual de Dedicados */}
           {configVigente && (
-            <div className="p-4 bg-sky-950/30 border border-sky-800/60 rounded-lg space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-sky-300 flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                Prévia da Capacidade Contratada (Preenchimento Automático)
-              </h4>
+            <div className="p-4 bg-sky-950/30 border border-sky-800/60 rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-sky-300 flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Balanço Contratual em Tempo Real
+                </h4>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-900 text-sky-400 border border-slate-700">
+                  Início em v1
+                </span>
+              </div>
+
               <p className="text-[11px] text-slate-400">
-                Os recursos dedicados ativos serão automaticamente alocados para ocupar as vagas da empresa:
+                Os recursos dedicados serão auto-alocados para a data selecionada. Caso algum dedicado esteja indisponível, será alocado com alerta visual para cobertura SPOT.
               </p>
+
               <div className="grid grid-cols-2 gap-2 pt-1">
                 {(
                   configVigente.capacidades ||
@@ -359,10 +383,14 @@ export const AgendamentosPage: React.FC = () => {
                       }))
                     : [])
                 ).map((cap, idx) => (
-                  <div key={idx} className="bg-slate-950 p-2 rounded border border-slate-800 text-[11px]">
-                    <span className="font-bold text-slate-200 block">{cap.tipo_veiculo}</span>
-                    <span className="text-slate-400">{cap.especialidade}: </span>
-                    <span className="font-bold text-sky-400">{cap.quantidade} vagas</span>
+                  <div key={idx} className="bg-slate-950 p-2.5 rounded border border-slate-800 text-[11px] flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-200 block">{cap.tipo_veiculo}</span>
+                      <span className={cap.especialidade === 'SECO' ? 'text-red-500 font-semibold' : 'text-blue-500 font-semibold'}>
+                        {cap.especialidade}
+                      </span>
+                    </div>
+                    <span className="font-bold text-sky-400 text-sm">{cap.quantidade} vagas</span>
                   </div>
                 ))}
               </div>

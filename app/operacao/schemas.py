@@ -1,7 +1,7 @@
 from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, date
 
 # --- Motivos de Indisponibilidade ---
 class MotivoIndisponibilidadeBase(BaseModel):
@@ -73,6 +73,31 @@ class DetalhamentoOperacionalResponse(BaseModel):
     status_operacional: str
     motivo_indisponibilidade: Optional[str] = None
     agendamento_id: Optional[UUID] = None
+
+# --- Status de Motoristas (Visão Consolidada) ---
+class MotoristaStatusResponse(BaseModel):
+    motorista_id: UUID
+    motorista_nome: str
+    empresa_id: Optional[UUID] = None
+    empresa_nome: Optional[str] = None
+    veiculo_id: Optional[UUID] = None
+    veiculo_placa: Optional[str] = None
+    veiculo_tipo: Optional[str] = None
+    veiculo_especialidade: Optional[str] = None
+    categoria: Optional[str] = None
+    status_operacional: str  # DISPONIVEL, PROGRAMADO, EM_ROTA, INDISPONIVEL, SEM_ALOCACAO
+    motivo_indisponibilidade: Optional[str] = None
+    agendamento_id: Optional[UUID] = None
+
+class MotoristasStatusResponse(BaseModel):
+    data: date
+    total: int = 0
+    disponiveis: int = 0
+    programados: int = 0
+    em_rota: int = 0
+    indisponiveis: int = 0
+    sem_alocacao: int = 0
+    motoristas: List[MotoristaStatusResponse] = []
 
 # --- Eventos Operacionais ---
 class EventoOperacionalResponse(BaseModel):

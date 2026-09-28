@@ -55,7 +55,7 @@ export interface TableHeadCellProps {
 
 export const TableHeadCell: React.FC<TableHeadCellProps> = ({ children, className = '' }) => {
   return (
-    <th className={`px-4 py-3 font-semibold uppercase tracking-wider text-[11px] text-slate-400 ${className}`}>
+    <th className={`px-3 py-2.5 font-semibold uppercase tracking-wider text-[11px] text-slate-400 whitespace-nowrap ${className}`}>
       {children}
     </th>
   )
@@ -69,7 +69,7 @@ export interface TableCellProps {
 
 export const TableCell: React.FC<TableCellProps> = ({ children, className = '', colSpan }) => {
   return (
-    <td colSpan={colSpan} className={`px-4 py-3 text-slate-300 ${className}`}>
+    <td colSpan={colSpan} className={`px-3 py-2.5 text-slate-300 ${className}`}>
       {children}
     </td>
   )

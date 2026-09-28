@@ -59,7 +59,7 @@ export const Header: React.FC<{ onToggleMobileSidebar?: () => void }> = ({
           <Dropdown
             trigger={
               <button className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-slate-900 transition-colors border border-transparent hover:border-slate-800 text-left">
-                <div className="w-8 h-8 rounded-full bg-sky-950 border border-sky-700/60 flex items-center justify-center text-sky-300 font-bold text-xs">
+                <div className="w-8 h-8 rounded-full bg-logtudo-surface border border-logtudo-border flex items-center justify-center text-logtudo-accent font-bold text-xs">
                   {user.nome ? user.nome.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div className="hidden sm:flex flex-col">

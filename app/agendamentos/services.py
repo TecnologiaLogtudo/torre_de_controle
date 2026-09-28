@@ -11,13 +11,18 @@ from app.agendamentos.schemas import (
     AgendamentoUpdate,
     AlocacaoOperacionalCreate,
     AlocacaoOperacionalUpdate,
+    TrocaVeiculoDedicadoPayload,
 )
 from app.contratos.models import MotoristaDedicadoVinculo
 from app.contratos.services import obter_configuracao_vigente
 from app.motoristas.models import Motorista
 from app.veiculos.models import Veiculo
 from app.operacao.models import EventoOperacional, MotivoIndisponibilidade
-from app.operacao.services import OperacaoService, HORARIO_LIMITE_AGENDAMENTO_CHAVE
+from app.operacao.services import (
+    OperacaoService,
+    HORARIO_LIMITE_AGENDAMENTO_CHAVE,
+    DIAS_ANTECEDENCIA_MAXIMA_AGENDAMENTO_CHAVE,
+)
 
 TRANSICOES_AGENDAMENTO_PERMITIDAS = {
     "RASCUNHO": ["PROGRAMADO", "CANCELADO"],
@@ -39,7 +44,6 @@ class AgendamentoService:
     def validar_janela_criacao(db: Session, data_agendamento: date) -> None:
         agora = agora_local()
         hoje = agora.date()
-        amanha = hoje + timedelta(days=1)
 
         if data_agendamento < hoje:
             raise HTTPException(
@@ -47,32 +51,55 @@ class AgendamentoService:
                 detail="Não é permitido criar agendamentos para datas retroativas.",
             )
 
-        if data_agendamento > amanha:
+        dias_max_str = OperacaoService.obter_configuracao(
+            db, DIAS_ANTECEDENCIA_MAXIMA_AGENDAMENTO_CHAVE
+        ) or "7"
+        try:
+            dias_max = int(dias_max_str)
+        except ValueError:
+            dias_max = 7
+
+        limite_maximo = hoje + timedelta(days=dias_max)
+        if data_agendamento > limite_maximo:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No MVP, é permitido criar agendamentos apenas para o dia atual ou dia seguinte.",
+                detail=f"Não é permitido criar agendamentos com mais de {dias_max} dias de antecedência.",
             )
-
-        if data_agendamento == hoje:
-            str_limite = OperacaoService.obter_configuracao(db, HORARIO_LIMITE_AGENDAMENTO_CHAVE)
-            partes = str_limite.split(":")
-            horario_limite = time(int(partes[0]), int(partes[1]))
-
-            if agora.time() > horario_limite:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Não é permitido criar agendamentos para o dia atual após o horário limite de {str_limite}.",
-                )
 
     @staticmethod
     def verificar_conflito_alocacao(
-        db: Session, motorista_id: UUID, veiculo_id: UUID, agendamento_id: UUID
+        db: Session, motorista_id: UUID, veiculo_id: UUID, agendamento_id: UUID, alocacao_original_id: Optional[UUID] = None
     ) -> None:
         """Verifica se motorista ou veículo já possuem alocação ativa/indisponível ou impedimento contratual dedicado."""
         if motorista_id:
             db.query(Motorista).filter(Motorista.id == motorista_id).with_for_update().first()
         if veiculo_id:
             db.query(Veiculo).filter(Veiculo.id == veiculo_id).with_for_update().first()
+
+        # 0. Duplicidade dentro do MESMO agendamento (pares SPOT adicionados na mesma programação)
+        duplicado_mesmo_agendamento = (
+            db.query(AlocacaoOperacional)
+            .filter(
+                AlocacaoOperacional.agendamento_id == agendamento_id,
+                AlocacaoOperacional.status_operacional != "INDISPONIVEL",
+                or_(
+                    and_(
+                        AlocacaoOperacional.motorista_id == motorista_id,
+                        AlocacaoOperacional.id != alocacao_original_id,
+                    ),
+                    and_(
+                        AlocacaoOperacional.veiculo_id == veiculo_id,
+                        AlocacaoOperacional.id != alocacao_original_id,
+                    ),
+                ),
+            )
+            .first()
+        )
+        if duplicado_mesmo_agendamento:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O motorista ou o veículo informado já está alocado nesta mesma programação. Escolha um recurso livre ou substitua a alocação existente.",
+            )
 
         agendamento_alvo = db.query(Agendamento).filter(Agendamento.id == agendamento_id).first()
         if not agendamento_alvo:
@@ -234,6 +261,7 @@ class AgendamentoService:
             data=dados.data,
             horario_inicio=dados.horario_inicio or time(8, 0, 0),
             status="PROGRAMADO",
+            versao=1,
             criado_por_id=usuario_id,
             contrato_configuracao_id=contrato_config_id,
         )
@@ -252,23 +280,76 @@ class AgendamentoService:
             .all()
         )
 
+        data_anterior = dados.data - timedelta(days=1)
+
         for vinculo in vinculos_dedicados:
             if vinculo.motorista_id and vinculo.veiculo_id:
+                # Regra Q2: Verificar se motorista ou veículo possui indisponibilidade ativa na data ou dia anterior
+                indisp_mot = (
+                    db.query(AlocacaoOperacional)
+                    .join(Agendamento)
+                    .filter(
+                        AlocacaoOperacional.motorista_id == vinculo.motorista_id,
+                        Agendamento.data.in_([dados.data, data_anterior]),
+                        Agendamento.status != "CANCELADO",
+                        AlocacaoOperacional.status_operacional == "INDISPONIVEL",
+                    )
+                    .first()
+                )
+                indisp_veic = (
+                    db.query(AlocacaoOperacional)
+                    .join(Agendamento)
+                    .filter(
+                        AlocacaoOperacional.veiculo_id == vinculo.veiculo_id,
+                        Agendamento.data.in_([dados.data, data_anterior]),
+                        Agendamento.status != "CANCELADO",
+                        AlocacaoOperacional.status_operacional == "INDISPONIVEL",
+                    )
+                    .first()
+                )
+
+                status_operacional = "INDISPONIVEL" if (indisp_mot or indisp_veic) else "PROGRAMADO"
+                motivo_id = None
+                if indisp_mot and indisp_mot.motivo_indisponibilidade_id:
+                    motivo_id = indisp_mot.motivo_indisponibilidade_id
+                elif indisp_veic and indisp_veic.motivo_indisponibilidade_id:
+                    motivo_id = indisp_veic.motivo_indisponibilidade_id
+
                 alocacao = AlocacaoOperacional(
                     agendamento_id=agendamento.id,
                     motorista_id=vinculo.motorista_id,
                     veiculo_id=vinculo.veiculo_id,
                     categoria="DEDICADO",
-                    status_operacional="PROGRAMADO",
+                    status_operacional=status_operacional,
+                    motivo_indisponibilidade_id=motivo_id,
                 )
                 db.add(alocacao)
 
+        # Regra Q3: Alocações iniciais (SPOT) enviadas pelo assistente de criação
+        if dados.alocacoes_iniciais:
+            for aloc_ini in dados.alocacoes_iniciais:
+                AgendamentoService.verificar_conflito_alocacao(
+                    db, aloc_ini.motorista_id, aloc_ini.veiculo_id, agendamento.id
+                )
+                aloc_spot = AlocacaoOperacional(
+                    agendamento_id=agendamento.id,
+                    motorista_id=aloc_ini.motorista_id,
+                    veiculo_id=aloc_ini.veiculo_id,
+                    categoria=aloc_ini.categoria or "SPOT",
+                    status_operacional="PROGRAMADO",
+                )
+                db.add(aloc_spot)
+
         # Histórico de criação
+        total_iniciais = len(dados.alocacoes_iniciais) if dados.alocacoes_iniciais else 0
         historico = HistoricoAgendamento(
             agendamento_id=agendamento.id,
             alterado_por_id=usuario_id,
             tipo_alteracao="CRIACAO",
-            descricao=f"Agendamento criado para {agendamento.data} às {agendamento.horario_inicio} com {len(vinculos_dedicados)} dedicados vinculados.",
+            descricao=(
+                f"Agendamento criado para {agendamento.data} às {agendamento.horario_inicio} "
+                f"com {len(vinculos_dedicados)} dedicados e {total_iniciais} SPOTs iniciais."
+            ),
         )
         db.add(historico)
         db.commit()
@@ -380,6 +461,7 @@ class AgendamentoService:
                         db.add(evento)
 
         if alteracoes:
+            agendamento.versao = (agendamento.versao or 1) + 1
             db.commit()
             db.refresh(agendamento)
 
@@ -417,6 +499,7 @@ class AgendamentoService:
             db, dados.motorista_id, dados.veiculo_id, agendamento_id
         )
 
+        agendamento.versao = (agendamento.versao or 1) + 1
         alocacao = AlocacaoOperacional(
             agendamento_id=agendamento_id,
             motorista_id=dados.motorista_id,
@@ -463,9 +546,8 @@ class AgendamentoService:
                 detail=f"Não é permitido substituir SPOT em agendamento {agendamento.status}.",
             )
 
-        # Trava pessimista e verificação de conflitos para o novo motorista e veículo
         AgendamentoService.verificar_conflito_alocacao(
-            db, dados.motorista_id, dados.veiculo_id, agendamento.id
+            db, dados.motorista_id, dados.veiculo_id, agendamento.id, alocacao_original_id=alocacao_id
         )
 
         agendamento_id = agendamento.id
@@ -477,6 +559,7 @@ class AgendamentoService:
         db.flush()
 
         # Cria a nova alocação SPOT
+        agendamento.versao = (agendamento.versao or 1) + 1
         nova_alocacao = AlocacaoOperacional(
             agendamento_id=agendamento_id,
             motorista_id=dados.motorista_id,
@@ -514,7 +597,15 @@ class AgendamentoService:
                 detail="Apenas alocações da categoria SPOT podem ser removidas do agendamento.",
             )
 
+        agendamento = AgendamentoService.buscar_por_id(db, alocacao.agendamento_id)
+        if agendamento.status in ["CONCLUIDO", "CANCELADO"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Não é permitido remover SPOT de agendamento {agendamento.status}.",
+            )
+
         agendamento_id = alocacao.agendamento_id
+        agendamento.versao = (agendamento.versao or 1) + 1
         db.delete(alocacao)
         db.commit()
 
@@ -526,6 +617,54 @@ class AgendamentoService:
         )
         db.add(historico)
         db.commit()
+
+    @staticmethod
+    def trocar_veiculo_dedicado(
+        db: Session,
+        alocacao_id: UUID,
+        dados: TrocaVeiculoDedicadoPayload,
+        usuario_id: UUID,
+    ) -> AlocacaoOperacional:
+        alocacao = db.query(AlocacaoOperacional).filter(AlocacaoOperacional.id == alocacao_id).first()
+        if not alocacao:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Alocação operacional não encontrada.",
+            )
+
+        if alocacao.categoria != "DEDICADO":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Apenas alocações da categoria DEDICADO podem ter veículo trocado provisoriamente.",
+            )
+
+        agendamento = AgendamentoService.buscar_por_id(db, alocacao.agendamento_id)
+        if agendamento.status in ["CONCLUIDO", "CANCELADO"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Não é permitido trocar veículo de agendamento {agendamento.status}.",
+            )
+
+        AgendamentoService.verificar_conflito_alocacao(
+            db, alocacao.motorista_id, dados.veiculo_id, agendamento.id, alocacao_original_id=alocacao_id
+        )
+
+        veiculo_antigo_id = alocacao.veiculo_id
+        alocacao.veiculo_id = dados.veiculo_id
+        agendamento.versao = (agendamento.versao or 1) + 1
+
+        motivo_txt = f" Motivo: {dados.motivo}" if dados.motivo else ""
+        historico = HistoricoAgendamento(
+            agendamento_id=agendamento.id,
+            alterado_por_id=usuario_id,
+            tipo_alteracao="TROCA_VEICULO_DEDICADO",
+            descricao=f"Veículo de alocação DEDICADO alterado provisoriamente. Antigo: {veiculo_antigo_id} -> Novo: {dados.veiculo_id}.{motivo_txt}",
+        )
+        db.add(historico)
+        db.commit()
+        db.refresh(alocacao)
+
+        return alocacao
 
     @staticmethod
     def atualizar_status_operacional(
@@ -565,6 +704,8 @@ class AgendamentoService:
             alocacao.motivo_indisponibilidade_id = None
 
         alocacao.status_operacional = novo_status
+        if alocacao.agendamento:
+            alocacao.agendamento.versao = (alocacao.agendamento.versao or 1) + 1
         db.commit()
         db.refresh(alocacao)
 

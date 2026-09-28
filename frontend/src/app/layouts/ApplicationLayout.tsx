@@ -31,7 +31,7 @@ export const ApplicationLayout: React.FC = () => {
         <div className="flex-1 flex flex-col min-w-0">
           <Header onToggleMobileSidebar={() => setMobileSidebarOpen(true)} />
 
-          <main className="flex-1 p-6 overflow-y-auto bg-slate-900/90">
+          <main className="flex-1 p-4 md:p-6 overflow-y-auto bg-slate-900/90">
             <div className="max-w-7xl mx-auto">
               <Outlet />
             </div>

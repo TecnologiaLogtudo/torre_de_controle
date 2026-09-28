@@ -4,6 +4,7 @@ from sqlalchemy import (
     String,
     Date,
     Time,
+    Integer,
     Index,
     text,
 )
@@ -19,6 +20,7 @@ class Agendamento(BaseEntidade):
     data = Column(Date, nullable=False)
     horario_inicio = Column(Time, nullable=False)
     status = Column(String(50), nullable=False, default="RASCUNHO") # RASCUNHO, PROGRAMADO, EM_EXECUCAO, CONCLUIDO, CANCELADO
+    versao = Column(Integer, nullable=False, default=1, server_default="1")
     criado_por_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False)
     contrato_configuracao_id = Column(UUID(as_uuid=True), ForeignKey("contratos_configuracoes.id", ondelete="RESTRICT"), nullable=True)
     

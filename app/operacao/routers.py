@@ -15,6 +15,7 @@ from app.operacao.schemas import (
     ResumoTorreResponse,
     ResumoEmpresaTorreResponse,
     DetalhamentoOperacionalResponse,
+    MotoristasStatusResponse,
     EventoOperacionalResponse,
     ResultadoImportacaoResponse,
 )
@@ -168,6 +169,26 @@ def obter_detalhamento_operacional(
         motorista_id=motorista_id,
         limite=limit,
         offset=offset,
+    )
+
+
+@router.get(
+    "/motoristas-status",
+    response_model=MotoristasStatusResponse,
+    summary="Visão consolidada do status operacional atual por motorista",
+)
+def obter_status_motoristas(
+    data: Optional[date] = Query(None),
+    empresa_id: Optional[UUID] = Query(None),
+    motorista_nome: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(obter_usuario_atual),
+):
+    return OperacaoService.obter_status_motoristas(
+        db=db,
+        data_filtro=data,
+        empresa_id=empresa_id,
+        motorista_nome=motorista_nome,
     )
 
 

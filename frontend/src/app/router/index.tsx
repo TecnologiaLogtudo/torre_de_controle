@@ -7,6 +7,7 @@ import { LoginPage } from '@/modules/auth/pages/LoginPage'
 import { TorrePage } from '@/modules/torre/pages/TorrePage'
 import { EmpresasPage } from '@/modules/empresas/pages/EmpresasPage'
 import { MotoristasPage } from '@/modules/motoristas/pages/MotoristasPage'
+import { StatusMotoristasPage } from '@/modules/motoristas/pages/StatusMotoristasPage'
 import { VeiculosPage } from '@/modules/veiculos/pages/VeiculosPage'
 import { ContratosPage } from '@/modules/contratos/pages/ContratosPage'
 import { MotivosIndisponibilidadePage } from '@/modules/operacao/pages/MotivosIndisponibilidadePage'
@@ -46,6 +47,7 @@ export const AppRouter: React.FC = () => {
           <Route path="operacao" element={<HistoricoEventosPage />} />
           <Route path="empresas" element={<EmpresasPage />} />
           <Route path="motoristas" element={<MotoristasPage />} />
+          <Route path="motoristas/status" element={<StatusMotoristasPage />} />
           <Route path="veiculos" element={<VeiculosPage />} />
           <Route path="contratos" element={<ContratosPage />} />
           <Route path="configuracoes/motivos-indisponibilidade" element={<MotivosIndisponibilidadePage />} />

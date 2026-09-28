@@ -33,6 +33,8 @@ MOTIVOS_PADRAO_INICIAIS = [
 
 HORARIO_LIMITE_AGENDAMENTO_CHAVE = "horario_limite_agendamento_dia_atual"
 HORARIO_LIMITE_AGENDAMENTO_PADRAO = "12:00"
+DIAS_ANTECEDENCIA_MAXIMA_AGENDAMENTO_CHAVE = "dias_antecedencia_maxima_agendamento"
+DIAS_ANTECEDENCIA_MAXIMA_AGENDAMENTO_PADRAO = "7"
 
 class OperacaoService:
     @staticmethod
@@ -46,6 +48,10 @@ class OperacaoService:
         config_horario = db.query(ConfiguracaoSistema).filter(ConfiguracaoSistema.chave == HORARIO_LIMITE_AGENDAMENTO_CHAVE).first()
         if not config_horario:
             db.add(ConfiguracaoSistema(chave=HORARIO_LIMITE_AGENDAMENTO_CHAVE, valor=HORARIO_LIMITE_AGENDAMENTO_PADRAO))
+
+        config_antecedencia = db.query(ConfiguracaoSistema).filter(ConfiguracaoSistema.chave == DIAS_ANTECEDENCIA_MAXIMA_AGENDAMENTO_CHAVE).first()
+        if not config_antecedencia:
+            db.add(ConfiguracaoSistema(chave=DIAS_ANTECEDENCIA_MAXIMA_AGENDAMENTO_CHAVE, valor=DIAS_ANTECEDENCIA_MAXIMA_AGENDAMENTO_PADRAO))
 
         db.commit()
 
@@ -290,6 +296,122 @@ class OperacaoService:
             )
 
         return resultado
+
+    # --- Status de Motoristas (Visão Consolidada por Motorista) ---
+    @staticmethod
+    def obter_status_motoristas(
+        db: Session,
+        data_filtro: Optional[date] = None,
+        empresa_id: Optional[UUID] = None,
+        motorista_nome: Optional[str] = None,
+    ) -> "MotoristasStatusResponse":
+        from app.operacao.schemas import MotoristaStatusResponse, MotoristasStatusResponse
+        from sqlalchemy import func
+
+        data_ref = data_filtro or agora_local().date()
+
+        # Alocações do dia (fonte primária do status operacional)
+        query = (
+            db.query(AlocacaoOperacional, Agendamento)
+            .join(Agendamento, AlocacaoOperacional.agendamento_id == Agendamento.id)
+            .filter(
+                Agendamento.data == data_ref,
+                Agendamento.status != "CANCELADO",
+            )
+        )
+        if empresa_id:
+            query = query.filter(Agendamento.empresa_id == empresa_id)
+
+        alocacoes: Dict[UUID, AlocacaoOperacional] = {}
+        for aloc, ag in query.all():
+            if empresa_id and ag.empresa_id != empresa_id:
+                continue
+            # Um motorista pode ter mais de uma alocação no dia: prioriza EM_ROTA > INDISPONIVEL > PROGRAMADO > DISPONIVEL
+            prioridade = {"EM_ROTA": 3, "INDISPONIVEL": 2, "PROGRAMADO": 1, "DISPONIVEL": 0}
+            atual = alocacoes.get(aloc.motorista_id)
+            if atual is None or prioridade.get(aloc.status_operacional, -1) > prioridade.get(atual.status_operacional, -1):
+                alocacoes[aloc.motorista_id] = aloc
+
+        # Motoristas ativos (base do consolidado)
+        q_motoristas = db.query(Motorista).filter(Motorista.ativo == True)
+        if motorista_nome:
+            q_motoristas = q_motoristas.filter(Motorista.nome.ilike(f"%{motorista_nome}%"))
+        motoristas = q_motoristas.order_by(Motorista.nome).all()
+
+        # Vínculos dedicados ativos para enriquecer empresa/veículo/categoria
+        from app.contratos.models import MotoristaDedicadoVinculo
+        vinculos = db.query(MotoristaDedicadoVinculo).filter(MotoristaDedicadoVinculo.ativo == True).all()
+
+        resultado: List[MotoristaStatusResponse] = []
+        contagem = {"DISPONIVEL": 0, "PROGRAMADO": 0, "EM_ROTA": 0, "INDISPONIVEL": 0, "SEM_ALOCACAO": 0}
+
+        for m in motoristas:
+            aloc = alocacoes.get(m.id)
+            vinculo = next((v for v in vinculos if v.motorista_id == m.id and v.ativo), None)
+
+            if aloc:
+                status_op = aloc.status_operacional
+                empresa_nome = aloc.agendamento.empresa.nome if aloc.agendamento.empresa else None
+                empresa_id_resp = aloc.agendamento.empresa_id
+                veiculo_id_resp = aloc.veiculo_id
+                veiculo = aloc.veiculo
+                placa = veiculo.placa if veiculo else None
+                veiculo_tipo = veiculo.tipo_veiculo if veiculo else None
+                veiculo_especialidade = veiculo.especialidade if veiculo else None
+                categoria = aloc.categoria
+                motivo = aloc.motivo_indisponibilidade.nome if aloc.motivo_indisponibilidade else None
+                agendamento_id = aloc.agendamento_id
+            else:
+                status_op = "SEM_ALOCACAO"
+                empresa_id_resp = vinculo.empresa_id if vinculo else None
+                empresa_nome = None
+                if empresa_id_resp:
+                    emp = db.query(Empresa).filter(Empresa.id == empresa_id_resp).first()
+                    empresa_nome = emp.nome if emp else None
+                veiculo_id_resp = vinculo.veiculo_id if vinculo else None
+                placa = None
+                veiculo_tipo = None
+                veiculo_especialidade = None
+                if veiculo_id_resp:
+                    vec = db.query(Veiculo).filter(Veiculo.id == veiculo_id_resp).first()
+                    if vec:
+                        placa = vec.placa
+                        veiculo_tipo = vec.tipo_veiculo
+                        veiculo_especialidade = vec.especialidade
+                categoria = vinculo.categoria_operacional if vinculo else None
+                motivo = None
+                agendamento_id = None
+
+            if status_op in contagem:
+                contagem[status_op] += 1
+
+            resultado.append(
+                MotoristaStatusResponse(
+                    motorista_id=m.id,
+                    motorista_nome=m.nome,
+                    empresa_id=empresa_id_resp,
+                    empresa_nome=empresa_nome,
+                    veiculo_id=veiculo_id_resp,
+                    veiculo_placa=placa,
+                    veiculo_tipo=veiculo_tipo,
+                    veiculo_especialidade=veiculo_especialidade,
+                    categoria=categoria,
+                    status_operacional=status_op,
+                    motivo_indisponibilidade=motivo,
+                    agendamento_id=agendamento_id,
+                )
+            )
+
+        return MotoristasStatusResponse(
+            data=data_ref,
+            total=len(resultado),
+            disponiveis=contagem["DISPONIVEL"],
+            programados=contagem["PROGRAMADO"],
+            em_rota=contagem["EM_ROTA"],
+            indisponiveis=contagem["INDISPONIVEL"],
+            sem_alocacao=contagem["SEM_ALOCACAO"],
+            motoristas=resultado,
+        )
 
     # --- Histórico de Eventos Operacionais ---
     @staticmethod

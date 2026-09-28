@@ -55,6 +55,12 @@ const navigationStructure: NavGroup[] = [
         icon: <Calendar className="w-4 h-4 text-sky-400" />,
         status: 'active',
       },
+      {
+        name: 'Status dos Motoristas',
+        path: '/app/motoristas/status',
+        icon: <UserCheck className="w-4 h-4 text-emerald-400" />,
+        status: 'active',
+      },
     ],
   },
   {
@@ -75,7 +81,7 @@ const navigationStructure: NavGroup[] = [
           {
             name: 'Motoristas',
             path: '/app/motoristas',
-            icon: <UserCheck className="w-3.5 h-3.5 text-emerald-400" />,
+            icon: <Users className="w-3.5 h-3.5 text-emerald-400" />,
             status: 'active',
           },
           {

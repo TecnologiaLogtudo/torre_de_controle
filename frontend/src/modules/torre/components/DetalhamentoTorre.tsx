@@ -6,7 +6,7 @@ import { FilterBar } from '@/components/ui/FilterBar'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Select } from '@/components/ui/Select'
 import { Table, TableHeader, TableBody, TableRow, TableHeadCell, TableCell } from '@/components/ui/Table'
-import { StatusBadge } from '@/components/ui/StatusBadge'
+import { StatusBadge, PerfilBadge } from '@/components/ui/StatusBadge'
 import { Badge } from '@/components/ui/Badge'
 import { Pagination } from '@/components/ui/Pagination'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -210,9 +210,7 @@ export const DetalhamentoTorre: React.FC<DetalhamentoTorreProps> = ({
                     </TableCell>
 
                     <TableCell>
-                      <Badge variant={item.especialidade === 'REFRIGERADO' ? 'PROGRAMADO' : 'NEUTRO'}>
-                        {item.especialidade}
-                      </Badge>
+                      <PerfilBadge perfil={item.especialidade} />
                     </TableCell>
 
                     <TableCell>
