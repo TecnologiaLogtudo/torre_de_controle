@@ -18,6 +18,7 @@ import { Drawer } from '@/components/ui/Drawer'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { formatToBahia, getHojeBahiaIso } from '@/utils/date'
+import { toast } from '@/components/feedback/Toaster'
 import { FileText, Plus, UserCheck, XCircle } from 'lucide-react'
 
 export const ContratosPage: React.FC = () => {
@@ -128,10 +129,13 @@ export const ContratosPage: React.FC = () => {
         data_inicio: dataInicioForm,
         capacidades: capacidadesForm,
       })
+      toast.success('Configuração de capacidade contratual cadastrada com sucesso!')
       setDrawerConfigOpen(false)
       carregarDadosEmpresa(selectedEmpresaId)
     } catch (err: any) {
-      setFormConfigError(err.message || 'Erro ao registrar configuração contratual.')
+      const msg = err.message || 'Erro ao registrar configuração contratual.'
+      setFormConfigError(msg)
+      toast.error(msg)
     } finally {
       setSubmittingConfig(false)
     }
@@ -196,10 +200,13 @@ export const ContratosPage: React.FC = () => {
         categoria_operacional: 'DEDICADO',
         categoria: 'DEDICADO',
       })
+      toast.success('Vínculo dedicado associado com sucesso!')
       setDrawerVinculoOpen(false)
       carregarDadosEmpresa(selectedEmpresaId)
     } catch (err: any) {
-      setFormVinculoError(err.message || 'Erro ao vincular motorista dedicado.')
+      const msg = err.message || 'Erro ao vincular motorista dedicado.'
+      setFormVinculoError(msg)
+      toast.error(msg)
     } finally {
       setSubmittingVinculo(false)
     }
@@ -208,9 +215,12 @@ export const ContratosPage: React.FC = () => {
   const handleDesativarVinculo = async (vinculoId: string) => {
     try {
       await contratosService.desativarVinculoDedicado(vinculoId)
+      toast.success('Vínculo dedicado desativado com sucesso.')
       carregarDadosEmpresa(selectedEmpresaId)
     } catch (err: any) {
-      setError(err.message || 'Erro ao desativar vínculo dedicado.')
+      const msg = err.message || 'Erro ao desativar vínculo dedicado.'
+      setError(msg)
+      toast.error(msg)
     }
   }
 

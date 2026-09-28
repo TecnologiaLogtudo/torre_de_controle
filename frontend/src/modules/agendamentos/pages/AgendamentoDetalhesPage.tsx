@@ -24,6 +24,7 @@ import { Drawer } from '@/components/ui/Drawer'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { toast } from '@/components/feedback/Toaster'
 import { formatToBahia } from '@/utils/date'
 import {
   Calendar,
@@ -261,17 +262,21 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           veiculo_id: veiculoSpotId,
           categoria: 'SPOT',
         })
+        toast.success('Recurso SPOT substituído com sucesso!')
       } else {
         await agendamentosService.adicionarSpot(agendamento.id, {
           motorista_id: motoristaSpotId,
           veiculo_id: veiculoSpotId,
           categoria: 'SPOT',
         })
+        toast.success('Recurso SPOT adicionado à programação!')
       }
       setDrawerSpotOpen(false)
       carregarDetalhes()
     } catch (err: any) {
-      setSpotFormError(err.message || 'Este recurso ou veículo não está disponível para esta alocação.')
+      const msg = err.message || 'Este recurso ou veículo não está disponível para esta alocação.'
+      setSpotFormError(msg)
+      toast.error(msg)
     } finally {
       setSubmittingSpot(false)
     }
@@ -288,9 +293,12 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     try {
       await agendamentosService.removerSpot(spotParaRemoverId)
       setSpotParaRemoverId(null)
+      toast.success('Alocação SPOT removida com sucesso.')
       carregarDetalhes()
     } catch (err: any) {
-      setError(err.message || 'Erro ao remover alocação SPOT.')
+      const msg = err.message || 'Erro ao remover alocação SPOT.'
+      setError(msg)
+      toast.error(msg)
       setSpotParaRemoverId(null)
     } finally {
       setRemovendoSpot(false)
@@ -304,9 +312,12 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     try {
       await agendamentosService.cancelar(agendamento.id)
       setCancelModalOpen(false)
+      toast.success('Agendamento cancelado com sucesso.')
       carregarDetalhes()
     } catch (err: any) {
-      setError(err.message || 'Erro ao cancelar agendamento.')
+      const msg = err.message || 'Erro ao cancelar agendamento.'
+      setError(msg)
+      toast.error(msg)
     } finally {
       setCanceling(false)
     }
@@ -353,10 +364,13 @@ export const AgendamentoDetalhesPage: React.FC = () => {
         motivo_indisponibilidade_id: novoStatusForm === 'INDISPONIVEL' ? motivoIndisponibilidadeFormId : undefined,
         origem_alteracao: 'painel_operacional',
       })
+      toast.success(`Status operacional atualizado para ${novoStatusForm}!`)
       setDrawerStatusOpen(false)
       carregarDetalhes()
     } catch (err: any) {
-      setStatusFormError(err.message || 'Erro ao atualizar status operacional.')
+      const msg = err.message || 'Erro ao atualizar status operacional.'
+      setStatusFormError(msg)
+      toast.error(msg)
     } finally {
       setSubmittingStatus(false)
     }

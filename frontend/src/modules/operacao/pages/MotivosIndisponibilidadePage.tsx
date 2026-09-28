@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { toast } from '@/components/feedback/Toaster'
 import { ShieldCheck, Plus, Edit } from 'lucide-react'
 
 export const MotivosIndisponibilidadePage: React.FC = () => {
@@ -81,16 +82,20 @@ export const MotivosIndisponibilidadePage: React.FC = () => {
           descricao: descricaoForm.trim() || null,
           ativo: ativoForm,
         })
+        toast.success(`Motivo "${nomeForm.trim()}" atualizado com sucesso!`)
       } else {
         await motivosService.criarMotivo({
           nome: nomeForm.trim(),
           descricao: descricaoForm.trim() || null,
         })
+        toast.success(`Motivo "${nomeForm.trim()}" cadastrado com sucesso!`)
       }
       setDrawerOpen(false)
       carregarMotivos()
     } catch (err: any) {
-      setFormError(err.message || 'Erro ao salvar motivo de indisponibilidade.')
+      const msg = err.message || 'Erro ao salvar motivo de indisponibilidade.'
+      setFormError(msg)
+      toast.error(msg)
     } finally {
       setSubmitting(false)
     }

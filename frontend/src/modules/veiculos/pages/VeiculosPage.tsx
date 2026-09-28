@@ -16,8 +16,9 @@ import { Badge } from '@/components/ui/Badge'
 import { Drawer } from '@/components/ui/Drawer'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
-import { Skeleton } from '@/components/ui/Skeleton'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { toast } from '@/components/feedback/Toaster'
 import { Truck, Plus, Edit } from 'lucide-react'
 
 export const VeiculosPage: React.FC = () => {
@@ -113,6 +114,7 @@ export const VeiculosPage: React.FC = () => {
           especialidade: especialidadeForm,
           ativo: ativoForm,
         })
+        toast.success(`Veículo "${placaClean}" atualizado com sucesso!`)
       } else {
         await veiculosService.criar({
           identificacao: identificacaoForm.trim(),
@@ -120,11 +122,14 @@ export const VeiculosPage: React.FC = () => {
           tipo_veiculo: tipoForm.trim(),
           especialidade: especialidadeForm,
         })
+        toast.success(`Veículo "${placaClean}" cadastrado com sucesso!`)
       }
       setDrawerOpen(false)
       carregarDados()
     } catch (err: any) {
-      setFormError(err.message || 'Erro ao salvar dados do veículo.')
+      const msg = err.message || 'Erro ao salvar dados do veículo.'
+      setFormError(msg)
+      toast.error(msg)
     } finally {
       setSubmitting(false)
     }
@@ -133,16 +138,20 @@ export const VeiculosPage: React.FC = () => {
   const handleToggleStatus = async (v: Veiculo) => {
     try {
       setError(null)
+      const novoStatus = !v.ativo
       await veiculosService.atualizar(v.id, {
         identificacao: v.identificacao,
         placa: v.placa,
         tipo_veiculo: v.tipo_veiculo,
         especialidade: v.especialidade,
-        ativo: !v.ativo,
+        ativo: novoStatus,
       })
+      toast.success(`Veículo "${v.placa}" ${novoStatus ? 'ativado' : 'inativado'} com sucesso.`)
       await carregarDados()
     } catch (err: any) {
-      setError(err.message || 'Erro ao alterar status do veículo.')
+      const msg = err.message || 'Erro ao alterar status do veículo.'
+      setError(msg)
+      toast.error(msg)
     }
   }
 
@@ -215,11 +224,7 @@ export const VeiculosPage: React.FC = () => {
       </FilterBar>
 
       {loading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
+        <TableSkeleton rows={6} />
       ) : veiculosFiltrados.length === 0 ? (
         <EmptyState
           icon={<Truck className="w-12 h-12 text-slate-600" />}

@@ -13,6 +13,7 @@ import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatToBahia } from '@/utils/date'
+import { toast } from '@/components/feedback/Toaster'
 import { Users, Plus, Edit } from 'lucide-react'
 
 export const UsuariosPage: React.FC = () => {
@@ -85,6 +86,7 @@ export const UsuariosPage: React.FC = () => {
           email: emailForm.trim(),
           ativo: ativoForm,
         })
+        toast.success(`Usuário "${nomeForm.trim()}" atualizado com sucesso!`)
       } else {
         await usuariosService.criar({
           nome: nomeForm.trim(),
@@ -92,11 +94,14 @@ export const UsuariosPage: React.FC = () => {
           senha: senhaForm,
           ativo: ativoForm,
         })
+        toast.success(`Usuário "${nomeForm.trim()}" cadastrado com sucesso!`)
       }
       setDrawerOpen(false)
       carregarUsuarios()
     } catch (err: any) {
-      setFormError(err.message || 'Erro ao salvar usuário.')
+      const msg = err.message || 'Erro ao salvar usuário.'
+      setFormError(msg)
+      toast.error(msg)
     } finally {
       setSubmitting(false)
     }

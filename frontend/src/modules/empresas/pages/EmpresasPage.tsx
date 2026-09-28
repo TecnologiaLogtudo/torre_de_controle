@@ -13,8 +13,10 @@ import { Drawer } from '@/components/ui/Drawer'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatToBahia } from '@/utils/date'
+import { toast } from '@/components/feedback/Toaster'
 import { Building2, Plus, Edit, Eye, History, FileText } from 'lucide-react'
 
 export const EmpresasPage: React.FC = () => {
@@ -89,16 +91,20 @@ export const EmpresasPage: React.FC = () => {
           nome: nomeForm.trim(),
           ativo: ativoForm,
         })
+        toast.success(`Empresa "${nomeForm.trim()}" atualizada com sucesso!`)
       } else {
         await empresasService.criar({
           nome: nomeForm.trim(),
           identificacao: identificacaoForm.trim(),
         })
+        toast.success(`Empresa "${nomeForm.trim()}" cadastrada com sucesso!`)
       }
       setDrawerOpen(false)
       carregarEmpresas()
     } catch (err: any) {
-      setFormError(err.message || 'Erro ao salvar dados da empresa.')
+      const msg = err.message || 'Erro ao salvar dados da empresa.'
+      setFormError(msg)
+      toast.error(msg)
     } finally {
       setSubmitting(false)
     }
@@ -155,11 +161,7 @@ export const EmpresasPage: React.FC = () => {
 
       {/* Lista de Empresas */}
       {loading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
+        <TableSkeleton rows={6} />
       ) : empresasFiltradas.length === 0 ? (
         <EmptyState
           icon={<Building2 className="w-12 h-12 text-slate-600" />}

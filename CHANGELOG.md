@@ -9,6 +9,18 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ### Alterado / Adicionado
 
+- **Fase 2: Infraestrutura de Feedback & Toasts (Sonner Logtudo)**:
+  - **Instalação e Customização do Sonner**: Instalada a biblioteca `sonner` e criado o componente [Toaster.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/components/feedback/Toaster.tsx) estilizado com o design system Logtudo (`#185772`, `#0F2C3A`, `#6ca8c2`, esmeralda e âmbar), com animação fluida, acessibilidade WAI-ARIA e `z-[9999]`.
+  - **Container Global no App**: Integrado `<Toaster />` no nível raiz em [App.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/App.tsx).
+  - **Integração de Notificações em Tempo Real nas Mutações**:
+    - [AgendamentosPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/agendamentos/pages/AgendamentosPage.tsx): Notificação com data e empresa após criação de agendamento.
+    - [AgendamentoDetalhesPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/agendamentos/pages/AgendamentoDetalhesPage.tsx): Feedback tátil ao adicionar, substituir ou remover recursos SPOT, alterar status operacional e cancelar agendamentos.
+    - [MotoristasPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/motoristas/pages/MotoristasPage.tsx): Confirmação de cadastro, edição e alternância de status ativo/inativo.
+    - [VeiculosPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/veiculos/pages/VeiculosPage.tsx): Confirmação de cadastro, edição e alternância de status ativo/inativo de veículos.
+    - [ContratosPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/contratos/pages/ContratosPage.tsx): Feedback imediato no registro de capacidade contratual, associação e desativação de vínculos dedicados.
+    - [EmpresasPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/empresas/pages/EmpresasPage.tsx), [UsuariosPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/usuarios/pages/UsuariosPage.tsx) e [MotivosIndisponibilidadePage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/operacao/pages/MotivosIndisponibilidadePage.tsx): Feedback em todas as operações de cadastro e atualização.
+  - **Suíte de Testes Automatizados**: Criada suíte [toast.test.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/test/toast.test.tsx) validando renderização, disparo de `toast.success` e mensagens descritivas de erro operacional com 100% de sucesso.
+
 - **Infraestrutura e Deploy Multi-Container (Coolify / Docker Compose)**:
   - **Containerização do Frontend React SPA**: Criado [frontend/Dockerfile](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/Dockerfile) multi-estágio (`node:20-alpine` para build e `nginx:alpine` para runtime em produção) e a configuração [frontend/nginx.conf](file:///D:/Logtudo/Projetos/torre_de_controle/frontend/nginx.conf) com suporte a rotas do React Router (`try_files`), compressão Gzip e cache de ativos estáticos.
   - **Orquestração Docker Compose**: Atualizado [docker-compose.yml](file:///D:/Logtudo/Projetos/torre_de_controle/docker-compose.yml) para orquestrar os 3 serviços (`db` PostgreSQL, `web` FastAPI Backend na porta 8000 e `frontend` Nginx na porta 80).

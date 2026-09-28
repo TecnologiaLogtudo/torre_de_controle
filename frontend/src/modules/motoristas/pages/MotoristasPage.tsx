@@ -18,9 +18,10 @@ import { Badge } from '@/components/ui/Badge'
 import { Drawer } from '@/components/ui/Drawer'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
-import { Skeleton } from '@/components/ui/Skeleton'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ImportModal } from '@/components/ui/ImportModal'
+import { toast } from '@/components/feedback/Toaster'
 import { UserCheck, Plus, Edit, Upload } from 'lucide-react'
 
 export const MotoristasPage: React.FC = () => {
@@ -105,13 +106,17 @@ export const MotoristasPage: React.FC = () => {
           nome: nomeForm.trim(),
           ativo: ativoForm,
         })
+        toast.success(`Motorista "${nomeForm.trim()}" atualizado com sucesso!`)
       } else {
         await motoristasService.criar({ nome: nomeForm.trim() })
+        toast.success(`Motorista "${nomeForm.trim()}" cadastrado com sucesso!`)
       }
       setDrawerOpen(false)
       carregarDados()
     } catch (err: any) {
-      setFormError(err.message || 'Erro ao salvar motorista.')
+      const msg = err.message || 'Erro ao salvar motorista.'
+      setFormError(msg)
+      toast.error(msg)
     } finally {
       setSubmitting(false)
     }
@@ -120,13 +125,17 @@ export const MotoristasPage: React.FC = () => {
   const handleToggleStatus = async (m: Motorista) => {
     try {
       setError(null)
+      const novoStatus = !m.ativo
       await motoristasService.atualizar(m.id, {
         nome: m.nome,
-        ativo: !m.ativo,
+        ativo: novoStatus,
       })
+      toast.success(`Motorista "${m.nome}" ${novoStatus ? 'ativado' : 'inativado'} com sucesso.`)
       await carregarDados()
     } catch (err: any) {
-      setError(err.message || 'Erro ao alterar status do motorista.')
+      const msg = err.message || 'Erro ao alterar status do motorista.'
+      setError(msg)
+      toast.error(msg)
     }
   }
 
@@ -233,11 +242,7 @@ export const MotoristasPage: React.FC = () => {
       </FilterBar>
 
       {loading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
+        <TableSkeleton rows={6} />
       ) : motoristasFiltrados.length === 0 ? (
         <EmptyState
           icon={<UserCheck className="w-12 h-12 text-slate-600" />}

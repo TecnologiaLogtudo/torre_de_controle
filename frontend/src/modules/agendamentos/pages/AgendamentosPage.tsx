@@ -18,7 +18,8 @@ import { Drawer } from '@/components/ui/Drawer'
 import { Alert } from '@/components/ui/Alert'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { formatToBahia, getHojeBahiaIso } from '@/utils/date'
+import { formatToBahia, getHojeBahiaIso, formatDateBahia } from '@/utils/date'
+import { toast } from '@/components/feedback/Toaster'
 import { Calendar, Plus, Eye, Clock, CheckCircle2, AlertTriangle, Building2 } from 'lucide-react'
 
 export const AgendamentosPage: React.FC = () => {
@@ -129,10 +130,15 @@ export const AgendamentosPage: React.FC = () => {
         data: dataForm,
         horario_inicio: horarioInicioForm || '08:00',
       })
+      toast.success('Agendamento criado com sucesso!', {
+        description: `Empresa: ${getEmpresaNome(empresaIdForm)} • Data: ${formatDateBahia(dataForm)}`,
+      })
       setDrawerOpen(false)
       navigate(`/app/agendamentos/${novo.id}`)
     } catch (err: any) {
-      setFormError(err.message || 'Erro ao criar agendamento.')
+      const msg = err.message || 'Erro ao criar agendamento.'
+      setFormError(msg)
+      toast.error(msg)
     } finally {
       setSubmitting(false)
     }
