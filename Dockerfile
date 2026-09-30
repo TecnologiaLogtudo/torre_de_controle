@@ -37,8 +37,12 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN groupadd -g 1000 appgroup && \
     useradd -r -u 1000 -g appgroup -d /app -s /sbin/nologin appuser
 
-# Copia o código da aplicação
+# Copia o código da aplicação e scripts utilitários
 COPY --chown=appuser:appgroup app/ ./app
+COPY --chown=appuser:appgroup scripts/ ./scripts
+COPY --chown=appuser:appgroup alembic/ ./alembic
+COPY --chown=appuser:appgroup alembic.ini .
+COPY --chown=appuser:appgroup motoristas_3c_lactalis.xlsx .
 
 # Permissões do diretório de trabalho
 RUN chown -R appuser:appgroup /app
