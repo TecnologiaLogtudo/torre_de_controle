@@ -6,7 +6,6 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { StatusBadge, PerfilBadge } from '@/components/ui/StatusBadge'
-import { Badge } from '@/components/ui/Badge'
 import { Select } from '@/components/ui/Select'
 import { Input } from '@/components/ui/Input'
 import { Drawer } from '@/components/ui/Drawer'
@@ -27,6 +26,7 @@ import {
   Truck,
   UserCheck,
   Activity,
+  CheckCircle2,
 } from 'lucide-react'
 
 export const AgendamentoDetalhesPage: React.FC = () => {
@@ -134,7 +134,6 @@ export const AgendamentoDetalhesPage: React.FC = () => {
 
   const alocacoesDedicadas = agendamento.alocacoes.filter(a => a.categoria === 'DEDICADO')
   const alocacoesSpot = agendamento.alocacoes.filter(a => a.categoria === 'SPOT')
-  const totalIndisponiveisDedicados = alocacoesDedicadas.filter(a => a.status_operacional === 'INDISPONIVEL').length
 
   return (
     <div className="space-y-6">

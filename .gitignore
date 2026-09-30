@@ -16,3 +16,5 @@ frontend/dist/
 # Data / Scratch
 *.xlsx
 .pytest_cache/
+
+graphify-out/
