@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: Any) -> List[str]:
+        raw_list: List[str] = []
         if isinstance(v, str):
             v = v.strip()
             if not v:
@@ -53,13 +54,29 @@ class Settings(BaseSettings):
             if v.startswith("[") and v.endswith("]"):
                 import json
                 try:
-                    return json.loads(v)
+                    raw_list = json.loads(v)
                 except Exception:
-                    pass
-            return [i.strip() for i in v.split(",") if i.strip()]
+                    raw_list = [v]
+            else:
+                raw_list = [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, list):
-            return v
-        return []
+            raw_list = [str(i) for i in v]
+
+        # Normaliza para extrair o Origin puro (scheme://netloc), pois navegadores nunca enviam path no header Origin
+        from urllib.parse import urlsplit
+        origins: List[str] = []
+        for item in raw_list:
+            item = item.strip()
+            if not item:
+                continue
+            origins.append(item)
+            if item.startswith(("http://", "https://")):
+                parts = urlsplit(item)
+                if parts.scheme and parts.netloc:
+                    origin_only = f"{parts.scheme}://{parts.netloc}"
+                    if origin_only != item:
+                        origins.append(origin_only)
+        return list(dict.fromkeys(origins))
 
 
 settings = Settings()

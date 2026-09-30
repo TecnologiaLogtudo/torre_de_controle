@@ -53,32 +53,51 @@ app.add_middleware(
 )
 
 # Inclui os roteadores
-app.include_router(
-    auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["Autenticação"]
-)
-app.include_router(
-    usuarios_router,
-    prefix=f"{settings.API_V1_STR}/usuarios",
-    tags=["Usuários"],
-)
-app.include_router(
-    empresas_router,
-    prefix=f"{settings.API_V1_STR}/empresas",
-    tags=["Empresas"],
-)
-app.include_router(
-    motoristas_router,
-    prefix=f"{settings.API_V1_STR}/motoristas",
-    tags=["Motoristas"],
-)
-app.include_router(
-    veiculos_router,
-    prefix=f"{settings.API_V1_STR}/veiculos",
-    tags=["Veículos"],
-)
-app.include_router(contratos_router, prefix=settings.API_V1_STR)
-app.include_router(operacao_router, prefix=settings.API_V1_STR)
-app.include_router(agendamentos_router, prefix=settings.API_V1_STR)
+def registrar_rotas(prefixo: str, include_in_schema: bool = True):
+    app.include_router(
+        auth_router, prefix=f"{prefixo}/auth", tags=["Autenticação"], include_in_schema=include_in_schema
+    )
+    app.include_router(
+        usuarios_router,
+        prefix=f"{prefixo}/usuarios",
+        tags=["Usuários"],
+        include_in_schema=include_in_schema,
+    )
+    app.include_router(
+        empresas_router,
+        prefix=f"{prefixo}/empresas",
+        tags=["Empresas"],
+        include_in_schema=include_in_schema,
+    )
+    app.include_router(
+        motoristas_router,
+        prefix=f"{prefixo}/motoristas",
+        tags=["Motoristas"],
+        include_in_schema=include_in_schema,
+    )
+    app.include_router(
+        veiculos_router,
+        prefix=f"{prefixo}/veiculos",
+        tags=["Veículos"],
+        include_in_schema=include_in_schema,
+    )
+    app.include_router(contratos_router, prefix=prefixo, include_in_schema=include_in_schema)
+    app.include_router(operacao_router, prefix=prefixo, include_in_schema=include_in_schema)
+    app.include_router(agendamentos_router, prefix=prefixo, include_in_schema=include_in_schema)
+
+# 1. Registra no prefixo padrão (ex: /api/v1)
+registrar_rotas(settings.API_V1_STR, include_in_schema=True)
+
+# 2. Se o prefixo padrão contiver /api, registra também a versão sem /api (ex: /v1)
+# para compatibilidade com proxies reversos que realizam stripprefix (como Traefik no Coolify quando mapeado em /api)
+if settings.API_V1_STR.startswith("/api"):
+    prefixo_compat = settings.API_V1_STR[len("/api"):] or "/"
+    if prefixo_compat != settings.API_V1_STR:
+        registrar_rotas(prefixo_compat.rstrip("/"), include_in_schema=False)
+
+        @app.get(f"{prefixo_compat}/openapi.json", include_in_schema=False)
+        def openapi_compat():
+            return app.openapi()
 
 
 @app.get("/health", tags=["Healthcheck"])

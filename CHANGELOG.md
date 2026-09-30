@@ -7,6 +7,14 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ## [Unreleased]
 
+### Corrigido (Deploy & Roteamento Reverso)
+- **Compatibilidade com Proxy Reverso e Traefik no Coolify (`app/main.py`)**:
+  - Implementado suporte de dupla resolução nos roteadores da API para responderem tanto sob `/api/v1` quanto sob `/v1` (prefixo reduzido decorrente de `stripprefix` do Traefik no Coolify quando mapeado em `/api`), eliminando o erro 404 em chamadas como `/api/v1/auth/login`.
+  - Adicionado endpoint compatível `/v1/openapi.json` para garantir o funcionamento do Swagger UI sob `root_path="/api"`.
+- **Normalização e Resiliência de CORS (`app/core/config.py`)**:
+  - `BACKEND_CORS_ORIGINS` aprimorado com extração automática de `scheme://host` (removendo caminhos como `/api` que são desconsiderados por navegadores em cabeçalhos `Origin`).
+  - Adicionada suíte de testes unitários em `tests/test_config.py`.
+
 ## [1.2.0] — 2026-09-30 (Fase 5.1 — White Label, Versionamento & Governança Operacional)
 
 ### Adicionado & Consolidado (Fase 5.1)
