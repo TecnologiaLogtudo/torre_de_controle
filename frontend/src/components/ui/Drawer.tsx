@@ -38,34 +38,34 @@ export const Drawer: React.FC<DrawerProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className={`w-full bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col h-full ${sizeClasses[size]}`}
+        className={`w-full bg-white border-l border-slate-200 shadow-2xl flex flex-col h-full ${sizeClasses[size]}`}
         role="dialog"
         aria-modal="true"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
           <div>
-            <h3 className="text-base font-semibold text-slate-100">{title}</h3>
-            {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+            <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
             aria-label="Fechar gaveta"
-            className="p-1 text-slate-400 hover:text-white"
+            className="p-1 text-slate-400 hover:text-slate-700"
           >
             <X className="w-5 h-5" />
           </Button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-6 overflow-y-auto text-sm text-slate-300">{children}</div>
+        <div className="flex-1 p-6 overflow-y-auto text-sm text-slate-700">{children}</div>
 
         {/* Footer */}
-        {footer && <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex items-center justify-end gap-3">{footer}</div>}
+        {footer && <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3">{footer}</div>}
       </div>
     </div>
   )

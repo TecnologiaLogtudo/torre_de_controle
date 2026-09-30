@@ -330,8 +330,21 @@ def test_versionamento_consecutivo_agendamento(client):
     )
     veic1_id = res_veic1.json()["id"]
 
+    # Cria configuração de capacidade vigente para a empresa
+    res_conf = client.post(
+        f"/api/v1/contratos/empresas/{empresa_id}/configuracoes",
+        json={
+            "data_inicio": datetime.now(timezone.utc).isoformat(),
+            "capacidades": [
+                {"tipo_veiculo": "HR", "especialidade": "SECO", "quantidade": 5}
+            ],
+        },
+        headers=headers,
+    )
+    assert res_conf.status_code == status.HTTP_201_CREATED
+
     # Cria vínculo dedicado
-    client.post(
+    res_vinc = client.post(
         "/api/v1/motoristas/dedicados/vinculos",
         json={
             "empresa_id": empresa_id,
@@ -342,8 +355,9 @@ def test_versionamento_consecutivo_agendamento(client):
         },
         headers=headers,
     )
+    assert res_vinc.status_code == status.HTTP_201_CREATED
 
-    data_ag = (agora_local() + timedelta(days=2)).date().isoformat()
+    data_ag = (agora_local() + timedelta(days=1)).date().isoformat()
     res_ag = client.post(
         "/api/v1/agendamentos",
         json={"empresa_id": empresa_id, "data": data_ag, "horario_inicio": "08:00:00"},
@@ -352,6 +366,7 @@ def test_versionamento_consecutivo_agendamento(client):
     assert res_ag.status_code == status.HTTP_201_CREATED
     ag_id = res_ag.json()["id"]
     assert res_ag.json().get("versao") == 1
+    assert len(res_ag.json()["alocacoes"]) > 0
     aloc_dedicada_id = res_ag.json()["alocacoes"][0]["id"]
 
     # 1. Adicionar SPOT -> versão 2
@@ -434,8 +449,21 @@ def test_auto_alocacao_dedicado_indisponivel_com_alerta(client):
     )
     veic_id = res_veic.json()["id"]
 
+    # Cria configuração de capacidade vigente para a empresa
+    res_conf = client.post(
+        f"/api/v1/contratos/empresas/{empresa_id}/configuracoes",
+        json={
+            "data_inicio": datetime.now(timezone.utc).isoformat(),
+            "capacidades": [
+                {"tipo_veiculo": "HR", "especialidade": "SECO", "quantidade": 5}
+            ],
+        },
+        headers=headers,
+    )
+    assert res_conf.status_code == status.HTTP_201_CREATED
+
     # Cria vínculo dedicado
-    client.post(
+    res_vinc = client.post(
         "/api/v1/motoristas/dedicados/vinculos",
         json={
             "empresa_id": empresa_id,
@@ -446,15 +474,17 @@ def test_auto_alocacao_dedicado_indisponivel_com_alerta(client):
         },
         headers=headers,
     )
+    assert res_vinc.status_code == status.HTTP_201_CREATED
 
-    # Cria agendamento D+1 e marca o motorista como INDISPONIVEL
-    data_d1 = (agora_local() + timedelta(days=1)).date().isoformat()
+    # Cria agendamento D+0 e marca o motorista como INDISPONIVEL
+    data_d0 = agora_local().date().isoformat()
     res_ag1 = client.post(
         "/api/v1/agendamentos",
-        json={"empresa_id": empresa_id, "data": data_d1, "horario_inicio": "08:00:00"},
+        json={"empresa_id": empresa_id, "data": data_d0, "horario_inicio": "08:00:00"},
         headers=headers,
     )
     assert res_ag1.status_code == status.HTTP_201_CREATED
+    assert len(res_ag1.json()["alocacoes"]) > 0
     aloc1_id = res_ag1.json()["alocacoes"][0]["id"]
 
     res_motivos = client.get("/api/v1/operacao/motivos-indisponibilidade", headers=headers)
@@ -466,12 +496,12 @@ def test_auto_alocacao_dedicado_indisponivel_com_alerta(client):
         headers=headers,
     )
 
-    # Cria agendamento para D+2 (dia seguinte da indisponibilidade)
+    # Cria agendamento para D+1 (dia seguinte da indisponibilidade)
     # Anteriormente isso falhava com HTTP 400. Agora deve auto-alocar com status INDISPONIVEL
-    data_d2 = (agora_local() + timedelta(days=2)).date().isoformat()
+    data_d1 = (agora_local() + timedelta(days=1)).date().isoformat()
     res_ag2 = client.post(
         "/api/v1/agendamentos",
-        json={"empresa_id": empresa_id, "data": data_d2, "horario_inicio": "08:00:00"},
+        json={"empresa_id": empresa_id, "data": data_d1, "horario_inicio": "08:00:00"},
         headers=headers,
     )
     assert res_ag2.status_code == status.HTTP_201_CREATED

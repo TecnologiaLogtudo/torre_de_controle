@@ -20,24 +20,34 @@ import { RefreshCw, UserCheck } from 'lucide-react'
 
 const SEM_ALOCACAO_LABEL = 'Sem Alocação'
 
-const ResumoCard: React.FC<{
+interface ResumoCardProps {
   label: string
   valor: number
   cor: string
+  borderAccent: string
   ativo: boolean
   onClick?: () => void
-}> = ({ label, valor, cor, ativo, onClick }) => (
+}
+
+const ResumoCard: React.FC<ResumoCardProps> = ({
+  label,
+  valor,
+  cor,
+  borderAccent,
+  ativo,
+  onClick,
+}) => (
   <button
     type="button"
     onClick={onClick}
-    className={`w-full text-left rounded-lg border p-3 transition-all cursor-pointer ${
+    className={`w-full text-left rounded-none border p-3 border-t-2 transition-colors cursor-pointer shadow-sm ${borderAccent} ${
       ativo
-        ? 'border-logtudo-accent/80 bg-logtudo-surface shadow-md ring-1 ring-logtudo-accent/40'
-        : 'border-slate-800 bg-slate-900/70 hover:border-slate-700 hover:bg-slate-900'
+        ? 'bg-slate-100 border-slate-300'
+        : 'bg-white border-slate-200 hover:bg-slate-50'
     }`}
   >
-    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</div>
-    <div className={`mt-1 text-2xl font-bold ${cor}`}>{valor}</div>
+    <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+    <div className={`mt-1 font-mono text-2xl font-bold tracking-tight ${cor}`}>{valor}</div>
   </button>
 )
 
@@ -110,28 +120,34 @@ export const StatusMotoristasPage: React.FC = () => {
           setSearchNome('')
         }}
       >
-        <Input
-          type="date"
-          value={dataFiltro}
-          onChange={e => setDataFiltro(e.target.value)}
-          className="w-40"
-          aria-label="Filtrar por data"
-        />
+        <div className="flex flex-wrap items-center gap-3 w-full">
+          <div className="w-40">
+            <Input
+              type="date"
+              value={dataFiltro}
+              onChange={e => setDataFiltro(e.target.value)}
+              aria-label="Filtrar por data"
+            />
+          </div>
 
-        <Select
-          value={filtroEmpresa}
-          onChange={e => setFiltroEmpresa(e.target.value)}
-          placeholder="Empresa (Todas)"
-          options={empresas.map(e => ({ value: e.id, label: e.nome }))}
-          className="w-52"
-        />
+          <div className="w-56">
+            <Select
+              value={filtroEmpresa}
+              onChange={e => setFiltroEmpresa(e.target.value)}
+              placeholder="Empresa (Todas)"
+              options={empresas.map(e => ({ value: e.id, label: e.nome }))}
+            />
+          </div>
 
-        <SearchInput
-          value={searchNome}
-          onChange={e => setSearchNome(e.target.value)}
-          onClear={() => setSearchNome('')}
-          placeholder="Buscar por nome do motorista..."
-        />
+          <div className="w-72">
+            <SearchInput
+              value={searchNome}
+              onChange={e => setSearchNome(e.target.value)}
+              onClear={() => setSearchNome('')}
+              placeholder="Buscar por nome do motorista..."
+            />
+          </div>
+        </div>
       </FilterBar>
 
       {/* Indicadores de consolidação do dia com seleção interativa */}
@@ -140,42 +156,48 @@ export const StatusMotoristasPage: React.FC = () => {
           <ResumoCard
             label="Total"
             valor={statusData.total}
-            cor="text-slate-100"
+            cor="text-slate-900"
+            borderAccent="border-t-slate-500"
             ativo={filtroStatus === 'TODOS'}
             onClick={() => setFiltroStatus('TODOS')}
           />
           <ResumoCard
             label="Disponíveis"
             valor={statusData.disponiveis}
-            cor="text-emerald-400"
+            cor="text-emerald-700"
+            borderAccent="border-t-emerald-600"
             ativo={filtroStatus === 'DISPONIVEL'}
             onClick={() => setFiltroStatus(filtroStatus === 'DISPONIVEL' ? 'TODOS' : 'DISPONIVEL')}
           />
           <ResumoCard
             label="Programados"
             valor={statusData.programados}
-            cor="text-blue-400"
+            cor="text-sky-700"
+            borderAccent="border-t-sky-600"
             ativo={filtroStatus === 'PROGRAMADO'}
             onClick={() => setFiltroStatus(filtroStatus === 'PROGRAMADO' ? 'TODOS' : 'PROGRAMADO')}
           />
           <ResumoCard
             label="Em Rota"
             valor={statusData.em_rota}
-            cor="text-amber-400"
+            cor="text-amber-700"
+            borderAccent="border-t-amber-500"
             ativo={filtroStatus === 'EM_ROTA'}
             onClick={() => setFiltroStatus(filtroStatus === 'EM_ROTA' ? 'TODOS' : 'EM_ROTA')}
           />
           <ResumoCard
             label="Indisponíveis"
             valor={statusData.indisponiveis}
-            cor="text-red-400"
+            cor="text-rose-700"
+            borderAccent="border-t-rose-500"
             ativo={filtroStatus === 'INDISPONIVEL'}
             onClick={() => setFiltroStatus(filtroStatus === 'INDISPONIVEL' ? 'TODOS' : 'INDISPONIVEL')}
           />
           <ResumoCard
             label="Sem Alocação"
             valor={statusData.sem_alocacao}
-            cor="text-slate-400"
+            cor="text-slate-600"
+            borderAccent="border-t-slate-400"
             ativo={filtroStatus === 'SEM_ALOCACAO'}
             onClick={() => setFiltroStatus(filtroStatus === 'SEM_ALOCACAO' ? 'TODOS' : 'SEM_ALOCACAO')}
           />
@@ -190,7 +212,7 @@ export const StatusMotoristasPage: React.FC = () => {
         </div>
       ) : motoristasFiltrados.length === 0 ? (
         <EmptyState
-          icon={<UserCheck className="w-12 h-12 text-slate-600" />}
+          icon={<UserCheck className="w-12 h-12 text-slate-400" />}
           title="Nenhum motorista encontrado"
           description="Ajuste os filtros de status, data, empresa ou pesquisa por nome."
         />
@@ -210,32 +232,34 @@ export const StatusMotoristasPage: React.FC = () => {
           <TableBody>
             {motoristasFiltrados.map(m => (
               <TableRow key={m.motorista_id}>
-                <TableCell className="font-semibold text-slate-100">{m.motorista_nome}</TableCell>
-                <TableCell className="text-slate-300">{m.empresa_nome || '-'}</TableCell>
+                <TableCell className="font-semibold text-slate-900">{m.motorista_nome}</TableCell>
+                <TableCell className="text-slate-600 font-mono text-xs">{m.empresa_nome || '-'}</TableCell>
                 <TableCell>
                   {m.veiculo_placa ? (
                     <div className="flex items-center gap-1.5 font-mono text-xs">
-                      {m.veiculo_tipo && <span className="text-slate-400 font-sans">{m.veiculo_tipo}</span>}
-                      <span className="font-bold text-sky-400">[{m.veiculo_placa}]</span>
+                      {m.veiculo_tipo && <span className="text-slate-600 font-sans">{m.veiculo_tipo}</span>}
+                      <span className="font-bold text-sky-700 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-none">
+                        [{m.veiculo_placa}]
+                      </span>
                     </div>
                   ) : (
-                    <span className="text-slate-500">-</span>
+                    <span className="text-slate-400 font-mono">-</span>
                   )}
                 </TableCell>
                 <TableCell>
                   <PerfilBadge perfil={m.veiculo_especialidade} />
                 </TableCell>
-                <TableCell className="text-slate-300">{m.categoria || '-'}</TableCell>
+                <TableCell className="text-slate-600 font-mono text-xs">{m.categoria || '-'}</TableCell>
                 <TableCell>
                   {m.status_operacional === 'SEM_ALOCACAO' ? (
-                    <span className="inline-flex items-center rounded-md border border-slate-700/60 bg-slate-800/60 px-2.5 py-1 text-xs font-semibold text-slate-300">
+                    <span className="inline-flex items-center rounded-none border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs font-mono font-medium text-slate-700">
                       {SEM_ALOCACAO_LABEL}
                     </span>
                   ) : (
                     <StatusBadge status={m.status_operacional} />
                   )}
                 </TableCell>
-                <TableCell className="text-slate-400">
+                <TableCell className="text-slate-600 text-xs font-sans">
                   {m.motivo_indisponibilidade || '-'}
                 </TableCell>
               </TableRow>
@@ -246,3 +270,4 @@ export const StatusMotoristasPage: React.FC = () => {
     </div>
   )
 }
+

@@ -27,8 +27,14 @@ app = FastAPI(
 
 @app.on_event("startup")
 def startup_event():
+    from sqlalchemy import text
     from app.core.database import engine, Base
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS versao INTEGER NOT NULL DEFAULT 1;"))
+        except Exception:
+            pass
     db = SessionLocal()
     try:
         OperacaoService.inicializar_dados_padrao(db)

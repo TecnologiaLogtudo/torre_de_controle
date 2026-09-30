@@ -68,7 +68,12 @@ class AgendamentoService:
 
     @staticmethod
     def verificar_conflito_alocacao(
-        db: Session, motorista_id: UUID, veiculo_id: UUID, agendamento_id: UUID, alocacao_original_id: Optional[UUID] = None
+        db: Session,
+        motorista_id: UUID,
+        veiculo_id: UUID,
+        agendamento_id: UUID,
+        alocacao_original_id: Optional[UUID] = None,
+        permitir_troca_veiculo_dedicado: bool = False,
     ) -> None:
         """Verifica se motorista ou veículo já possuem alocação ativa/indisponível ou impedimento contratual dedicado."""
         if motorista_id:
@@ -121,7 +126,7 @@ class AgendamentoService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="O motorista informado é DEDICADO exclusivo de outra empresa e não pode ser agendado nesta empresa.",
                 )
-            if vinculo_motorista_dedic.veiculo_id and vinculo_motorista_dedic.veiculo_id != veiculo_id:
+            if not permitir_troca_veiculo_dedicado and vinculo_motorista_dedic.veiculo_id and vinculo_motorista_dedic.veiculo_id != veiculo_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Este motorista é DEDICADO e está vinculado a outro veículo específico. Ele só pode operar com seu veículo cadastrado no contrato.",
@@ -646,7 +651,12 @@ class AgendamentoService:
             )
 
         AgendamentoService.verificar_conflito_alocacao(
-            db, alocacao.motorista_id, dados.veiculo_id, agendamento.id, alocacao_original_id=alocacao_id
+            db,
+            alocacao.motorista_id,
+            dados.veiculo_id,
+            agendamento.id,
+            alocacao_original_id=alocacao_id,
+            permitir_troca_veiculo_dedicado=True,
         )
 
         veiculo_antigo_id = alocacao.veiculo_id

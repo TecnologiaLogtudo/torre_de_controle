@@ -11,16 +11,21 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   error?: string
   options: SelectOption[]
   placeholder?: string
+  containerClassName?: string
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, options, placeholder, className = '', id, value, ...props }, ref) => {
+  ({ label, error, options, placeholder, className = '', containerClassName = '', id, value, ...props }, ref) => {
     const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined)
 
+    // Se className possui classes de largura ou flex, repassamos para o wrapper caso containerClassName não seja explicitamente passado
+    const hasExplicitWidth = /\bw-(\d+|auto|full|fit|px|\d+\/\d+|[a-z]+)\b/.test(className)
+    const wrapperWidth = containerClassName || (hasExplicitWidth ? '' : 'w-full')
+
     return (
-      <div className="w-full flex flex-col gap-1.5">
+      <div className={`flex flex-col gap-1 ${wrapperWidth} ${containerClassName}`}>
         {label && (
-          <label htmlFor={selectId} className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+          <label htmlFor={selectId} className="text-[11px] font-semibold uppercase tracking-wider text-slate-700">
             {label}
           </label>
         )}
@@ -28,9 +33,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           id={selectId}
           ref={ref}
           value={value}
-          className={`w-full bg-slate-950 border ${
-            error ? 'border-red-500/80 focus:border-red-500 focus:ring-red-500/20' : 'border-logtudo-border focus:border-logtudo-accent focus:ring-logtudo-accent/20'
-          } rounded-lg text-sm text-slate-100 transition-colors focus:outline-none focus:ring-2 disabled:bg-slate-900 disabled:opacity-60 disabled:cursor-not-allowed px-3 py-2 ${className}`}
+          className={`w-full bg-white border ${
+            error ? 'border-rose-500 focus:border-rose-600' : 'border-slate-300 focus:border-sky-600 focus:ring-1 focus:ring-sky-500'
+          } rounded-none text-xs text-slate-900 transition-colors focus:outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed px-2.5 py-1.5 ${className}`}
           {...props}
         >
           {placeholder && (
@@ -44,10 +49,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             </option>
           ))}
         </select>
-        {error && <span className="text-xs font-medium text-red-400">{error}</span>}
+        {error && <span className="text-xs font-medium text-rose-600">{error}</span>}
       </div>
     )
   }
 )
 
 Select.displayName = 'Select'
+

@@ -35,8 +35,8 @@ export const TorrePlaceholderPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Torre de Controle"
-        subtitle="Painel Operacional Logtudo - Fundação do Frontend (Fase 4.1)"
-        badge={<Badge variant="SUCESSO" dot>Fase 4.1 Ativa</Badge>}
+        subtitle="Painel Operacional Logtudo — Torre de Controle (Fase 5.1)"
+        badge={<Badge variant="SUCESSO" dot>Fase 5.1 Ativa</Badge>}
       />
 
       {/* Card de Boas-Vindas */}
@@ -51,7 +51,7 @@ export const TorrePlaceholderPage: React.FC = () => {
               o token JWT está seguro e a comunicação com a API REST está operacional.
             </p>
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg shrink-0">
+          <div className="flex items-center gap-2 px-3 py-2 bg-slate-950 border border-slate-800 rounded-none shrink-0">
             <Clock className="w-4 h-4 text-sky-400 shrink-0" />
             <div className="text-[11px]">
               <span className="text-slate-400 block">Horário (America/Bahia):</span>
@@ -126,7 +126,7 @@ export const TorrePlaceholderPage: React.FC = () => {
           {modulosProximos.map((m, idx) => (
             <div
               key={idx}
-              className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-lg flex items-center justify-between"
+              className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-none flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
                 {m.icone}

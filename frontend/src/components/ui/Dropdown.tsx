@@ -36,7 +36,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ trigger, items, align = 'rig
         <div
           className={`absolute ${
             align === 'right' ? 'right-0' : 'left-0'
-          } mt-2 w-48 rounded-lg bg-slate-900 border border-slate-800 shadow-xl z-50 py-1.5 focus:outline-none animate-in fade-in zoom-in-95 duration-100`}
+          } mt-2 w-48 rounded-none bg-slate-900 border border-slate-800 shadow-xl z-50 py-1.5 focus:outline-none animate-in fade-in zoom-in-95 duration-100`}
         >
           {items.map((item, index) => (
             <button

@@ -20,14 +20,14 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-logtudo-accent/60 disabled:opacity-50 disabled:cursor-not-allowed select-none'
+  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 disabled:opacity-50 disabled:cursor-not-allowed select-none'
 
   const variantClasses = {
-    primary: 'bg-logtudo-primary hover:bg-logtudo-hover text-white shadow-sm active:bg-logtudo-deep',
-    secondary: 'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-logtudo-border',
-    outline: 'bg-transparent hover:bg-logtudo-hover/40 text-slate-300 border border-logtudo-border',
-    danger: 'bg-red-600 hover:bg-red-500 text-white shadow-sm active:bg-red-700',
-    ghost: 'bg-transparent hover:bg-logtudo-hover/40 text-slate-300',
+    primary: 'bg-sky-700 hover:bg-sky-800 text-white border border-sky-700 active:bg-sky-900 shadow-sm',
+    secondary: 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 active:bg-slate-300',
+    outline: 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 active:bg-slate-100 shadow-sm',
+    danger: 'bg-rose-600 hover:bg-rose-700 text-white border border-rose-600 active:bg-rose-800 shadow-sm',
+    ghost: 'bg-transparent hover:bg-slate-100 text-slate-600 hover:text-slate-900',
   }
 
   const sizeClasses = {

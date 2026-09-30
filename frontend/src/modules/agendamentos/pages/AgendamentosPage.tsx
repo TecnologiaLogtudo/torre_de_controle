@@ -239,19 +239,19 @@ export const AgendamentosPage: React.FC = () => {
             <TableBody>
               {agendamentos.map(ag => (
                 <TableRow key={ag.id}>
-                  <TableCell className="font-semibold text-slate-100">
+                  <TableCell className="font-semibold text-slate-900">
                     {getEmpresaNome(ag.empresa_id)}
                   </TableCell>
-                  <TableCell className="font-mono text-slate-300">
+                  <TableCell className="font-mono text-slate-700">
                     {formatToBahia(ag.data, { hour: undefined, minute: undefined, second: undefined })}
                   </TableCell>
-                  <TableCell className="font-mono text-sky-400 font-bold">
+                  <TableCell className="font-mono text-sky-700 font-bold">
                     {ag.horario_inicio || '08:00:00'}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span
-                        className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-sky-950/60 text-sky-400 border border-sky-800/60"
+                        className="px-2 py-0.5 rounded-none text-[11px] font-mono font-bold bg-sky-50 text-sky-700 border border-sky-200"
                         title="Versão do Agendamento (consecutiva a cada alteração)"
                       >
                         v{ag.versao || 1}
@@ -259,13 +259,13 @@ export const AgendamentosPage: React.FC = () => {
                       <StatusBadge status={ag.status || 'PROGRAMADO'} />
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-slate-300">
+                  <TableCell className="text-xs text-slate-600">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span>
-                        <strong className="text-sky-300">{ag.alocacoes.length}</strong> recursos
+                        <strong className="text-slate-900 font-mono">{ag.alocacoes.length}</strong> recursos
                       </span>
                       {ag.alocacoes.some(a => a.status_operacional === 'INDISPONIVEL') && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-950/40 border border-amber-800/60 px-1.5 py-0.5 rounded">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-amber-950 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-none">
                           ⚠️ Indisponível
                         </span>
                       )}
@@ -335,20 +335,20 @@ export const AgendamentosPage: React.FC = () => {
           </div>
 
           {/* Orientação Visual da Janela */}
-          <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg flex items-center gap-3">
-            <Clock className="w-5 h-5 text-sky-400 shrink-0" />
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-none flex items-center gap-3">
+            <Clock className="w-5 h-5 text-sky-600 shrink-0" />
             <div className="text-xs">
-              <span className="font-bold text-slate-200 block">Janela Operacional:</span>
+              <span className="font-bold text-slate-800 block">Janela Operacional:</span>
               {isHoje ? (
-                <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="text-emerald-700 font-semibold flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 inline" /> Agendamento para HOJE (D+0 liberado)
                 </span>
               ) : isAmanha ? (
-                <span className="text-sky-400 font-semibold flex items-center gap-1">
+                <span className="text-sky-700 font-semibold flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 inline" /> Agendamento para AMANHÃ (D+1 padrão)
                 </span>
               ) : (
-                <span className="text-sky-300 font-semibold flex items-center gap-1">
+                <span className="text-sky-700 font-semibold flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 inline" /> Agendamento futuro ({dataForm})
                 </span>
               )}
@@ -357,18 +357,18 @@ export const AgendamentosPage: React.FC = () => {
 
           {/* Prévia da Composição Contratual de Dedicados */}
           {configVigente && (
-            <div className="p-4 bg-sky-950/30 border border-sky-800/60 rounded-lg space-y-3">
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-none space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-sky-300 flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-sky-600" />
                   Balanço Contratual em Tempo Real
                 </h4>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-900 text-sky-400 border border-slate-700">
+                <span className="px-2 py-0.5 rounded-none text-[10px] font-mono font-bold bg-sky-100 text-sky-800 border border-sky-200">
                   Início em v1
                 </span>
               </div>
 
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-600">
                 Os recursos dedicados serão auto-alocados para a data selecionada. Caso algum dedicado esteja indisponível, será alocado com alerta visual para cobertura SPOT.
               </p>
 
@@ -383,21 +383,21 @@ export const AgendamentosPage: React.FC = () => {
                       }))
                     : [])
                 ).map((cap, idx) => (
-                  <div key={idx} className="bg-slate-950 p-2.5 rounded border border-slate-800 text-[11px] flex items-center justify-between">
+                  <div key={idx} className="bg-white p-2.5 rounded-none border border-slate-200 text-[11px] flex items-center justify-between shadow-sm">
                     <div>
-                      <span className="font-bold text-slate-200 block">{cap.tipo_veiculo}</span>
+                      <span className="font-bold text-slate-900 block">{cap.tipo_veiculo}</span>
                       <span className={cap.especialidade === 'SECO' ? 'text-red-500 font-semibold' : 'text-blue-500 font-semibold'}>
                         {cap.especialidade}
                       </span>
                     </div>
-                    <span className="font-bold text-sky-400 text-sm">{cap.quantidade} vagas</span>
+                    <span className="font-bold text-sky-700 text-sm">{cap.quantidade} vagas</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerOpen(false)} type="button">
               Cancelar
             </Button>

@@ -50,8 +50,8 @@ export const VeiculosPage: React.FC = () => {
     try {
       const [vList, vincList, mList] = await Promise.all([
         veiculosService.listar(),
-        contratosService.listarVinculosAtivos().catch(() => []),
-        motoristasService.listar().catch(() => []),
+        contratosService.listarVinculosAtivos(1000).catch(() => []),
+        motoristasService.listar(1000).catch(() => []),
       ])
       setVeiculos(vList)
       setVinculos(vincList)
@@ -190,44 +190,50 @@ export const VeiculosPage: React.FC = () => {
           setFiltroEspecialidade('')
         }}
       >
-        <SearchInput
-          value={searchPlaca}
-          onChange={e => setSearchPlaca(e.target.value)}
-          onClear={() => setSearchPlaca('')}
-          placeholder="Buscar por placa ou identificação..."
-        />
+        <div className="flex flex-wrap items-center gap-3 w-full">
+          <div className="w-72">
+            <SearchInput
+              value={searchPlaca}
+              onChange={e => setSearchPlaca(e.target.value)}
+              onClear={() => setSearchPlaca('')}
+              placeholder="Buscar por placa ou identificação..."
+            />
+          </div>
 
-        <Select
-          value={filtroTipo}
-          onChange={e => setFiltroTipo(e.target.value)}
-          placeholder="Tipo de Veículo (Todos)"
-          options={[
-            { value: 'HR', label: 'HR' },
-            { value: 'Fiorino', label: 'Fiorino' },
-            { value: 'Truck', label: 'Truck' },
-            { value: 'Toco', label: 'Toco' },
-            { value: 'VUC', label: 'VUC' },
-          ]}
-          className="w-44"
-        />
+          <div className="w-44">
+            <Select
+              value={filtroTipo}
+              onChange={e => setFiltroTipo(e.target.value)}
+              placeholder="Tipo de Veículo (Todos)"
+              options={[
+                { value: 'HR', label: 'HR' },
+                { value: 'Fiorino', label: 'Fiorino' },
+                { value: 'Truck', label: 'Truck' },
+                { value: 'Toco', label: 'Toco' },
+                { value: 'VUC', label: 'VUC' },
+              ]}
+            />
+          </div>
 
-        <Select
-          value={filtroEspecialidade}
-          onChange={e => setFiltroEspecialidade(e.target.value)}
-          placeholder="Especialidade (Todas)"
-          options={[
-            { value: 'SECO', label: 'SECO' },
-            { value: 'REFRIGERADO', label: 'REFRIGERADO' },
-          ]}
-          className="w-44"
-        />
+          <div className="w-44">
+            <Select
+              value={filtroEspecialidade}
+              onChange={e => setFiltroEspecialidade(e.target.value)}
+              placeholder="Especialidade (Todas)"
+              options={[
+                { value: 'SECO', label: 'SECO' },
+                { value: 'REFRIGERADO', label: 'REFRIGERADO' },
+              ]}
+            />
+          </div>
+        </div>
       </FilterBar>
 
       {loading ? (
         <TableSkeleton rows={6} />
       ) : veiculosFiltrados.length === 0 ? (
         <EmptyState
-          icon={<Truck className="w-12 h-12 text-slate-600" />}
+          icon={<Truck className="w-12 h-12 text-slate-400" />}
           title="Nenhum veículo encontrado"
           description="Ajuste os filtros de busca ou cadastre um novo veículo na frota."
           action={
@@ -255,19 +261,19 @@ export const VeiculosPage: React.FC = () => {
 
               return (
                 <TableRow key={v.id}>
-                  <TableCell className="font-mono font-bold text-sky-400 text-sm">
+                  <TableCell className="font-mono font-bold text-sky-700 text-sm">
                     {v.placa}
                   </TableCell>
-                  <TableCell className="font-semibold text-slate-200">{v.identificacao}</TableCell>
-                  <TableCell className="text-slate-300">{v.tipo_veiculo}</TableCell>
+                  <TableCell className="font-semibold text-slate-900">{v.identificacao}</TableCell>
+                  <TableCell className="text-slate-700">{v.tipo_veiculo}</TableCell>
                   <TableCell>
                     <PerfilBadge perfil={v.especialidade} />
                   </TableCell>
-                  <TableCell className="text-slate-300">
+                  <TableCell className="text-slate-700">
                     {motorista ? (
-                      <span className="font-semibold text-emerald-400">{motorista.nome}</span>
+                      <span className="font-semibold text-emerald-700">{motorista.nome}</span>
                     ) : (
-                      <span className="text-slate-500">Sem motorista vinculado</span>
+                      <span className="text-slate-400">Sem motorista vinculado</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -348,16 +354,16 @@ export const VeiculosPage: React.FC = () => {
 
           {selectedVeiculo && (
             <div className="flex items-center gap-3 pt-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
                 Status no Sistema:
               </label>
               <button
                 type="button"
                 onClick={() => setAtivoForm(!ativoForm)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-semibold rounded-none transition-colors border ${
                   ativoForm
-                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                    : 'bg-red-950 text-red-400 border border-red-800'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                    : 'bg-rose-50 text-rose-700 border-rose-300'
                 }`}
               >
                 {ativoForm ? 'Veículo Ativo' : 'Veículo Inativo'}
@@ -365,7 +371,7 @@ export const VeiculosPage: React.FC = () => {
             </div>
           )}
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerOpen(false)} type="button">
               Cancelar
             </Button>
@@ -378,3 +384,4 @@ export const VeiculosPage: React.FC = () => {
     </div>
   )
 }
+

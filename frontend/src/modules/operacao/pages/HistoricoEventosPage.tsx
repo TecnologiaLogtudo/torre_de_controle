@@ -114,13 +114,13 @@ export const HistoricoEventosPage: React.FC = () => {
       />
 
       {/* Tabs de Navegação Operacional */}
-      <div className="flex border-b border-logtudo-border/60 gap-4">
+      <div className="flex border-b border-slate-200 gap-4">
         <button
           onClick={() => setActiveTab('eventos')}
           className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
             activeTab === 'eventos'
-              ? 'border-logtudo-accent text-logtudo-accent'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-sky-700 text-sky-800'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
           }`}
         >
           <Activity className="w-4 h-4" />
@@ -131,11 +131,11 @@ export const HistoricoEventosPage: React.FC = () => {
           onClick={() => setActiveTab('mapa')}
           className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
             activeTab === 'mapa'
-              ? 'border-logtudo-accent text-logtudo-accent'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-sky-700 text-sky-800'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
           }`}
         >
-          <MapPin className="w-4 h-4 text-amber-400" />
+          <MapPin className="w-4 h-4 text-amber-600" />
           <span>Monitoramento em Rota (Mapa + Telemetria GPS)</span>
           <Badge variant="EM_BREVE" size="sm">
             Em breve
@@ -144,15 +144,15 @@ export const HistoricoEventosPage: React.FC = () => {
       </div>
 
       {activeTab === 'mapa' ? (
-        <Card className="bg-logtudo-surface/40 border-logtudo-border/60 p-12 text-center">
+        <Card className="bg-white border-slate-200 p-12 text-center shadow-sm">
           <div className="max-w-md mx-auto space-y-4">
-            <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+            <div className="w-14 h-14 rounded-none bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto text-slate-500">
               <MapPin className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-slate-100">
+            <h3 className="text-lg font-bold text-slate-900">
               Módulo de Monitoramento & Telemetria em Tempo Real
             </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               Em breve nesta aba: acompanhamento geográfico em mapa interativo, rastreamento via GPS dos veículos em rota (`EM_ROTA`), cálculo de estimativa de chegada (ETA) e alertas de desvio de percurso.
             </p>
             <div className="pt-2">
@@ -165,11 +165,11 @@ export const HistoricoEventosPage: React.FC = () => {
       ) : (
         <>
           {/* Card de Filtros da Central de Eventos */}
-          <Card className="bg-logtudo-surface/60 border-logtudo-border/60">
+          <Card className="bg-white border-slate-200 shadow-sm">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-                  <Filter className="w-4 h-4 text-logtudo-accent" />
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">
+                  <Filter className="w-4 h-4 text-sky-700" />
                   <span>Filtros de Pesquisa Compilada</span>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleClearFiltros}>
@@ -177,162 +177,174 @@ export const HistoricoEventosPage: React.FC = () => {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Select
-                  label="Empresa Contratante"
-                  value={filtros.empresa_id || ''}
-                  onChange={e =>
-                    setFiltros(prev => ({
-                      ...prev,
-                      empresa_id: e.target.value || undefined,
-                      offset: 0,
-                    }))
-                  }
-                  options={[
-                    { value: '', label: 'Todas as Empresas' },
-                    ...empresas.map(emp => ({ value: emp.id, label: emp.nome })),
-                  ]}
-                />
+              <div className="flex flex-wrap items-end gap-3 w-full">
+                <div className="w-52">
+                  <Select
+                    label="Empresa Contratante"
+                    value={filtros.empresa_id || ''}
+                    onChange={e =>
+                      setFiltros(prev => ({
+                        ...prev,
+                        empresa_id: e.target.value || undefined,
+                        offset: 0,
+                      }))
+                    }
+                    options={[
+                      { value: '', label: 'Todas as Empresas' },
+                      ...empresas.map(emp => ({ value: emp.id, label: emp.nome })),
+                    ]}
+                  />
+                </div>
 
-                <Select
-                  label="Categoria Operacional"
-                  value={filtros.categoria || ''}
-                  onChange={e =>
-                    setFiltros(prev => ({
-                      ...prev,
-                      categoria: e.target.value || undefined,
-                      offset: 0,
-                    }))
-                  }
-                  options={[
-                    { value: '', label: 'Todas as Categorias' },
-                    { value: 'DEDICADO', label: 'DEDICADO' },
-                    { value: 'SPOT', label: 'SPOT' },
-                  ]}
-                />
+                <div className="w-44">
+                  <Select
+                    label="Categoria Operacional"
+                    value={filtros.categoria || ''}
+                    onChange={e =>
+                      setFiltros(prev => ({
+                        ...prev,
+                        categoria: e.target.value || undefined,
+                        offset: 0,
+                      }))
+                    }
+                    options={[
+                      { value: '', label: 'Todas as Categorias' },
+                      { value: 'DEDICADO', label: 'DEDICADO' },
+                      { value: 'SPOT', label: 'SPOT' },
+                    ]}
+                  />
+                </div>
 
-                <Select
-                  label="Status Destino"
-                  value={filtros.novo_status || ''}
-                  onChange={e =>
-                    setFiltros(prev => ({
-                      ...prev,
-                      novo_status: e.target.value || undefined,
-                      offset: 0,
-                    }))
-                  }
-                  options={[
-                    { value: '', label: 'Todos os Status' },
-                    { value: 'PROGRAMADO', label: 'PROGRAMADO' },
-                    { value: 'EM_ROTA', label: 'EM_ROTA' },
-                    { value: 'INDISPONIVEL', label: 'INDISPONÍVEL' },
-                    { value: 'DISPONIVEL', label: 'DISPONÍVEL' },
-                  ]}
-                />
+                <div className="w-44">
+                  <Select
+                    label="Status Destino"
+                    value={filtros.novo_status || ''}
+                    onChange={e =>
+                      setFiltros(prev => ({
+                        ...prev,
+                        novo_status: e.target.value || undefined,
+                        offset: 0,
+                      }))
+                    }
+                    options={[
+                      { value: '', label: 'Todos os Status' },
+                      { value: 'PROGRAMADO', label: 'PROGRAMADO' },
+                      { value: 'EM_ROTA', label: 'EM_ROTA' },
+                      { value: 'INDISPONIVEL', label: 'INDISPONÍVEL' },
+                      { value: 'DISPONIVEL', label: 'DISPONÍVEL' },
+                    ]}
+                  />
+                </div>
 
-                <SearchInput
-                  value={filtros.motorista_nome || filtros.placa || ''}
-                  onChange={e => {
-                    const val = e.target.value
-                    setFiltros(prev => ({
-                      ...prev,
-                      motorista_nome: val || undefined,
-                      placa: val || undefined,
-                      offset: 0,
-                    }))
-                  }}
-                  onClear={() =>
-                    setFiltros(prev => ({
-                      ...prev,
-                      motorista_nome: undefined,
-                      placa: undefined,
-                      offset: 0,
-                    }))
-                  }
-                  placeholder="Nome do motorista ou placa..."
-                />
+                <div className="w-56">
+                  <SearchInput
+                    value={filtros.motorista_nome || filtros.placa || ''}
+                    onChange={e => {
+                      const val = e.target.value
+                      setFiltros(prev => ({
+                        ...prev,
+                        motorista_nome: val || undefined,
+                        placa: val || undefined,
+                        offset: 0,
+                      }))
+                    }}
+                    onClear={() =>
+                      setFiltros(prev => ({
+                        ...prev,
+                        motorista_nome: undefined,
+                        placa: undefined,
+                        offset: 0,
+                      }))
+                    }
+                    placeholder="Motorista ou placa..."
+                  />
+                </div>
 
-                <Input
-                  type="date"
-                  label="Data Início"
-                  value={filtros.data_inicio || ''}
-                  onChange={e =>
-                    setFiltros(prev => ({
-                      ...prev,
-                      data_inicio: e.target.value || undefined,
-                      offset: 0,
-                    }))
-                  }
-                />
+                <div className="w-36">
+                  <Input
+                    type="date"
+                    label="Data Início"
+                    value={filtros.data_inicio || ''}
+                    onChange={e =>
+                      setFiltros(prev => ({
+                        ...prev,
+                        data_inicio: e.target.value || undefined,
+                        offset: 0,
+                      }))
+                    }
+                  />
+                </div>
 
-                <Input
-                  type="date"
-                  label="Data Fim"
-                  value={filtros.data_fim || ''}
-                  onChange={e =>
-                    setFiltros(prev => ({
-                      ...prev,
-                      data_fim: e.target.value || undefined,
-                      offset: 0,
-                    }))
-                  }
-                />
+                <div className="w-36">
+                  <Input
+                    type="date"
+                    label="Data Fim"
+                    value={filtros.data_fim || ''}
+                    onChange={e =>
+                      setFiltros(prev => ({
+                        ...prev,
+                        data_fim: e.target.value || undefined,
+                        offset: 0,
+                      }))
+                    }
+                  />
+                </div>
               </div>
             </div>
           </Card>
 
           {/* Cards de Métricas da Seleção */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="p-4 rounded-xl border border-logtudo-border/60 bg-logtudo-surface/80 flex flex-col justify-between">
+            <div className="p-3.5 rounded-none border border-slate-200 border-t-2 border-t-slate-500 bg-white shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500">
                   Total de Eventos
                 </span>
-                <Activity className="w-5 h-5 text-logtudo-accent" />
+                <Activity className="w-4 h-4 text-slate-500" />
               </div>
-              <div className="text-2xl font-extrabold text-logtudo-accent font-mono">
+              <div className="text-2xl font-bold text-slate-900 font-mono tracking-tight">
                 {totalEventos}
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Registrados no filtro</p>
+              <p className="text-[10px] text-slate-500 mt-1 font-sans">Registrados no filtro</p>
             </div>
 
-            <div className="p-4 rounded-xl border border-red-800/60 bg-red-950/40 flex flex-col justify-between">
+            <div className="p-3.5 rounded-none border border-slate-200 border-t-2 border-t-rose-500 bg-white shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                  Indisponividades
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500">
+                  Indisponibilidades
                 </span>
-                <AlertTriangle className="w-5 h-5 text-red-400" />
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
               </div>
-              <div className="text-2xl font-extrabold text-red-400 font-mono">
+              <div className="text-2xl font-bold text-rose-700 font-mono tracking-tight">
                 {totalIndisponiveis}
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Mudanças com motivo</p>
+              <p className="text-[10px] text-slate-500 mt-1 font-sans">Mudanças com motivo</p>
             </div>
 
-            <div className="p-4 rounded-xl border border-amber-800/60 bg-amber-950/40 flex flex-col justify-between">
+            <div className="p-3.5 rounded-none border border-slate-200 border-t-2 border-t-amber-500 bg-white shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500">
                   Em Rota
                 </span>
-                <Truck className="w-5 h-5 text-amber-400" />
+                <Truck className="w-4 h-4 text-amber-600" />
               </div>
-              <div className="text-2xl font-extrabold text-amber-400 font-mono">
+              <div className="text-2xl font-bold text-amber-700 font-mono tracking-tight">
                 {totalEmRota}
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Saídas iniciadas</p>
+              <p className="text-[10px] text-slate-500 mt-1 font-sans">Saídas iniciadas</p>
             </div>
 
-            <div className="p-4 rounded-xl border border-blue-800/60 bg-blue-950/40 flex flex-col justify-between">
+            <div className="p-3.5 rounded-none border border-slate-200 border-t-2 border-t-sky-500 bg-white shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500">
                   Programados
                 </span>
-                <Clock className="w-5 h-5 text-blue-400" />
+                <Clock className="w-4 h-4 text-sky-600" />
               </div>
-              <div className="text-2xl font-extrabold text-blue-400 font-mono">
+              <div className="text-2xl font-bold text-sky-700 font-mono tracking-tight">
                 {totalProgramados}
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Escalados na programação</p>
+              <p className="text-[10px] text-slate-500 mt-1 font-sans">Escalados na programação</p>
             </div>
           </div>
 
@@ -353,13 +365,13 @@ export const HistoricoEventosPage: React.FC = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-slate-400">
+                  <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                     Carregando eventos operacionais...
                   </TableCell>
                 </TableRow>
               ) : eventos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-slate-400">
+                  <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                     Nenhum evento operacional encontrado para os filtros selecionados.
                   </TableCell>
                 </TableRow>
@@ -367,21 +379,21 @@ export const HistoricoEventosPage: React.FC = () => {
                 eventos.map(item => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <span className="font-mono text-xs font-bold text-logtudo-accent">
+                      <span className="font-mono text-xs font-bold text-sky-700">
                         {formatToBahia(item.criado_em)}
                       </span>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-purple-400 shrink-0" />
-                        <span className="font-semibold text-slate-200">{item.empresa_nome || 'Empresa'}</span>
+                        <Building2 className="w-4 h-4 text-purple-600 shrink-0" />
+                        <span className="font-semibold text-slate-900">{item.empresa_nome || 'Empresa'}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-100">{item.motorista_nome || 'Motorista'}</span>
+                        <span className="font-bold text-slate-900">{item.motorista_nome || 'Motorista'}</span>
                         {item.veiculo_placa && (
-                          <span className="text-[11px] font-mono text-slate-400">Placa: {item.veiculo_placa}</span>
+                          <span className="text-[11px] font-mono text-slate-500">Placa: {item.veiculo_placa}</span>
                         )}
                       </div>
                     </TableCell>
@@ -391,20 +403,20 @@ export const HistoricoEventosPage: React.FC = () => {
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-1.5 text-xs">
-                          <span className="font-mono text-slate-400">{item.status_anterior}</span>
-                          <span className="text-logtudo-accent font-bold">➔</span>
+                          <span className="font-mono text-slate-500">{item.status_anterior}</span>
+                          <span className="text-sky-700 font-bold">➔</span>
                           <StatusBadge status={item.novo_status} size="sm" />
                         </div>
                         {item.motivo_indisponibilidade && (
-                          <span className="text-[11px] text-red-400">
+                          <span className="text-[11px] text-rose-700">
                             Motivo: <strong>{item.motivo_indisponibilidade}</strong>
                           </span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-300">
-                        <User className="w-3.5 h-3.5 text-logtudo-accent shrink-0" />
+                      <div className="flex items-center gap-1.5 text-xs text-slate-700">
+                        <User className="w-3.5 h-3.5 text-sky-700 shrink-0" />
                         <span className="font-medium">{item.usuario_nome || 'Sistema'}</span>
                       </div>
                     </TableCell>
@@ -418,3 +430,4 @@ export const HistoricoEventosPage: React.FC = () => {
     </div>
   )
 }
+

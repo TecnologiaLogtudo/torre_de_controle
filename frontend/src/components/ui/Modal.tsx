@@ -41,34 +41,34 @@ export const Modal: React.FC<ModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className={`w-full bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col ${sizeClasses[size]}`}
+        className={`w-full bg-white border border-slate-200 rounded-none shadow-2xl overflow-hidden flex flex-col ${sizeClasses[size]}`}
         role="dialog"
         aria-modal="true"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
           <div>
-            <h3 className="text-base font-semibold text-slate-100">{title}</h3>
-            {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+            <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
             aria-label="Fechar modal"
-            className="p-1 text-slate-400 hover:text-white"
+            className="p-1 text-slate-400 hover:text-slate-700"
           >
             <X className="w-5 h-5" />
           </Button>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[70vh] text-sm text-slate-300">{children}</div>
+        <div className="p-6 overflow-y-auto max-h-[70vh] text-sm text-slate-700">{children}</div>
 
         {/* Footer */}
-        {footer && <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-800 bg-slate-950/40">{footer}</div>}
+        {footer && <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50">{footer}</div>}
       </div>
     </div>
   )

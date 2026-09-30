@@ -90,7 +90,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
             <div
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              className="border-2 border-dashed border-slate-700 hover:border-sky-500 rounded-xl p-8 text-center bg-slate-950/60 transition-colors cursor-pointer relative"
+              className="border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-none p-8 text-center bg-slate-950/60 transition-colors cursor-pointer relative"
             >
               <input
                 type="file"
@@ -99,7 +99,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
                 className="absolute inset-0 opacity-0 cursor-pointer"
               />
               <div className="flex flex-col items-center justify-center space-y-2">
-                <FileSpreadsheet className="w-12 h-12 text-sky-400" />
+                <FileSpreadsheet className="w-12 h-12 text-slate-400" />
                 <p className="text-sm font-semibold text-slate-200">
                   {selectedFile ? selectedFile.name : 'Arraste sua planilha aqui ou clique para selecionar'}
                 </p>
@@ -108,7 +108,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
             </div>
 
             {selectedFile && (
-              <div className="p-3 bg-sky-950/30 border border-sky-800/40 rounded-lg flex items-center justify-between text-xs">
+              <div className="p-3 bg-slate-900 border border-slate-800 rounded-none flex items-center justify-between text-xs">
                 <span className="text-sky-300 font-mono">{selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)</span>
                 <Button variant="ghost" size="sm" onClick={() => setSelectedFile(null)}>
                   Remover
@@ -135,7 +135,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
         ) : (
           /* Relatório de Resultado da Importação */
           <div className="space-y-5">
-            <div className="p-4 bg-emerald-950/30 border border-emerald-800/50 rounded-xl flex items-center gap-3">
+            <div className="p-4 bg-emerald-950/30 border border-emerald-800/50 rounded-none flex items-center gap-3">
               <CheckCircle2 className="w-8 h-8 text-emerald-400 shrink-0" />
               <div>
                 <h4 className="text-sm font-bold text-emerald-300">Importação Concluída com Sucesso!</h4>
@@ -147,19 +147,19 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
 
             {/* Grid de Resumo de Entidades Criadas */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-none">
                 <span className="text-2xl font-bold text-sky-400 font-mono">{resultado.criados_veiculos}</span>
                 <span className="text-[11px] text-slate-400 block mt-0.5">Veículos Criados</span>
               </div>
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-none">
                 <span className="text-2xl font-bold text-emerald-400 font-mono">{resultado.criados_motoristas}</span>
                 <span className="text-[11px] text-slate-400 block mt-0.5">Motoristas Criados</span>
               </div>
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-none">
                 <span className="text-2xl font-bold text-indigo-400 font-mono">{resultado.criadas_empresas}</span>
                 <span className="text-[11px] text-slate-400 block mt-0.5">Empresas Criadas</span>
               </div>
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-none">
                 <span className="text-2xl font-bold text-amber-400 font-mono">{resultado.vinculos_dedicados_criados}</span>
                 <span className="text-[11px] text-slate-400 block mt-0.5">Vínculos Dedicados</span>
               </div>
@@ -167,7 +167,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
 
             {/* Alerta de Placas Ignoradas por Duplicação */}
             {resultado.ignorados_placa_existente > 0 && (
-              <div className="p-3 bg-amber-950/30 border border-amber-800/50 rounded-lg flex items-center gap-2 text-xs text-amber-300">
+              <div className="p-3 bg-amber-950/30 border border-amber-800/50 rounded-none flex items-center gap-2 text-xs text-amber-300">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>
                   <strong>{resultado.ignorados_placa_existente} veículo(s)</strong> já cadastrados no sistema foram ignorados mantendo os registros atuais intactos.
@@ -185,7 +185,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
                   {resultado.itens_ignorados.map((item, idx) => (
                     <div
                       key={idx}
-                      className="p-2.5 bg-slate-950 border border-slate-800/80 rounded-lg flex items-center justify-between gap-3 text-xs"
+                      className="p-2.5 bg-slate-950 border border-slate-800/80 rounded-none flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="flex items-center gap-2">
                         <XCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />

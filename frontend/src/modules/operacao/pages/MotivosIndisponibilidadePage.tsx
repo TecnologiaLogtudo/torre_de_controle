@@ -125,12 +125,16 @@ export const MotivosIndisponibilidadePage: React.FC = () => {
         hasActiveFilters={!!searchTerm}
         onClearFilters={() => setSearchTerm('')}
       >
-        <SearchInput
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          onClear={() => setSearchTerm('')}
-          placeholder="Buscar por nome ou descrição..."
-        />
+        <div className="flex flex-wrap items-center gap-3 w-full">
+          <div className="w-80">
+            <SearchInput
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              onClear={() => setSearchTerm('')}
+              placeholder="Buscar por nome ou descrição..."
+            />
+          </div>
+        </div>
       </FilterBar>
 
       {loading ? (
@@ -140,7 +144,7 @@ export const MotivosIndisponibilidadePage: React.FC = () => {
         </div>
       ) : motivosFiltrados.length === 0 ? (
         <EmptyState
-          icon={<ShieldCheck className="w-12 h-12 text-slate-600" />}
+          icon={<ShieldCheck className="w-12 h-12 text-slate-400" />}
           title="Nenhum motivo encontrado"
           description="Nenhum motivo de indisponibilidade cadastrado ou que corresponda à busca."
           action={
@@ -162,8 +166,8 @@ export const MotivosIndisponibilidadePage: React.FC = () => {
           <TableBody>
             {motivosFiltrados.map(m => (
               <TableRow key={m.id}>
-                <TableCell className="font-semibold text-slate-100">{m.nome}</TableCell>
-                <TableCell className="text-slate-300">{m.descricao || '-'}</TableCell>
+                <TableCell className="font-semibold text-slate-900">{m.nome}</TableCell>
+                <TableCell className="text-slate-600">{m.descricao || '-'}</TableCell>
                 <TableCell>
                   <Badge variant={m.ativo ? 'SUCESSO' : 'ERRO'}>
                     {m.ativo ? 'Ativo' : 'Inativo'}
@@ -212,16 +216,16 @@ export const MotivosIndisponibilidadePage: React.FC = () => {
 
           {selectedMotivo && (
             <div className="flex items-center gap-3 pt-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
                 Status:
               </label>
               <button
                 type="button"
                 onClick={() => setAtivoForm(!ativoForm)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-semibold rounded-none transition-colors border ${
                   ativoForm
-                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                    : 'bg-red-950 text-red-400 border border-red-800'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                    : 'bg-rose-50 text-rose-700 border-rose-300'
                 }`}
               >
                 {ativoForm ? 'Motivo Ativo' : 'Motivo Inativo'}
@@ -229,7 +233,7 @@ export const MotivosIndisponibilidadePage: React.FC = () => {
             </div>
           )}
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerOpen(false)} type="button">
               Cancelar
             </Button>
@@ -242,3 +246,4 @@ export const MotivosIndisponibilidadePage: React.FC = () => {
     </div>
   )
 }
+

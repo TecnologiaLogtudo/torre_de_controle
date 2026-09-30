@@ -46,7 +46,8 @@ npm run dev
 
 Aplicação disponível em `http://localhost:5173`.
 
----
+backend: npx app:aplication main.py
+-----------------------------------
 
 ## 🧪 Suítes de Testes
 

@@ -323,9 +323,9 @@ export const ContratosPage: React.FC = () => {
       />
 
       {/* Seleção da Empresa Contratante */}
-      <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-4 rounded-none border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <FileText className="w-5 h-5 text-sky-400 shrink-0" />
+          <FileText className="w-5 h-5 text-sky-600 shrink-0" />
           <div className="w-full sm:w-72">
             <Select
               label="Empresa Parceira / Contratante"
@@ -381,15 +381,15 @@ export const ContratosPage: React.FC = () => {
               subtitle="Configuração contratual ativa no período atual"
             >
               {!configuracaoVigente ? (
-                <div className="p-4 bg-slate-950 rounded-lg border border-dashed border-slate-800 text-center text-xs text-slate-400">
+                <div className="p-4 bg-slate-50 rounded-none border border-dashed border-slate-300 text-center text-xs text-slate-500">
                   Nenhuma configuração de capacidade vigente registrada para esta empresa.
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-sky-950/40 border border-sky-800/80 rounded-lg text-xs">
+                  <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-none text-xs">
                     <div>
-                      <span className="text-slate-400 block">Vigência a partir de:</span>
-                      <span className="font-mono font-bold text-sky-300">
+                      <span className="text-slate-500 block font-mono">Vigência a partir de:</span>
+                      <span className="font-mono font-bold text-sky-700">
                         {formatToBahia(configuracaoVigente.data_inicio, { hour: undefined, minute: undefined, second: undefined })}
                       </span>
                     </div>
@@ -409,15 +409,15 @@ export const ContratosPage: React.FC = () => {
                           }))
                         : [])
                     ).map((cap, idx) => (
-                      <div key={idx} className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
+                      <div key={idx} className="p-3 bg-white border border-slate-200 rounded-none border-t-2 border-t-sky-600 shadow-sm">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-sm text-slate-100">{cap.tipo_veiculo}</span>
+                          <span className="font-bold text-sm text-slate-900">{cap.tipo_veiculo}</span>
                           <Badge variant="NEUTRO" size="sm">
                             {cap.especialidade}
                           </Badge>
                         </div>
-                        <span className="text-xl font-bold text-sky-400">{cap.quantidade}</span>
-                        <span className="text-[11px] text-slate-400 block">vagas contratadas</span>
+                        <span className="text-xl font-bold text-slate-800 font-mono">{cap.quantidade}</span>
+                        <span className="text-[11px] text-slate-500 block font-mono">vagas contratadas</span>
                       </div>
                     ))}
                   </div>
@@ -436,7 +436,7 @@ export const ContratosPage: React.FC = () => {
               }
             >
               {vinculosAtivos.length === 0 ? (
-                <div className="p-4 bg-slate-950 rounded-lg border border-dashed border-slate-800 text-center text-xs text-slate-400">
+                <div className="p-4 bg-slate-50 rounded-none border border-dashed border-slate-300 text-center text-xs text-slate-500">
                   Nenhum motorista/veículo vinculado como dedicado para esta empresa.
                 </div>
               ) : (
@@ -456,11 +456,11 @@ export const ContratosPage: React.FC = () => {
 
                       return (
                         <TableRow key={vinc.id}>
-                          <TableCell className="font-semibold text-slate-100">{m?.nome || 'Motorista'}</TableCell>
+                          <TableCell className="font-semibold text-slate-900">{m?.nome || 'Motorista'}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1.5 font-mono text-xs">
-                              <span className="text-slate-400">{vec?.tipo_veiculo} - {vec?.identificacao}</span>
-                              <span className="font-bold text-sky-400">[{vec?.placa || 'Sem placa'}]</span>
+                              <span className="text-slate-600">{vec?.tipo_veiculo} - {vec?.identificacao}</span>
+                              <span className="font-bold text-sky-700">[{vec?.placa || 'Sem placa'}]</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -471,7 +471,7 @@ export const ContratosPage: React.FC = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDesativarVinculo(vinc.id)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-950/40"
+                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                               leftIcon={<XCircle className="w-3.5 h-3.5" />}
                             >
                               Desativar
@@ -493,7 +493,7 @@ export const ContratosPage: React.FC = () => {
               subtitle="Configurações contratuais ordenadas por vigência"
             >
               {historicoConfiguracoes.length === 0 ? (
-                <div className="p-4 bg-slate-950 rounded-lg border border-slate-800 text-center text-xs text-slate-400">
+                <div className="p-4 bg-slate-50 rounded-none border border-slate-200 text-center text-xs text-slate-500">
                   Sem histórico registrado.
                 </div>
               ) : (
@@ -501,14 +501,14 @@ export const ContratosPage: React.FC = () => {
                   {historicoConfiguracoes.map((config, index) => (
                     <div
                       key={config.id}
-                      className={`p-4 rounded-lg border ${
+                      className={`p-4 rounded-none border ${
                         index === 0
-                          ? 'bg-sky-950/30 border-sky-800/80'
-                          : 'bg-slate-950/60 border-slate-800/60 opacity-80'
+                          ? 'bg-white border-sky-300 shadow-sm'
+                          : 'bg-slate-50 border-slate-200 opacity-90'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-200">
+                        <span className="text-xs font-bold text-slate-800">
                           {index === 0 ? 'CONFIGURAÇÃO ATUAL' : `VIGÊNCIA ANTERIOR #${historicoConfiguracoes.length - index}`}
                         </span>
                         <Badge variant={index === 0 ? 'SUCESSO' : 'EM_BREVE'} size="sm">
@@ -516,7 +516,7 @@ export const ContratosPage: React.FC = () => {
                         </Badge>
                       </div>
 
-                      <div className="text-[11px] text-slate-400 mb-2 font-mono">
+                      <div className="text-[11px] text-slate-500 mb-2 font-mono">
                         {formatToBahia(config.data_inicio, { hour: undefined, minute: undefined, second: undefined })}
                         {config.data_fim ? ` até ${formatToBahia(config.data_fim, { hour: undefined, minute: undefined, second: undefined })}` : ' (em aberto)'}
                       </div>
@@ -532,9 +532,9 @@ export const ContratosPage: React.FC = () => {
                               }))
                             : [])
                         ).map((cap, cIdx) => (
-                          <div key={cIdx} className="flex items-center justify-between text-xs py-1 border-t border-slate-800/40">
-                            <span className="text-slate-300">{cap.tipo_veiculo} ({cap.especialidade})</span>
-                            <span className="font-bold text-sky-400">{cap.quantidade} vagas</span>
+                          <div key={cIdx} className="flex items-center justify-between text-xs py-1 border-t border-slate-200">
+                            <span className="text-slate-700">{cap.tipo_veiculo} ({cap.especialidade})</span>
+                            <span className="font-bold text-sky-700">{cap.quantidade} vagas</span>
                           </div>
                         ))}
                       </div>
@@ -568,7 +568,7 @@ export const ContratosPage: React.FC = () => {
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
                 Capacidades Contratadas por Tipo de Veículo
               </label>
               <Button variant="ghost" size="sm" onClick={handleAddCapacidadeRow} type="button">
@@ -578,7 +578,7 @@ export const ContratosPage: React.FC = () => {
 
             <div className="space-y-3">
               {capacidadesForm.map((item, index) => (
-                <div key={index} className="flex items-end gap-2 p-3 bg-slate-950 border border-slate-800 rounded-lg">
+                <div key={index} className="flex items-end gap-2 p-3 bg-slate-50 border border-slate-200 rounded-none">
                   <div className="flex-1">
                     <Select
                       label="Tipo de Veículo"
@@ -636,7 +636,7 @@ export const ContratosPage: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRemoveCapacidadeRow(index)}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                       type="button"
                     >
                       Remover
@@ -647,7 +647,7 @@ export const ContratosPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerConfigOpen(false)} type="button">
               Cancelar
             </Button>
@@ -689,11 +689,11 @@ export const ContratosPage: React.FC = () => {
             required
           />
 
-          <div className="p-3 bg-sky-950/40 border border-sky-800/60 rounded-lg text-xs text-sky-300">
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-none text-xs text-slate-700">
             <strong>Binômio Operacional:</strong> A associação criará o vínculo do motorista com o veículo físico selecionado especificamente para esta empresa.
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerVinculoOpen(false)} type="button">
               Cancelar
             </Button>

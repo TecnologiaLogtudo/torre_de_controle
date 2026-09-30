@@ -131,12 +131,16 @@ export const UsuariosPage: React.FC = () => {
         hasActiveFilters={!!searchTerm}
         onClearFilters={() => setSearchTerm('')}
       >
-        <SearchInput
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          onClear={() => setSearchTerm('')}
-          placeholder="Buscar por nome ou e-mail..."
-        />
+        <div className="flex flex-wrap items-center gap-3 w-full">
+          <div className="w-80">
+            <SearchInput
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              onClear={() => setSearchTerm('')}
+              placeholder="Buscar por nome ou e-mail..."
+            />
+          </div>
+        </div>
       </FilterBar>
 
       {loading ? (
@@ -146,7 +150,7 @@ export const UsuariosPage: React.FC = () => {
         </div>
       ) : usuariosFiltrados.length === 0 ? (
         <EmptyState
-          icon={<Users className="w-12 h-12 text-slate-600" />}
+          icon={<Users className="w-12 h-12 text-slate-400" />}
           title="Nenhum usuário encontrado"
           description="Nenhum operador corresponde aos critérios da busca."
           action={
@@ -169,14 +173,14 @@ export const UsuariosPage: React.FC = () => {
           <TableBody>
             {usuariosFiltrados.map(u => (
               <TableRow key={u.id}>
-                <TableCell className="font-semibold text-slate-100">{u.nome}</TableCell>
-                <TableCell className="font-mono text-slate-300">{u.email}</TableCell>
+                <TableCell className="font-semibold text-slate-900">{u.nome}</TableCell>
+                <TableCell className="font-mono text-slate-600">{u.email}</TableCell>
                 <TableCell>
                   <Badge variant={u.ativo ? 'SUCESSO' : 'ERRO'}>
                     {u.ativo ? 'Ativo' : 'Inativo'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-slate-400">
+                <TableCell className="text-slate-500">
                   {formatToBahia(u.criado_em, { hour: undefined, minute: undefined, second: undefined })}
                 </TableCell>
                 <TableCell className="text-right">
@@ -235,16 +239,16 @@ export const UsuariosPage: React.FC = () => {
 
           {selectedUsuario && (
             <div className="flex items-center gap-3 pt-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
                 Status no Sistema:
               </label>
               <button
                 type="button"
                 onClick={() => setAtivoForm(!ativoForm)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-semibold rounded-none transition-colors border ${
                   ativoForm
-                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                    : 'bg-red-950 text-red-400 border border-red-800'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                    : 'bg-rose-50 text-rose-700 border-rose-300'
                 }`}
               >
                 {ativoForm ? 'Usuário Ativo' : 'Usuário Inativo'}
@@ -252,7 +256,7 @@ export const UsuariosPage: React.FC = () => {
             </div>
           )}
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerOpen(false)} type="button">
               Cancelar
             </Button>
@@ -265,3 +269,4 @@ export const UsuariosPage: React.FC = () => {
     </div>
   )
 }
+

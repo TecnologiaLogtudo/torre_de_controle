@@ -74,10 +74,10 @@ export const DetalhamentoTorre: React.FC<DetalhamentoTorreProps> = ({
     <Card
       title="Detalhamento Operacional dos Recursos"
       subtitle="Acompanhamento detalhado de motoristas, veículos físicos, placas, categorias e status individuais"
-      className="bg-logtudo-surface/40 border-logtudo-border/60"
+      className="bg-white border-slate-200 shadow-sm"
     >
       <div className="space-y-4">
-        {/* Barra de Filtros Combináveis */}
+        {/* Barra de Filtros Horizontais */}
         <FilterBar
           hasActiveFilters={hasActiveFilters}
           onClearFilters={() => {
@@ -86,85 +86,87 @@ export const DetalhamentoTorre: React.FC<DetalhamentoTorreProps> = ({
             onClearFiltros()
           }}
         >
-          <SearchInput
-            value={motoristaInput}
-            onChange={e => setMotoristaInput(e.target.value)}
-            onClear={() => {
-              setMotoristaInput('')
-              onFiltrosChange({ ...filtros, motorista_nome: '', offset: 0 })
-            }}
-            placeholder="Buscar por motorista..."
-            className="w-48"
-          />
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            <SearchInput
+              value={motoristaInput}
+              onChange={e => setMotoristaInput(e.target.value)}
+              onClear={() => {
+                setMotoristaInput('')
+                onFiltrosChange({ ...filtros, motorista_nome: '', offset: 0 })
+              }}
+              placeholder="Buscar motorista..."
+              className="w-44"
+            />
 
-          <SearchInput
-            value={placaInput}
-            onChange={e => setPlacaInput(e.target.value)}
-            onClear={() => {
-              setPlacaInput('')
-              onFiltrosChange({ ...filtros, placa: '', offset: 0 })
-            }}
-            placeholder="Buscar por placa..."
-            className="w-36"
-          />
+            <SearchInput
+              value={placaInput}
+              onChange={e => setPlacaInput(e.target.value)}
+              onClear={() => {
+                setPlacaInput('')
+                onFiltrosChange({ ...filtros, placa: '', offset: 0 })
+              }}
+              placeholder="Buscar placa..."
+              className="w-32"
+            />
 
-          <Select
-            value={filtros.empresa_id || ''}
-            onChange={e => onFiltrosChange({ ...filtros, empresa_id: e.target.value, offset: 0 })}
-            placeholder="Empresa (Todas)"
-            options={empresas.map(e => ({ value: e.id, label: e.nome }))}
-            className="w-48"
-          />
+            <Select
+              value={filtros.empresa_id || ''}
+              onChange={e => onFiltrosChange({ ...filtros, empresa_id: e.target.value, offset: 0 })}
+              placeholder="Empresa (Todas)"
+              options={empresas.map(e => ({ value: e.id, label: e.nome }))}
+              className="w-44"
+            />
 
-          <Select
-            value={filtros.status || ''}
-            onChange={e => onFiltrosChange({ ...filtros, status: e.target.value, offset: 0 })}
-            placeholder="Status (Todos)"
-            options={[
-              { value: 'DISPONIVEL', label: 'DISPONIVEL' },
-              { value: 'PROGRAMADO', label: 'PROGRAMADO' },
-              { value: 'EM_ROTA', label: 'EM_ROTA' },
-              { value: 'INDISPONIVEL', label: 'INDISPONIVEL' },
-            ]}
-            className="w-40"
-          />
+            <Select
+              value={filtros.status || ''}
+              onChange={e => onFiltrosChange({ ...filtros, status: e.target.value, offset: 0 })}
+              placeholder="Status (Todos)"
+              options={[
+                { value: 'DISPONIVEL', label: 'DISPONIVEL' },
+                { value: 'PROGRAMADO', label: 'PROGRAMADO' },
+                { value: 'EM_ROTA', label: 'EM_ROTA' },
+                { value: 'INDISPONIVEL', label: 'INDISPONIVEL' },
+              ]}
+              className="w-36"
+            />
 
-          <Select
-            value={filtros.categoria || ''}
-            onChange={e => onFiltrosChange({ ...filtros, categoria: e.target.value, offset: 0 })}
-            placeholder="Categoria (Todas)"
-            options={[
-              { value: 'DEDICADO', label: 'DEDICADO' },
-              { value: 'SPOT', label: 'SPOT' },
-            ]}
-            className="w-36"
-          />
+            <Select
+              value={filtros.categoria || ''}
+              onChange={e => onFiltrosChange({ ...filtros, categoria: e.target.value, offset: 0 })}
+              placeholder="Categoria (Todas)"
+              options={[
+                { value: 'DEDICADO', label: 'DEDICADO' },
+                { value: 'SPOT', label: 'SPOT' },
+              ]}
+              className="w-36"
+            />
 
-          <Select
-            value={filtros.tipo_veiculo || ''}
-            onChange={e => onFiltrosChange({ ...filtros, tipo_veiculo: e.target.value, offset: 0 })}
-            placeholder="Veículo (Todos)"
-            options={[
-              { value: 'HR', label: 'HR' },
-              { value: 'Fiorino', label: 'Fiorino' },
-              { value: 'Truck', label: 'Truck' },
-              { value: 'Toco', label: 'Toco' },
-              { value: 'VUC', label: 'VUC' },
-            ]}
-            className="w-36"
-          />
+            <Select
+              value={filtros.tipo_veiculo || ''}
+              onChange={e => onFiltrosChange({ ...filtros, tipo_veiculo: e.target.value, offset: 0 })}
+              placeholder="Veículo (Todos)"
+              options={[
+                { value: 'HR', label: 'HR' },
+                { value: 'Fiorino', label: 'Fiorino' },
+                { value: 'Truck', label: 'Truck' },
+                { value: 'Toco', label: 'Toco' },
+                { value: 'VUC', label: 'VUC' },
+              ]}
+              className="w-36"
+            />
+          </div>
         </FilterBar>
 
         {/* Tabela Operacional */}
         {isLoading ? (
           <div className="space-y-2">
-            <div className="h-12 bg-logtudo-surface/40 animate-pulse rounded-lg" />
-            <div className="h-12 bg-logtudo-surface/40 animate-pulse rounded-lg" />
-            <div className="h-12 bg-logtudo-surface/40 animate-pulse rounded-lg" />
+            <div className="h-12 bg-slate-200/80 animate-pulse rounded-none" />
+            <div className="h-12 bg-slate-200/80 animate-pulse rounded-none" />
+            <div className="h-12 bg-slate-200/80 animate-pulse rounded-none" />
           </div>
         ) : detalhamento.length === 0 ? (
           <EmptyState
-            icon={<Truck className="w-12 h-12 text-slate-600" />}
+            icon={<Truck className="w-12 h-12 text-slate-400" />}
             title="Nenhum recurso operacional encontrado"
             description={
               hasActiveFilters
@@ -189,24 +191,22 @@ export const DetalhamentoTorre: React.FC<DetalhamentoTorreProps> = ({
               <TableBody>
                 {detalhamento.map((item, idx) => (
                   <TableRow key={idx}>
-                    <TableCell className="font-semibold text-slate-100 flex items-center gap-2">
-                      <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <TableCell className="font-semibold text-slate-900 flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>{item.motorista_nome}</span>
                     </TableCell>
 
                     <TableCell>
                       <div className="flex items-center gap-1.5 font-mono text-xs">
-                        <span className="text-slate-300 font-semibold">{item.tipo_veiculo} - {item.veiculo_identificacao}</span>
-                        <span className="font-bold text-logtudo-accent">[{item.placa}]</span>
+                        <span className="text-slate-800 font-semibold">{item.tipo_veiculo} - {item.veiculo_identificacao}</span>
+                        <span className="font-bold text-sky-700">[{item.placa}]</span>
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-slate-300">{item.empresa_nome || '-'}</TableCell>
+                    <TableCell className="text-slate-700">{item.empresa_nome || '-'}</TableCell>
 
                     <TableCell>
-                      <Badge variant={item.categoria === 'DEDICADO' ? 'PROGRAMADO' : 'EM_BREVE'}>
-                        {item.categoria}
-                      </Badge>
+                      <StatusBadge status={item.categoria} showIcon={false} size="sm" />
                     </TableCell>
 
                     <TableCell>
@@ -217,9 +217,9 @@ export const DetalhamentoTorre: React.FC<DetalhamentoTorreProps> = ({
                       <StatusBadge status={item.status_operacional} />
                     </TableCell>
 
-                    <TableCell className="text-xs text-slate-400">
+                    <TableCell className="text-xs text-slate-500">
                       {item.motivo_indisponibilidade ? (
-                        <span className="text-red-400 font-semibold">{item.motivo_indisponibilidade}</span>
+                        <span className="text-rose-600 font-semibold">{item.motivo_indisponibilidade}</span>
                       ) : (
                         '-'
                       )}

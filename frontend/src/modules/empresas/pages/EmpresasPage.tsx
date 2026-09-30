@@ -152,12 +152,16 @@ export const EmpresasPage: React.FC = () => {
         hasActiveFilters={!!searchTerm}
         onClearFilters={() => setSearchTerm('')}
       >
-        <SearchInput
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          onClear={() => setSearchTerm('')}
-          placeholder="Buscar por nome ou CNPJ/CPF..."
-        />
+        <div className="flex flex-wrap items-center gap-3 w-full">
+          <div className="w-80">
+            <SearchInput
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              onClear={() => setSearchTerm('')}
+              placeholder="Buscar por nome ou CNPJ/CPF..."
+            />
+          </div>
+        </div>
       </FilterBar>
 
       {/* Lista de Empresas */}
@@ -165,7 +169,7 @@ export const EmpresasPage: React.FC = () => {
         <TableSkeleton rows={6} />
       ) : empresasFiltradas.length === 0 ? (
         <EmptyState
-          icon={<Building2 className="w-12 h-12 text-slate-600" />}
+          icon={<Building2 className="w-12 h-12 text-slate-400" />}
           title="Nenhuma empresa encontrada"
           description={
             searchTerm
@@ -192,14 +196,14 @@ export const EmpresasPage: React.FC = () => {
           <TableBody>
             {empresasFiltradas.map(emp => (
               <TableRow key={emp.id}>
-                <TableCell className="font-semibold text-slate-100">{emp.nome}</TableCell>
-                <TableCell className="font-mono text-slate-300">{emp.identificacao}</TableCell>
+                <TableCell className="font-semibold text-slate-900">{emp.nome}</TableCell>
+                <TableCell className="font-mono text-slate-600">{emp.identificacao}</TableCell>
                 <TableCell>
                   <Badge variant={emp.ativo ? 'SUCESSO' : 'ERRO'}>
                     {emp.ativo ? 'Ativa' : 'Inativa'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-slate-400">
+                <TableCell className="text-slate-500">
                   {formatToBahia(emp.criado_em, { hour: undefined, minute: undefined, second: undefined })}
                 </TableCell>
                 <TableCell className="text-right">
@@ -209,7 +213,7 @@ export const EmpresasPage: React.FC = () => {
                       size="sm"
                       onClick={() => handleVerDetalhes(emp)}
                       title="Ver detalhes e contratos"
-                      leftIcon={<Eye className="w-3.5 h-3.5 text-sky-400" />}
+                      leftIcon={<Eye className="w-3.5 h-3.5 text-sky-600" />}
                     >
                       Detalhes
                     </Button>
@@ -258,16 +262,16 @@ export const EmpresasPage: React.FC = () => {
 
           {selectedEmpresa && (
             <div className="flex items-center gap-3 pt-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
                 Status Operacional:
               </label>
               <button
                 type="button"
                 onClick={() => setAtivoForm(!ativoForm)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-semibold rounded-none transition-colors border ${
                   ativoForm
-                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                    : 'bg-red-950 text-red-400 border border-red-800'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                    : 'bg-rose-50 text-rose-700 border-rose-300'
                 }`}
               >
                 {ativoForm ? 'Empresa Ativa' : 'Empresa Inativa'}
@@ -275,7 +279,7 @@ export const EmpresasPage: React.FC = () => {
             </div>
           )}
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerOpen(false)} type="button">
               Cancelar
             </Button>
@@ -295,8 +299,8 @@ export const EmpresasPage: React.FC = () => {
         size="lg"
       >
         <div className="space-y-6">
-          <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+          <div className="bg-slate-50 p-4 rounded-none border border-slate-200">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
               Informações Cadastrais
             </h4>
             <div className="grid grid-cols-2 gap-3 text-xs">
@@ -308,7 +312,7 @@ export const EmpresasPage: React.FC = () => {
               </div>
               <div>
                 <span className="text-slate-500 block">Cadastrado em:</span>
-                <span className="text-slate-200 font-mono">
+                <span className="text-slate-800 font-mono font-medium">
                   {formatToBahia(empresaDetalhe?.criado_em)}
                 </span>
               </div>
@@ -316,15 +320,15 @@ export const EmpresasPage: React.FC = () => {
           </div>
 
           <div>
-            <h4 className="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
-              <History className="w-4 h-4 text-sky-400" />
+            <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+              <History className="w-4 h-4 text-sky-600" />
               Histórico de Capacidade Contratual
             </h4>
 
             {loadingHistorico ? (
               <Skeleton className="h-20 w-full" />
             ) : historicoConfiguracoes.length === 0 ? (
-              <div className="text-xs text-slate-400 p-4 bg-slate-950 rounded-lg border border-slate-800 text-center">
+              <div className="text-xs text-slate-500 p-4 bg-slate-50 rounded-none border border-slate-200 text-center">
                 Nenhuma configuração de capacidade registrada para esta empresa ainda.
               </div>
             ) : (
@@ -332,16 +336,16 @@ export const EmpresasPage: React.FC = () => {
                 {historicoConfiguracoes.map((config, index) => (
                   <div
                     key={config.id}
-                    className={`p-4 rounded-lg border ${
+                    className={`p-4 rounded-none border ${
                       index === 0
-                        ? 'bg-sky-950/40 border-sky-800/80'
-                        : 'bg-slate-950/60 border-slate-800/60'
+                        ? 'bg-white border-sky-300 shadow-sm'
+                        : 'bg-slate-50 border-slate-200'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-sky-400" />
-                        <span className="text-xs font-bold text-slate-100">
+                        <FileText className="w-4 h-4 text-sky-600" />
+                        <span className="text-xs font-bold text-slate-900">
                           {index === 0 ? 'Configuração Vigente' : `Histórico #${historicoConfiguracoes.length - index}`}
                         </span>
                       </div>
@@ -350,9 +354,9 @@ export const EmpresasPage: React.FC = () => {
                       </Badge>
                     </div>
 
-                    <div className="text-xs text-slate-400 mb-3">
+                    <div className="text-xs text-slate-600 mb-3">
                       <span>Vigência: </span>
-                      <span className="font-mono text-slate-200">
+                      <span className="font-mono text-slate-800 font-medium">
                         {formatToBahia(config.data_inicio, { hour: undefined, minute: undefined, second: undefined })}
                         {config.data_fim ? ` até ${formatToBahia(config.data_fim, { hour: undefined, minute: undefined, second: undefined })}` : ' em diante'}
                       </span>
@@ -369,10 +373,10 @@ export const EmpresasPage: React.FC = () => {
                             }))
                           : [])
                       ).map((cap, cIdx) => (
-                        <div key={cIdx} className="bg-slate-900 p-2 rounded border border-slate-800 text-[11px]">
-                          <span className="font-bold text-slate-200 block">{cap.tipo_veiculo}</span>
-                          <span className="text-slate-400">{cap.especialidade} — </span>
-                          <span className="font-bold text-sky-400">{cap.quantidade} vagas</span>
+                        <div key={cIdx} className="bg-white p-2 border border-slate-200 rounded-none text-[11px] shadow-sm">
+                          <span className="font-bold text-slate-900 block">{cap.tipo_veiculo}</span>
+                          <span className="text-slate-600">{cap.especialidade} — </span>
+                          <span className="font-bold text-sky-700">{cap.quantidade} vagas</span>
                         </div>
                       ))}
                     </div>
@@ -386,3 +390,4 @@ export const EmpresasPage: React.FC = () => {
     </div>
   )
 }
+

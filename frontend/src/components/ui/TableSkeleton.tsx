@@ -17,7 +17,7 @@ export const TableSkeleton: React.FC<TableSkeletonProps> = ({ rows = 5, classNam
     <div
       role="status"
       aria-label="Carregando dados da tabela"
-      className={`w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 divide-y divide-slate-800/60 ${className}`}
+      className={`w-full overflow-hidden rounded-none border border-slate-800 bg-slate-950 divide-y divide-slate-800/60 ${className}`}
     >
       {[...Array(rows)].map((_, i) => (
         <div key={i} className="px-3 py-3 flex items-center gap-4">

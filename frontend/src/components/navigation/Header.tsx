@@ -25,13 +25,13 @@ export const Header: React.FC<{ onToggleMobileSidebar?: () => void }> = ({
   ]
 
   return (
-    <header className="h-16 bg-slate-950 border-b border-slate-800 px-6 flex items-center justify-between sticky top-0 z-40">
+    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-40 shadow-sm">
       {/* Esquerda: Botão Mobile + Nome do Sistema */}
       <div className="flex items-center gap-4">
         {onToggleMobileSidebar && (
           <button
             onClick={onToggleMobileSidebar}
-            className="md:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-900"
+            className="md:hidden p-2 text-slate-600 hover:text-slate-900 rounded-none hover:bg-slate-100 border border-slate-200"
             aria-label="Menu"
           >
             <Menu className="w-5 h-5" />
@@ -39,8 +39,8 @@ export const Header: React.FC<{ onToggleMobileSidebar?: () => void }> = ({
         )}
 
         <div className="flex items-center gap-2">
-          <Radio className="w-5 h-5 text-sky-400 animate-pulse" />
-          <span className="font-semibold text-sm text-slate-200 hidden sm:inline">
+          <Radio className="w-4 h-4 text-sky-700" />
+          <span className="font-semibold text-xs text-slate-800 tracking-wide uppercase font-mono hidden sm:inline">
             Torre de Controle Logtudo
           </span>
         </div>
@@ -49,8 +49,8 @@ export const Header: React.FC<{ onToggleMobileSidebar?: () => void }> = ({
       {/* Direita: Usuário Autenticado + Profile Menu */}
       <div className="flex items-center gap-4">
         {/* Status Operacional da API */}
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-emerald-950/40 border border-emerald-800/40 rounded-full text-xs text-emerald-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+        <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-none text-xs text-emerald-700 font-mono">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
           <span className="font-medium">API Conectada</span>
         </div>
 
@@ -58,15 +58,15 @@ export const Header: React.FC<{ onToggleMobileSidebar?: () => void }> = ({
         {user && (
           <Dropdown
             trigger={
-              <button className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-slate-900 transition-colors border border-transparent hover:border-slate-800 text-left">
-                <div className="w-8 h-8 rounded-full bg-logtudo-surface border border-logtudo-border flex items-center justify-center text-logtudo-accent font-bold text-xs">
+              <button className="flex items-center gap-2.5 p-1 rounded-none hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200 text-left">
+                <div className="w-7 h-7 rounded-none bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-800 font-mono font-bold text-xs">
                   {user.nome ? user.nome.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div className="hidden sm:flex flex-col">
-                  <span className="text-xs font-semibold text-slate-200 leading-tight">
+                  <span className="text-xs font-semibold text-slate-800 leading-tight">
                     {user.nome}
                   </span>
-                  <span className="text-[11px] text-slate-400 leading-tight">
+                  <span className="text-[11px] text-slate-500 leading-tight font-mono">
                     {user.email}
                   </span>
                 </div>

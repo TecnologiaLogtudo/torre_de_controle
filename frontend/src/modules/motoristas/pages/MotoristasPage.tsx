@@ -41,6 +41,7 @@ export const MotoristasPage: React.FC = () => {
   const [searchPlaca, setSearchPlaca] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
   const [filtroEspecialidade, setFiltroEspecialidade] = useState('')
+  const [filtroStatus, setFiltroStatus] = useState<string>('TODOS')
 
   // Drawer Cadastro/Edição
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -55,8 +56,8 @@ export const MotoristasPage: React.FC = () => {
     setError(null)
     try {
       const [mList, vList, vecList, empList] = await Promise.all([
-        motoristasService.listar(),
-        contratosService.listarVinculosAtivos().catch(() => []),
+        motoristasService.listar(1000),
+        contratosService.listarVinculosAtivos(1000).catch(() => []),
         veiculosService.listar().catch(() => []),
         empresasService.listar().catch(() => []),
       ])
@@ -173,8 +174,10 @@ export const MotoristasPage: React.FC = () => {
     const matchesPlaca = info.veiculoPlaca.toLowerCase().includes(searchPlaca.toLowerCase())
     const matchesCat = !filtroCategoria || info.categoria === filtroCategoria
     const matchesEsp = !filtroEspecialidade || info.especialidade === filtroEspecialidade
+    const matchesStatus =
+      filtroStatus === 'TODOS' ? true : filtroStatus === 'ATIVO' ? m.ativo : !m.ativo
 
-    return matchesNome && matchesPlaca && matchesCat && matchesEsp
+    return matchesNome && matchesPlaca && matchesCat && matchesEsp && matchesStatus
   })
 
   return (
@@ -197,56 +200,78 @@ export const MotoristasPage: React.FC = () => {
       {error && <Alert type="error">{error}</Alert>}
 
       <FilterBar
-        hasActiveFilters={!!(searchNome || searchPlaca || filtroCategoria || filtroEspecialidade)}
+        hasActiveFilters={!!(searchNome || searchPlaca || filtroCategoria || filtroEspecialidade || filtroStatus !== 'TODOS')}
         onClearFilters={() => {
           setSearchNome('')
           setSearchPlaca('')
           setFiltroCategoria('')
           setFiltroEspecialidade('')
+          setFiltroStatus('TODOS')
         }}
       >
-        <SearchInput
-          value={searchNome}
-          onChange={e => setSearchNome(e.target.value)}
-          onClear={() => setSearchNome('')}
-          placeholder="Buscar por nome..."
-        />
+        <div className="flex flex-wrap items-center gap-3 w-full">
+          <div className="w-56">
+            <SearchInput
+              value={searchNome}
+              onChange={e => setSearchNome(e.target.value)}
+              onClear={() => setSearchNome('')}
+              placeholder="Buscar por nome..."
+            />
+          </div>
 
-        <SearchInput
-          value={searchPlaca}
-          onChange={e => setSearchPlaca(e.target.value)}
-          onClear={() => setSearchPlaca('')}
-          placeholder="Buscar por placa..."
-        />
+          <div className="w-48">
+            <SearchInput
+              value={searchPlaca}
+              onChange={e => setSearchPlaca(e.target.value)}
+              onClear={() => setSearchPlaca('')}
+              placeholder="Buscar por placa..."
+            />
+          </div>
 
-        <Select
-          value={filtroCategoria}
-          onChange={e => setFiltroCategoria(e.target.value)}
-          placeholder="Categoria (Todas)"
-          options={[
-            { value: 'DEDICADO', label: 'DEDICADO' },
-            { value: 'SPOT', label: 'SPOT' },
-          ]}
-          className="w-40"
-        />
+          <div className="w-40">
+            <Select
+              value={filtroCategoria}
+              onChange={e => setFiltroCategoria(e.target.value)}
+              placeholder="Categoria (Todas)"
+              options={[
+                { value: 'DEDICADO', label: 'DEDICADO' },
+                { value: 'SPOT', label: 'SPOT' },
+              ]}
+            />
+          </div>
 
-        <Select
-          value={filtroEspecialidade}
-          onChange={e => setFiltroEspecialidade(e.target.value)}
-          placeholder="Especialidade (Todas)"
-          options={[
-            { value: 'SECO', label: 'SECO' },
-            { value: 'REFRIGERADO', label: 'REFRIGERADO' },
-          ]}
-          className="w-44"
-        />
+          <div className="w-44">
+            <Select
+              value={filtroEspecialidade}
+              onChange={e => setFiltroEspecialidade(e.target.value)}
+              placeholder="Especialidade (Todas)"
+              options={[
+                { value: 'SECO', label: 'SECO' },
+                { value: 'REFRIGERADO', label: 'REFRIGERADO' },
+              ]}
+            />
+          </div>
+
+          <div className="w-40">
+            <Select
+              value={filtroStatus}
+              onChange={e => setFiltroStatus(e.target.value)}
+              placeholder="Status (Todos)"
+              options={[
+                { value: 'TODOS', label: 'Status (Todos)' },
+                { value: 'ATIVO', label: 'Apenas Ativos' },
+                { value: 'INATIVO', label: 'Apenas Inativos' },
+              ]}
+            />
+          </div>
+        </div>
       </FilterBar>
 
       {loading ? (
         <TableSkeleton rows={6} />
       ) : motoristasFiltrados.length === 0 ? (
         <EmptyState
-          icon={<UserCheck className="w-12 h-12 text-slate-600" />}
+          icon={<UserCheck className="w-12 h-12 text-slate-400" />}
           title="Nenhum motorista encontrado"
           description="Ajuste os filtros de pesquisa ou cadastre um novo motorista no sistema."
           action={
@@ -273,24 +298,24 @@ export const MotoristasPage: React.FC = () => {
               const info = getInfoVinculo(m.id)
               return (
                 <TableRow key={m.id}>
-                  <TableCell className="font-semibold text-slate-100">{m.nome}</TableCell>
+                  <TableCell className="font-semibold text-slate-900">{m.nome}</TableCell>
                   <TableCell>
                     <Badge variant={info.categoria === 'DEDICADO' ? 'PROGRAMADO' : 'EM_BREVE'}>
                       {info.categoria}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-slate-300">{info.empresaNome}</TableCell>
+                  <TableCell className="text-slate-600">{info.empresaNome}</TableCell>
                   <TableCell>
                     {info.veiculoPlaca !== '-' ? (
                       <div className="flex items-center gap-1.5 font-mono text-xs">
-                        <span className="text-slate-400">{info.veiculoTipo}</span>
-                        <span className="font-bold text-sky-400">[{info.veiculoPlaca}]</span>
+                        <span className="text-slate-600">{info.veiculoTipo}</span>
+                        <span className="font-bold text-sky-700">[{info.veiculoPlaca}]</span>
                       </div>
                     ) : (
-                      <span className="text-slate-500">-</span>
+                      <span className="text-slate-400">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-slate-300">{info.especialidade}</TableCell>
+                  <TableCell className="text-slate-600">{info.especialidade}</TableCell>
                   <TableCell>
                     <StatusBadge
                       status={m.ativo ? 'ATIVO' : 'INATIVO'}
@@ -335,16 +360,16 @@ export const MotoristasPage: React.FC = () => {
 
           {selectedMotorista && (
             <div className="flex items-center gap-3 pt-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
                 Status no Sistema:
               </label>
               <button
                 type="button"
                 onClick={() => setAtivoForm(!ativoForm)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-semibold rounded-none transition-colors border ${
                   ativoForm
-                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                    : 'bg-red-950 text-red-400 border border-red-800'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                    : 'bg-rose-50 text-rose-700 border-rose-300'
                 }`}
               >
                 {ativoForm ? 'Motorista Ativo' : 'Motorista Inativo'}
@@ -352,7 +377,7 @@ export const MotoristasPage: React.FC = () => {
             </div>
           )}
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerOpen(false)} type="button">
               Cancelar
             </Button>
@@ -371,3 +396,4 @@ export const MotoristasPage: React.FC = () => {
     </div>
   )
 }
+

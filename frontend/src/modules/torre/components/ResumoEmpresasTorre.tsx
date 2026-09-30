@@ -22,15 +22,15 @@ export const ResumoEmpresasTorre: React.FC<ResumoEmpresasTorreProps> = ({
     <Card
       title="Situação Operacional por Empresa"
       subtitle="Visualização agregada da capacidade contratada, utilização e status da frota alocada"
-      className="bg-logtudo-surface/40 border-logtudo-border/60"
+      className="bg-white border-slate-200 shadow-sm"
     >
       {isLoading ? (
         <div className="space-y-2">
-          <div className="h-10 bg-logtudo-surface/40 animate-pulse rounded-lg" />
-          <div className="h-10 bg-logtudo-surface/40 animate-pulse rounded-lg" />
+          <div className="h-10 bg-slate-200/80 animate-pulse rounded-none" />
+          <div className="h-10 bg-slate-200/80 animate-pulse rounded-none" />
         </div>
       ) : empresasResumo.length === 0 ? (
-        <div className="p-6 text-center text-xs text-slate-400 bg-logtudo-deep/40 rounded-lg border border-dashed border-logtudo-border/60">
+        <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-none border border-slate-200">
           Nenhuma empresa com programação registrada para esta data.
         </div>
       ) : (
@@ -56,39 +56,39 @@ export const ResumoEmpresasTorre: React.FC<ResumoEmpresasTorreProps> = ({
                   key={emp.empresa_id}
                   onClick={() => onSelectEmpresa && onSelectEmpresa(emp.empresa_id)}
                   className={`cursor-pointer transition-colors ${
-                    isSelected ? 'bg-logtudo-primary/20 border-l-4 border-l-logtudo-accent' : 'hover:bg-logtudo-surface/60'
+                    isSelected ? 'bg-sky-50 border-l-4 border-l-sky-600 font-medium' : 'hover:bg-slate-50/80'
                   }`}
                 >
-                  <TableCell className="font-bold text-slate-100 flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-logtudo-accent shrink-0" />
+                  <TableCell className="font-bold text-slate-900 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-sky-700 shrink-0" />
                     <span>{emp.empresa_nome}</span>
                   </TableCell>
 
-                  <TableCell className="text-center font-mono font-bold text-slate-200">
+                  <TableCell className="text-center font-mono font-bold text-slate-900">
                     {emp.contratados}
                   </TableCell>
 
-                  <TableCell className="text-center font-mono text-blue-400 font-semibold">
+                  <TableCell className="text-center font-mono text-sky-700 font-semibold">
                     {emp.programados}
                   </TableCell>
 
-                  <TableCell className="text-center font-mono text-amber-400 font-semibold">
+                  <TableCell className="text-center font-mono text-amber-700 font-semibold">
                     {emp.em_rota}
                   </TableCell>
 
-                  <TableCell className="text-center font-mono text-emerald-400 font-semibold">
+                  <TableCell className="text-center font-mono text-emerald-700 font-semibold">
                     {emp.disponiveis}
                   </TableCell>
 
-                  <TableCell className="text-center font-mono text-red-400 font-semibold">
+                  <TableCell className="text-center font-mono text-rose-700 font-semibold">
                     {emp.indisponiveis}
                   </TableCell>
 
-                  <TableCell className="text-center font-mono text-slate-400">
+                  <TableCell className="text-center font-mono">
                     {emp.vagas_nao_preenchidas > 0 ? (
-                      <span className="font-bold text-amber-400">{emp.vagas_nao_preenchidas}</span>
+                      <span className="font-bold text-amber-700">{emp.vagas_nao_preenchidas}</span>
                     ) : (
-                      '0'
+                      <span className="text-slate-400">0</span>
                     )}
                   </TableCell>
 

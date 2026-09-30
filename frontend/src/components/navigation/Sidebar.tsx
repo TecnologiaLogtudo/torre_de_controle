@@ -175,7 +175,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                   <div key={item.name} className="space-y-1">
                     <button
                       onClick={() => toggleGroup(item.name)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-200 hover:bg-logtudo-surface/80 transition-colors"
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-none text-xs font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         {item.icon}
@@ -189,17 +189,17 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                     </button>
 
                     {isOpen && (
-                      <div className="pl-6 space-y-1 border-l border-logtudo-border/50 ml-4">
+                      <div className="pl-4 space-y-1 border-l border-slate-800 ml-4">
                         {item.children!.map(child => (
                           <NavLink
                             key={child.path}
                             to={child.path}
                             onClick={onCloseMobile}
                             className={({ isActive }) =>
-                              `flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                              `flex items-center justify-between px-3 py-2 rounded-none text-xs font-medium transition-all ${
                                 isActive
-                                  ? 'bg-logtudo-primary text-white border border-logtudo-accent/40 font-semibold shadow-md'
-                                  : 'text-slate-300 hover:bg-logtudo-surface/60 hover:text-white'
+                                  ? 'bg-sky-950/70 text-sky-300 border-l-2 border-sky-400 font-semibold'
+                                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100 border-l-2 border-transparent'
                               }`
                             }
                           >
@@ -227,12 +227,12 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                     }
                   }}
                   className={({ isActive }) =>
-                    `flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                    `flex items-center justify-between px-3 py-2 rounded-none text-xs font-medium transition-all ${
                       isActive && !isSoon
-                        ? 'bg-logtudo-primary text-white border border-logtudo-accent/40 font-semibold shadow-md'
+                        ? 'bg-sky-950/70 text-sky-300 border-l-2 border-sky-400 font-semibold'
                         : isSoon
-                        ? 'text-slate-500 cursor-not-allowed hover:bg-logtudo-surface/20'
-                        : 'text-slate-300 hover:bg-logtudo-surface/60 hover:text-white'
+                        ? 'text-slate-600 cursor-not-allowed hover:bg-transparent'
+                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100 border-l-2 border-transparent'
                     }`
                   }
                 >
@@ -261,7 +261,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         </div>
         <div className="flex items-center justify-between">
           <span>Operação:</span>
-          <span className="font-semibold text-emerald-400">Fase 4.2 Ativa</span>
+          <span className="font-semibold text-emerald-400">Fase 5.1 Ativa</span>
         </div>
       </div>
     </aside>

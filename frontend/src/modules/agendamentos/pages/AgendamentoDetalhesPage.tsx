@@ -37,6 +37,8 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     agendamento,
     empresa,
     historico,
+    motoristas,
+    veiculos,
     motivos,
     loading,
     error,
@@ -90,6 +92,25 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     getPermittedNextStatuses,
   } = useAgendamentoDetalhes(id)
 
+  const historicoOrdenado = React.useMemo(() => {
+    return [...historico].sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
+  }, [historico])
+
+  const formatarDescricaoHistorico = (descricao: string) => {
+    let texto = descricao
+    motoristas.forEach(m => {
+      if (m.id && texto.includes(m.id)) {
+        texto = texto.split(m.id).join(`Motorista "${m.nome}"`)
+      }
+    })
+    veiculos.forEach(v => {
+      if (v.id && texto.includes(v.id)) {
+        texto = texto.split(v.id).join(`Veículo "${v.tipo_veiculo} [${v.placa}]"`)
+      }
+    })
+    return texto
+  }
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -113,6 +134,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
 
   const alocacoesDedicadas = agendamento.alocacoes.filter(a => a.categoria === 'DEDICADO')
   const alocacoesSpot = agendamento.alocacoes.filter(a => a.categoria === 'SPOT')
+  const totalIndisponiveisDedicados = alocacoesDedicadas.filter(a => a.status_operacional === 'INDISPONIVEL').length
 
   return (
     <div className="space-y-6">
@@ -127,7 +149,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           badge={
             <div className="flex items-center gap-2">
               <span
-                className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-sky-950/60 text-sky-400 border border-sky-800/60"
+                className="px-2 py-0.5 rounded-none text-xs font-mono font-bold bg-slate-100 text-sky-700 border border-slate-300"
                 title="Versão do Agendamento (incrementada a cada alteração)"
               >
                 v{agendamento.versao || 1}
@@ -151,33 +173,33 @@ export const AgendamentoDetalhesPage: React.FC = () => {
       </div>
 
       {/* Card de Resumo da Programação */}
-      <Card className="bg-gradient-to-r from-slate-900 via-slate-900 to-sky-950/20 border-sky-800/40">
+      <Card className="bg-white border-slate-200 shadow-sm">
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
           <div>
-            <span className="text-slate-400 block mb-0.5">Empresa Contratante:</span>
-            <span className="font-bold text-slate-100 text-sm">{empresa?.nome}</span>
+            <span className="text-slate-500 block mb-0.5">Empresa Contratante:</span>
+            <span className="font-bold text-slate-900 text-sm">{empresa?.nome}</span>
             <span className="text-slate-500 block font-mono">{empresa?.identificacao}</span>
           </div>
 
           <div>
-            <span className="text-slate-400 block mb-0.5">Data da Programação:</span>
-            <span className="font-mono font-bold text-slate-200 text-sm flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-sky-400" />
+            <span className="text-slate-500 block mb-0.5">Data da Programação:</span>
+            <span className="font-mono font-bold text-slate-900 text-sm flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-sky-600" />
               {formatToBahia(agendamento.data, { hour: undefined, minute: undefined, second: undefined })}
             </span>
           </div>
 
           <div>
-            <span className="text-slate-400 block mb-0.5">Horário de Início:</span>
-            <span className="font-mono font-bold text-sky-400 text-sm flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-sky-400" />
+            <span className="text-slate-500 block mb-0.5">Horário de Início:</span>
+            <span className="font-mono font-bold text-sky-700 text-sm flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-sky-600" />
               {agendamento.horario_inicio}
             </span>
           </div>
 
           <div>
-            <span className="text-slate-400 block mb-0.5">Total de Alocações:</span>
-            <span className="font-bold text-emerald-400 text-sm">
+            <span className="text-slate-500 block mb-0.5">Total de Alocações:</span>
+            <span className="font-bold text-emerald-700 text-sm">
               {agendamento.alocacoes.length} Veículos / Motoristas
             </span>
           </div>
@@ -188,74 +210,90 @@ export const AgendamentoDetalhesPage: React.FC = () => {
       <Card
         title="Composição Contratual de Dedicados (Preenchimento por Vaga)"
         subtitle="Vagas da empresa atreladas aos recursos dedicados associados"
+        className="bg-white border-slate-200 shadow-sm"
       >
         {alocacoesDedicadas.length === 0 ? (
-          <div className="p-4 bg-slate-950 rounded-lg border border-dashed border-slate-800 text-center text-xs text-slate-400">
+          <div className="p-4 bg-slate-50 rounded-none border border-dashed border-slate-200 text-center text-xs text-slate-500">
             Nenhuma alocação dedicada ativa registrada para este agendamento.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {alocacoesDedicadas.map((aloc, idx) => {
               const isIndisponivel = aloc.status_operacional === 'INDISPONIVEL'
               const motivo = motivos.find(m => m.id === aloc.motivo_indisponibilidade_id)
               const veiculoObj = getVeiculoObj(aloc.veiculo_id)
+              const isVagaCoberta = isIndisponivel && alocacoesSpot.length > 0 && alocacoesSpot.length >= (idx + 1)
 
               return (
                 <div
                   key={aloc.id}
-                  className={`p-4 rounded-xl border flex flex-col justify-between transition-all ${
+                  className={`p-4 rounded-none border flex flex-col justify-between transition-colors ${
                     isIndisponivel
-                      ? 'bg-red-950/20 border-red-800/60'
-                      : 'bg-slate-950 border-slate-800'
+                      ? 'bg-rose-50/60 border-rose-200'
+                      : 'bg-slate-50/70 border-slate-200'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-300">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-xs font-bold text-slate-700">
                       VAGA DEDICADA #{idx + 1}
                     </span>
                     <StatusBadge status={aloc.status_operacional} />
                   </div>
 
                   <div className="space-y-1.5 text-xs mb-3">
-                    <div className="flex items-center gap-2 font-semibold text-slate-100">
-                      <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <div className="flex items-center gap-2 font-semibold text-slate-900">
+                      <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>{getMotoristaNome(aloc.motorista_id)}</span>
                     </div>
 
-                    <div className="flex items-center gap-2 font-mono text-sky-400 flex-wrap">
-                      <Truck className="w-4 h-4 text-sky-400 shrink-0" />
+                    <div className="flex items-center gap-2 font-mono text-sky-700 flex-wrap">
+                      <Truck className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>{getVeiculoInfo(aloc.veiculo_id)}</span>
                       <PerfilBadge perfil={veiculoObj?.especialidade} />
                     </div>
 
                     {isIndisponivel && (
-                      <div className="p-3 bg-red-950/60 border border-red-800/60 rounded text-[11px] text-red-300 space-y-2">
-                        <div className="flex items-center gap-1.5 font-bold">
-                          <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                      <div className="p-3 bg-white border border-rose-200 rounded-none text-[11px] text-rose-800 space-y-2 mt-2 shadow-sm">
+                        <div className="flex items-center gap-1.5 font-bold text-rose-700">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                           <span>RECURSO INDISPONÍVEL</span>
                         </div>
-                        <p className="text-red-200">
+                        <p className="text-slate-600">
                           Motivo: <strong>{motivo?.nome || 'Motivo operacional registrado'}</strong>. A vaga permanece ocupada no contrato, mas necessita de cobertura SPOT para a rota.
                         </p>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={handleOpenAdicionarSpot}
-                          leftIcon={<Plus className="w-3.5 h-3.5" />}
-                          className="bg-red-600 hover:bg-red-500 border-red-500 text-white"
-                        >
-                          Cobrir Vaga com SPOT
-                        </Button>
+                        {isVagaCoberta ? (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={true}
+                              leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                              className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 cursor-not-allowed"
+                            >
+                              Vaga Coberta por SPOT
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={handleOpenAdicionarSpot}
+                            leftIcon={<Plus className="w-3.5 h-3.5" />}
+                            className="bg-rose-700 hover:bg-rose-800 border-rose-700 text-white"
+                          >
+                            + Cobrir Vaga com SPOT
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-slate-800/60 flex items-center justify-end gap-2 flex-wrap">
+                  <div className="pt-2.5 border-t border-slate-200 flex items-center justify-end gap-2 flex-wrap">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenTrocarVeiculo(aloc.id)}
-                      leftIcon={<Truck className="w-3.5 h-3.5 text-sky-400" />}
+                      leftIcon={<Truck className="w-3.5 h-3.5 text-sky-600" />}
                       title="Substituir provisoriamente o veículo deste dedicado mantendo o contrato"
                     >
                       Trocar Veículo
@@ -264,7 +302,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenAlterarStatus(aloc.id, aloc.status_operacional)}
-                      leftIcon={<Activity className="w-3.5 h-3.5" />}
+                      leftIcon={<Activity className="w-3.5 h-3.5 text-slate-600" />}
                     >
                       Alterar Status
                     </Button>
@@ -280,6 +318,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
       <Card
         title="Alocações SPOT (Recursos Adicionais)"
         subtitle="Inclusão e substituição de recursos SPOT complementares"
+        className="bg-white border-slate-200 shadow-sm"
         action={
           <Button
             variant="primary"
@@ -292,7 +331,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
         }
       >
         {alocacoesSpot.length === 0 ? (
-          <div className="p-4 bg-slate-950 rounded-lg border border-dashed border-slate-800 text-center text-xs text-slate-400">
+          <div className="p-4 bg-slate-50 rounded-none border border-dashed border-slate-200 text-center text-xs text-slate-500">
             Nenhum recurso SPOT adicionado a esta programação ainda.
           </div>
         ) : (
@@ -300,22 +339,22 @@ export const AgendamentoDetalhesPage: React.FC = () => {
             {alocacoesSpot.map(spot => (
               <div
                 key={spot.id}
-                className="p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                className="p-4 bg-slate-50/80 border border-slate-200 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
                 <div className="space-y-1 text-xs">
                   <div className="flex items-center gap-2">
-                    <Badge variant="EM_BREVE">SPOT</Badge>
-                    <span className="font-bold text-slate-100 text-sm">
+                    <StatusBadge status="SPOT" showIcon={false} size="sm" />
+                    <span className="font-bold text-slate-900 text-sm">
                       {getMotoristaNome(spot.motorista_id)}
                     </span>
                   </div>
-                  <div className="font-mono text-sky-400 flex items-center gap-2 flex-wrap">
+                  <div className="font-mono text-sky-700 flex items-center gap-2 flex-wrap">
                     <span>{getVeiculoInfo(spot.veiculo_id)}</span>
                     <PerfilBadge perfil={getVeiculoObj(spot.veiculo_id)?.especialidade} />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <StatusBadge status={spot.status_operacional} />
                   <Button
                     variant="outline"
@@ -337,7 +376,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleRemoverSpot(spot.id)}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-950/40"
+                    className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                     leftIcon={<Trash2 className="w-3.5 h-3.5" />}
                   >
                     Remover
@@ -352,23 +391,29 @@ export const AgendamentoDetalhesPage: React.FC = () => {
       {/* Seção 3: Histórico de Alterações */}
       <Card
         title="Histórico de Alterações da Programação"
-        subtitle="Trilha de modificações com exibição de horário no fuso America/Bahia"
+        subtitle="Trilha decrescente de modificações com indicação de versão e resolução de motoristas e veículos"
+        className="bg-white border-slate-200 shadow-sm"
       >
-        {historico.length === 0 ? (
-          <div className="p-4 bg-slate-950 rounded-lg border border-slate-800 text-center text-xs text-slate-400">
+        {historicoOrdenado.length === 0 ? (
+          <div className="p-4 bg-slate-50 rounded-none border border-slate-200 text-center text-xs text-slate-500">
             Nenhum evento registrado no histórico deste agendamento.
           </div>
         ) : (
           <div className="space-y-3">
-            {historico.map(h => (
-              <div key={h.id} className="p-3 bg-slate-950 border border-slate-800 rounded-lg flex items-start gap-3 text-xs">
-                <History className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+            {historicoOrdenado.map((h, idx) => (
+              <div key={h.id} className="p-3.5 bg-slate-50/90 border border-slate-200 rounded-none flex items-start gap-3 text-xs">
+                <History className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-slate-200 uppercase tracking-wider">{h.tipo_alteracao}</span>
-                    <span className="font-mono text-slate-400">{formatToBahia(h.criado_em)}</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-800 uppercase tracking-wider">{h.tipo_alteracao}</span>
+                      <span className="px-1.5 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-mono font-bold">
+                        v{historicoOrdenado.length - idx}
+                      </span>
+                    </div>
+                    <span className="font-mono text-slate-500 text-[11px]">{formatToBahia(h.criado_em)}</span>
                   </div>
-                  <p className="text-slate-300">{h.descricao}</p>
+                  <p className="text-slate-700 text-xs leading-relaxed">{formatarDescricaoHistorico(h.descricao)}</p>
                 </div>
               </div>
             ))}
@@ -407,7 +452,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
             required
           />
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerSpotOpen(false)} type="button">
               Cancelar
             </Button>
@@ -459,11 +504,11 @@ export const AgendamentoDetalhesPage: React.FC = () => {
             />
           )}
 
-          <div className="p-3 bg-sky-950/40 border border-sky-800/60 rounded-lg text-xs text-sky-300">
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-none text-xs text-slate-700">
             <strong>Trilha de Auditoria:</strong> Toda transição gera um evento operacional imutável com timestamp em <code>America/Bahia</code>.
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerStatusOpen(false)} type="button">
               Cancelar
             </Button>
@@ -503,11 +548,11 @@ export const AgendamentoDetalhesPage: React.FC = () => {
             placeholder="Ex: Manutenção preventiva, quebra mecânica, vistoria..."
           />
 
-          <div className="p-3 bg-sky-950/40 border border-sky-800/60 rounded-lg text-xs text-sky-300">
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-none text-xs text-slate-700">
             <strong>Regra Q5:</strong> A troca é registrada na trilha de auditoria com versionamento consecutivo e preserva a categoria <code>DEDICADO</code> no agendamento.
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerTrocaVeiculoOpen(false)} type="button">
               Cancelar
             </Button>

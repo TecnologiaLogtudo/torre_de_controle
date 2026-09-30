@@ -7,11 +7,53 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ## [Unreleased]
 
-### Alterado / Adicionado
+## [1.2.0] — 2026-09-30 (Fase 5.1 — White Label, Versionamento & Governança Operacional)
+
+### Adicionado & Consolidado (Fase 5.1)
+
+- **Script de Recuperação de Vínculos Motoristas-Veículos (`scripts/recriar_vinculos_motoristas_veiculos.py`)**:
+  - Utilitário para restabelecer os vínculos e a correlação entre motoristas e veículos na tabela `motoristas_dedicados_vinculos` a partir da planilha mestre (`motoristas_3c_lactalis.xlsx` ou arquivo customizado).
+  - Pareamento inteligente por nome de motorista e placa de veículo com suporte a categorias `DEDICADO` e `SPOT`, idempotência contra duplicidades ativas e opção `--dry-run`.
+  - Auto-redirecionamento para `.venv` e suíte de testes unitários em `tests/test_script_recriar_vinculos.py`.
+
+- **Script Interativo de Remoção de Empresas e Usuários (`scripts/remover_empresas_usuarios.py`)**:
+  - Utilitário interativo com menu de seleção (numérico por vírgula, CNPJ/e-mail ou 'TODAS') e suporte a flags CLI para exclusão seletiva de empresas e usuários.
+  - Verificação prévia de integridade referencial (`RESTRICT` em agendamentos/eventos), trava de segurança contra exclusão do único usuário do sistema e opção `--cascade-dependentes`.
+  - Suporte a modo `--dry-run`, auto-redirecionamento para `.venv` e suíte de testes unitários em `tests/test_script_remover_empresas_usuarios.py`.
+
+- **Script Utilitário de Limpeza de Dados Operacionais (`scripts/limpar_dados_operacionais.py`)**:
+  - Implementado script em linha de comando para exclusão transacional segura de todos os agendamentos (`agendamentos`, `alocacoes_operacionais`, `historico_agendamentos`), contratos (`contratos_configuracoes`) e vínculos entre motoristas e empresas (`motoristas_dedicados_vinculos`).
+  - Ordem de exclusão em conformidade com as restrições de chave estrangeira (`RESTRICT` e `CASCADE`).
+  - Suporte a modo `--dry-run` para simulação sem persistência, `--force` (`-y`) para automação sem prompt interativo e flags para escopo granular (`--apenas-agendamentos`, `--apenas-contratos`, `--apenas-vinculos`, `--limpar-eventos`).
+  - Adicionada suíte de testes unitários em `tests/test_script_limpar_dados.py`.
+
+  - **Identidade White Label & Design Plano (Flat Sharp)**:
+    - Fundo unificado em tom claro suave (`bg-slate-100` / `bg-slate-50`), superfícies e cards em branco puro (`bg-white border-slate-200 shadow-sm`), tipografia nítida em alto contraste (`text-slate-900` / `text-slate-700`).
+    - Supressão total de bordas arredondadas em toda a aplicação (`border-radius: 0 !important;` e `rounded-none`), atendendo à diretriz de design industrial plano.
+    - Badges semânticos em tons pastel legíveis e contrastantes (Verde esmeralda para `Disponível`/`Ativo`, Azul sky para `Programado`, Âmbar para `Em Rota`, Vermelho rose para `Indisponível`/`Inativo`).
+  - **Torre de Controle (Cockpit Operacional)**:
+    - Campo *"Última atualização: DD/MM/AAAA HH:mm:ss"* reposicionado **abaixo** do seletor de data e botão de atualização em [TorreHeader.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/torre/components/TorreHeader.tsx).
+    - Filtros da tabela de detalhamento da frota alinhados na **horizontal** em [DetalhamentoTorre.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/torre/components/DetalhamentoTorre.tsx).
+    - KPIs e Resumo por Empresa migrados para superfícies claras com bordas de destaque.
+  - **Agendamentos e Detalhes da Programação**:
+    - Filtros de agendamentos reorganizados em linha **horizontal** em [AgendamentosPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/agendamentos/pages/AgendamentosPage.tsx).
+    - Botão `+ Cobrir Vaga com SPOT` **desabilitado/bloqueado** com badge informativa `"Vaga Coberta por SPOT"` quando uma vaga com indisponibilidade já tiver sido preenchida por um recurso SPOT.
+    - Histórico de alterações da programação em **ordem decrescente** (mais recente primeiro) exibindo a versão da mudança (`v1, v2, ...`).
+    - Resolução automática de UUIDs no Histórico: exibição clara do **nome do motorista e veículo com placa formatada** em vez de identificadores alfanuméricos brutos.
+  - **Cadastros e Configurações (Filtros Horizontais & Motoristas Inativos)**:
+    - **Gestão de Motoristas ([MotoristasPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/motoristas/pages/MotoristasPage.tsx))**: Inclusão de seletor de status (`Status (Todos)`, `Apenas Ativos`, `Apenas Inativos`) permitindo que **motoristas inativos apareçam na listagem**, com filtros alinhados horizontalmente e paginação ampliada.
+    - **Empresas, Veículos, Usuários e Motivos de Indisponibilidade**: Todos os filtros migrados para alinhamento horizontal lado a lado e tema White Label.
+    - **Status de Motoristas ([StatusMotoristasPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/motoristas/pages/StatusMotoristasPage.tsx))**: Cards interativos e filtros em layout horizontal claro.
+  - **Central de Operação & Eventos ([HistoricoEventosPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/operacao/pages/HistoricoEventosPage.tsx))**:
+    - Filtros horizontais alinhados e consolidação de métricas e tabela em tema claro White Label.
+  - **Qualidade e Testes**:
+    - Suíte de 38 testes automatizados do Vitest 100% verde (`npm test`).
+    - Tipagem TypeScript estrita sem erros de compilação.
 
 - **Melhorias de Agendamento, Versionamento Consecutivo, Troca de Veículo e Cockpit de Motoristas**:
   - **Versionamento Consecutivo do Agendamento**:
     - Adicionado campo `versao: int = 1` no modelo `Agendamento` ([app/agendamentos/models.py](file:///d:/Logtudo/Projetos/torre_de_controle/app/agendamentos/models.py)) e schema ([app/agendamentos/schemas.py](file:///d:/Logtudo/Projetos/torre_de_controle/app/agendamentos/schemas.py)), incrementado consecutivamente (`versao += 1`) a cada mutação (inclusão de SPOT, substituição de SPOT, remoção de SPOT, troca provisória de veículo dedicado, atualização de status operacional e alterações no agendamento).
+    - Criada migração Alembic `8b9c0d1e2f3a_adicionar_versao_agendamento.py` e DDL seguro no startup de [app/main.py](file:///d:/Logtudo/Projetos/torre_de_controle/app/main.py) garantindo retrocompatibilidade com bancos pré-existentes.
     - Exibição de badge com a versão (`v1`, `v2`, etc.) na listagem de agendamentos e no cabeçalho da página de detalhes.
   - **Auto-Alocação com Flag de Indisponibilidade (Regra Q2)**:
     - Motoristas dedicados com indisponibilidade ativa na data ou dia anterior são auto-alocados no agendamento com `status_operacional = "INDISPONIVEL"`, preservando o vínculo contratual sem disparar erro HTTP 400.
@@ -27,7 +69,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
     - Elevado a item de primeiro nível na barra lateral ([Sidebar.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/components/navigation/Sidebar.tsx)).
     - Cards de resumo clicáveis atuando como filtros rápidos (Total, Disponíveis, Programados, Em Rota, Indisponíveis, Sem Alocação), busca por nome e coluna de perfil de veículo em [StatusMotoristasPage.tsx](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/modules/motoristas/pages/StatusMotoristasPage.tsx).
   - **Janela de Agendamentos Parametrizável (Regra Q1)**:
-    - Suporte a agendamentos D+0 sem bloqueio de horário e limite futuro parametrizável via chave `dias_antecedencia_maxima_agendamento` (padrão 7 dias).
+    - Suporte a agendamentos D+0 sem bloqueio de horário e limite futuro parametrizável via chave `dias_antecedencia_maxima_agendamento` (padrão 1 dia, D+0 e D+1).
 
 - **Fase 3: Tipagem Estrita Matt Pocock & Extração de Hooks Operacionais**:
   - **Eliminação Completa de `any` no Frontend**: Substituídos 100% dos blocos `catch (err: any)` e type casts inseguros `as any` por `catch (err: unknown)` com type-narrowing rigoroso via `getErrorMessage` e `isApiError` em [errors.ts](file:///d:/Logtudo/Projetos/torre_de_controle/frontend/src/services/api/errors.ts).

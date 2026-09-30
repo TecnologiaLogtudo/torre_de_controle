@@ -21,13 +21,13 @@ export const SearchInput: React.FC<SearchInputProps> = ({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-8 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-logtudo-accent focus:ring-1 focus:ring-logtudo-accent/20 transition-colors"
+        className="w-full bg-white border border-slate-300 rounded-none pl-8 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-600 focus:ring-1 focus:ring-sky-500 transition-colors"
         {...props}
       />
       {value && onClear && (
         <button
           onClick={onClear}
-          className="absolute right-2.5 text-slate-400 hover:text-slate-200 p-0.5"
+          className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-0.5"
           aria-label="Limpar pesquisa"
         >
           <X className="w-3.5 h-3.5" />

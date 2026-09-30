@@ -1,6 +1,6 @@
-# Frontend - Torre de Controle Logtudo (Fase 4.4 — Conclusão e Hardening)
+# Frontend - Torre de Controle Logtudo (Fase 5.1 — White Label, Versionamento & Governança Operacional)
 
-Interface operacional completa, responsiva e de alta densidade desenvolvida em React, TypeScript e Vite para a Torre de Controle Logtudo.
+Interface operacional completa, responsiva, de alta densidade e design industrial plano (Flat Sharp / White Label) desenvolvida em React, TypeScript e Vite para a Torre de Controle Logtudo.
 
 ---
 
@@ -9,14 +9,14 @@ Interface operacional completa, responsiva e de alta densidade desenvolvida em R
 - **Framework / UI**: React 18 + TypeScript + Vite
 - **Roteamento**: React Router DOM v6
 - **Cliente HTTP**: Axios com Interceptors centralizados
-- **Estilização**: Tailwind CSS com cores e tokens oficiais Logtudo (`#185772`, `#757675`, `#6ca8c2`, `#0F2C3A`, `#13394A`)
+- **Estilização**: Tailwind CSS (White Label / bordas retas / superfícies claras em alto contraste)
 - **Design & Prototipagem**: MCP Stitch (`projects/11302205133243501184`)
 - **Ícones**: Lucide React
 - **Testes**: Vitest + React Testing Library + JSDOM
 
 ---
 
-## 🚀 Módulos Implementados e Auditados (Fase 4.4 Final)
+## 🚀 Módulos Implementados e Consolidados (Fase 5.1)
 
 1. **Torre de Controle (`/app/torre`)**: Dashboard operacional de alta densidade informacional com indicadores numéricos executivos, resumo por empresa, detalhamento de frota paginado com filtros combináveis (busca debounced) e feed de eventos imutáveis em `America/Bahia`.
 2. **Empresas (`/app/empresas`)**: Cadastro, edição, busca por CNPJ/CPF e histórico de configurações de capacidade contratual.

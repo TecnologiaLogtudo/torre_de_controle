@@ -41,21 +41,15 @@ export const LoginPage: React.FC = () => {
   const activeError = formError || error
 
   return (
-    <div className="relative min-h-screen bg-logtudo-deep flex flex-col items-center justify-center p-4 overflow-hidden">
+    <div className="relative min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 overflow-hidden">
       {/* Camada de Textura Oficial Logtudo como marca d'água de fundo */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-15 mix-blend-overlay bg-cover bg-center"
+        className="absolute inset-0 pointer-events-none opacity-5 mix-blend-overlay bg-cover bg-center"
         style={{ backgroundImage: `url(${textureBg})` }}
       />
 
-      {/* Brilho institucional sutil em gradiente Teal */}
-      <div className="absolute w-[500px] h-[500px] bg-logtudo-primary/20 rounded-full blur-3xl pointer-events-none -top-20 -left-20" />
-      <div className="absolute w-[400px] h-[400px] bg-logtudo-accent/10 rounded-full blur-3xl pointer-events-none -bottom-20 -right-20" />
-
       {/* Card de Autenticação */}
-      <div className="w-full max-w-md bg-logtudo-surface border border-logtudo-border/80 rounded-2xl p-8 shadow-2xl shadow-black/80 relative z-10 backdrop-blur-md">
-        {/* Detalhe estético do topo com cor primária institucional */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-logtudo-primary via-logtudo-accent to-logtudo-primary rounded-t-2xl" />
+      <div className="w-full max-w-md bg-slate-900 border border-slate-800 border-t-2 border-t-slate-600 rounded-none p-8 relative z-10">
 
         {/* Branding Oficial com Logo e Identidade da Marca */}
         <div className="flex flex-col items-center text-center mb-8 pt-2">
