@@ -42,7 +42,6 @@ COPY --chown=appuser:appgroup app/ ./app
 COPY --chown=appuser:appgroup scripts/ ./scripts
 COPY --chown=appuser:appgroup alembic/ ./alembic
 COPY --chown=appuser:appgroup alembic.ini .
-COPY --chown=appuser:appgroup motoristas_3c_lactalis.xlsx .
 
 # Permissões do diretório de trabalho
 RUN chown -R appuser:appgroup /app
