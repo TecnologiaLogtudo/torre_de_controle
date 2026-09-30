@@ -1,15 +1,8 @@
-from typing import List, Union
-from pydantic import AnyHttpUrl, BeforeValidator, model_validator
+from typing import Any, List, Union
+from pydantic import AnyHttpUrl, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing_extensions import Annotated
 
 
-def parse_cors_origins(v: Union[str, List[str]]) -> List[str]:
-    if isinstance(v, str) and not v.startswith("["):
-        return [i.strip() for i in v.split(",")]
-    elif isinstance(v, (list, str)):
-        return v
-    raise ValueError(v)
 
 
 class Settings(BaseSettings):
@@ -48,9 +41,25 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
 
     # CORS
-    BACKEND_CORS_ORIGINS: Annotated[
-        List[str], BeforeValidator(parse_cors_origins)
-    ] = []
+    BACKEND_CORS_ORIGINS: Union[str, List[str]] = []
+
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: Any) -> List[str]:
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith("[") and v.endswith("]"):
+                import json
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
+            return [i.strip() for i in v.split(",") if i.strip()]
+        elif isinstance(v, list):
+            return v
+        return []
 
 
 settings = Settings()
