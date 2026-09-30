@@ -138,7 +138,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
   }
 
   return (
-    <aside className="w-64 bg-logtudo-deep border-r border-logtudo-border/60 flex flex-col shrink-0 min-h-screen relative overflow-hidden">
+    <aside className="w-64 bg-logtudo-deep border-r border-logtudo-border/60 flex flex-col shrink-0 h-full relative overflow-hidden">
       {/* Camada sutil de textura da marca no fundo da barra lateral */}
       <div
         className="absolute inset-0 pointer-events-none opacity-5 mix-blend-overlay bg-cover"

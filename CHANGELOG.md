@@ -14,6 +14,12 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 - **Normalização e Resiliência de CORS (`app/core/config.py`)**:
   - `BACKEND_CORS_ORIGINS` aprimorado com extração automática de `scheme://host` (removendo caminhos como `/api` que são desconsiderados por navegadores em cabeçalhos `Origin`).
   - Adicionada suíte de testes unitários em `tests/test_config.py`.
+- **Validação de Identificação de Empresas (`app/empresas/schemas.py`)**:
+  - Ajustado `min_length` de `identificacao` para 1 (anteriormente exigia 11 caracteres), permitindo que empresas com códigos ou slugs curtos (ex: "3C", "LACTALIS", "EMP-01") sejam serializadas sem gerar erro de validação Pydantic (HTTP 500) na listagem de empresas (`GET /api/v1/empresas`).
+- **Favicon Oficial e Caminho Relativo (`frontend/index.html` e `frontend/public/favicon.svg`)**:
+  - Criado o arquivo `favicon.svg` com a identidade visual no diretório `public/` e ajustado o caminho no HTML para `./favicon.svg`, eliminando o erro HTTP 503 decorrente de busca indevida no domínio raiz.
+- **Fixação da Sidebar no Layout Desktop (`ApplicationLayout.tsx` e `Sidebar.tsx`)**:
+  - Sidebar configurada com posicionamento fixo (`fixed inset-y-0 left-0 w-64 z-30`) e compensação no container de conteúdo principal (`md:pl-64`), garantindo que permaneça imóvel durante a rolagem vertical de qualquer página da aplicação.
 
 ## [1.2.0] — 2026-09-30 (Fase 5.1 — White Label, Versionamento & Governança Operacional)
 

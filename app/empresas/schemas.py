@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 class EmpresaBase(BaseModel):
     nome: str = Field(..., min_length=2, max_length=255)
     identificacao: str = Field(
-        ..., min_length=11, max_length=18
-    )  # CPF/CNPJ limpos ou com pontuação
+        ..., min_length=1, max_length=20
+    )  # CPF/CNPJ ou código identificador
 
 
 class EmpresaCreate(EmpresaBase):
