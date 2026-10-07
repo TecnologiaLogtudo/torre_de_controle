@@ -19,7 +19,7 @@ from app.veiculos.models import Veiculo
 from app.contratos.models import ContratoConfiguracao, MotoristaDedicadoVinculo
 from app.auditoria.models import Auditoria
 from app.agendamentos.models import Agendamento, AlocacaoOperacional, HistoricoAgendamento
-from app.operacao.models import MotivoIndisponibilidade, EventoOperacional, ConfiguracaoSistema
+from app.operacao.models import MotivoIndisponibilidade, EventoOperacional, ConfiguracaoSistema, StatusOperacionalMotorista
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

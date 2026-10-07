@@ -29,10 +29,50 @@ app = FastAPI(
 def startup_event():
     from sqlalchemy import text
     from app.core.database import engine, Base
+    # Importa explicitamente todos os modelos para garantir registro completo no Base.metadata
+    from app.usuarios.models import Usuario
+    from app.empresas.models import Empresa
+    from app.motoristas.models import Motorista
+    from app.veiculos.models import Veiculo
+    from app.contratos.models import ContratoConfiguracao, MotoristaDedicadoVinculo
+    from app.auditoria.models import Auditoria
+    from app.agendamentos.models import Agendamento, AlocacaoOperacional, HistoricoAgendamento
+    from app.operacao.models import (
+        MotivoIndisponibilidade,
+        EventoOperacional,
+        ConfiguracaoSistema,
+        StatusOperacionalMotorista,
+    )
+
     Base.metadata.create_all(bind=engine)
     with engine.begin() as conn:
         try:
             conn.execute(text("ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS versao INTEGER NOT NULL DEFAULT 1;"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE eventos_operacionais ALTER COLUMN empresa_id DROP NOT NULL;"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE eventos_operacionais ALTER COLUMN veiculo_id DROP NOT NULL;"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS status_operacional_motoristas (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    motorista_id UUID NOT NULL REFERENCES motoristas(id) ON DELETE CASCADE,
+                    data DATE NOT NULL,
+                    status_operacional VARCHAR(50) NOT NULL DEFAULT 'DISPONIVEL',
+                    motivo_indisponibilidade_id UUID REFERENCES motivos_indisponibilidade(id) ON DELETE SET NULL,
+                    criado_em TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+                    atualizado_em TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+                );
+            """))
+            conn.execute(text("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_status_motorista_data ON status_operacional_motoristas (motorista_id, data);
+            """))
         except Exception:
             pass
     db = SessionLocal()

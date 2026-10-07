@@ -2,6 +2,19 @@
 
 ## [2026-10-07] Desacoplamento de Status SPOT, Versionamento Oficial de Agendamento, Ações em Lote e Refinamento de UI
 
+### Hotfix: Migração Automática no Startup da VPS, DDLs Defensivos e Favicon Base Path
+- **Migração Automática no Backend (`app/main.py`, `alembic/`)**:
+  - Adicionadas instruções DDL defensivas no evento `@app.on_event("startup")` para aplicar automaticamente no PostgreSQL da VPS as alterações estruturais:
+    - `ALTER TABLE eventos_operacionais ALTER COLUMN empresa_id DROP NOT NULL;`
+    - `ALTER TABLE eventos_operacionais ALTER COLUMN veiculo_id DROP NOT NULL;`
+    - `CREATE TABLE IF NOT EXISTS status_operacional_motoristas (...)` e índice único `idx_status_motorista_data`.
+  - Criada a migração oficial do Alembic `9c0d1e2f3a4b_status_operacional_motoristas_e_eventos_nullable.py` encadeada na revisão `8b9c0d1e2f3a`.
+  - Importados todos os modelos explicitamente em `app/main.py` e `alembic/env.py` garantindo que o SQLAlchemy registre `status_operacional_motoristas` no `Base.metadata`.
+  - Ajustado fallback em `OperacaoService.alterar_status_motorista` para utilizar `"SEM_ALOCACAO"` como `status_anterior` padrão de recursos sem histórico prévio.
+  - Resolvido o erro HTTP 500 no endpoint `/api/v1/operacao/status-lote`.
+- **Resolução do Erro 404 de Favicon no Frontend (`frontend/index.html`)**:
+  - Corrigido o caminho de `href="./favicon.svg"` para `href="/torre-de-controle/favicon.svg"`, garantindo que navegações em rotas SPA profundas (ex: `/app/motoristas`, `/app/configuracoes`) não sofram falha 404 por resolução relativa.
+
 ### Desacoplamento do Status SPOT e Isolamento por Empresa
 - **Persistência Independente (`status_operacional_motoristas`)**:
   - Criado o modelo e tabela `StatusOperacionalMotorista` (`status_operacional_motoristas`) com índice único `(motorista_id, data)` para armazenar o status operacional diário de motoristas SPOT (`DISPONIVEL`, `INDISPONIVEL`, `SEM_ALOCACAO`) de forma desacoplada de `Agendamento` e sem vincular a nenhuma empresa parceira.

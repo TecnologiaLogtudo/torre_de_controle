@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.core.datetime_utils import inicio_do_dia_utc, fim_do_dia_utc, agora_local
 from app.contratos.services import obter_configuracao_vigente
-from app.operacao.models import MotivoIndisponibilidade, ConfiguracaoSistema, EventoOperacional
+from app.operacao.models import MotivoIndisponibilidade, ConfiguracaoSistema, EventoOperacional, StatusOperacionalMotorista
 from app.operacao.schemas import (
     MotivoIndisponibilidadeCreate,
     MotivoIndisponibilidadeUpdate,
@@ -750,7 +750,7 @@ class OperacaoService:
                 )
                 .first()
             )
-            status_anterior = s_diario.status_operacional if s_diario else "DISPONIVEL"
+            status_anterior = s_diario.status_operacional if s_diario else "SEM_ALOCACAO"
             if not s_diario:
                 s_diario = StatusOperacionalMotorista(
                     motorista_id=motorista_id,

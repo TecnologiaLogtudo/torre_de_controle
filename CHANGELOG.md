@@ -8,6 +8,11 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 ## [Unreleased]
 
 ### Adicionado & Corrigido (Desacoplamento de Status SPOT e Isolamento por Empresa)
+- **Migração Automática no Startup da Aplicação e DDLs Defensivos (`app/main.py`, `alembic/`)**:
+  - Implementada execução defensiva de DDLs no startup da API (`ALTER TABLE eventos_operacionais ALTER COLUMN ... DROP NOT NULL` e `CREATE TABLE IF NOT EXISTS status_operacional_motoristas`), garantindo que instâncias em produção e VPS migrem o banco automaticamente sem intervenção manual e evitando falhas HTTP 500 no endpoint `/api/v1/operacao/status-lote`.
+  - Criada a migração oficial do Alembic `9c0d1e2f3a4b_status_operacional_motoristas_e_eventos_nullable.py`.
+- **Correção de Favicon em Rotas SPA (`frontend/index.html`)**:
+  - Atualizado o link do favicon para o caminho absoluto `/torre-de-controle/favicon.svg`, eliminando erros HTTP 404 em navegações por rotas profundas da aplicação.
 - **Desacoplamento do Status Operacional de Motoristas SPOT (`app/operacao/models.py`, `app/operacao/services.py`, `tests/test_status_motoristas.py`)**:
   - Criado o modelo e tabela `status_operacional_motoristas` com índice único `(motorista_id, data)` para armazenar o status operacional diário de motoristas SPOT de forma independente, sem necessidade ou dependência de atrelamento a um `Agendamento` ou empresa contratante.
   - Flexibilizadas as colunas `empresa_id` e `veiculo_id` na tabela `eventos_operacionais` para `nullable=True`, garantindo trilha de auditoria completa mesmo em transições de status de recursos livres.
