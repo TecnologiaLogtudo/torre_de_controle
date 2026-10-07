@@ -2,7 +2,7 @@ import { apiClient } from '../api/client'
 import { Motorista, MotoristaCreatePayload, MotoristaUpdatePayload } from '@/types/motoristas'
 
 export const motoristasService = {
-  async listar(limite = 50, offset = 0): Promise<Motorista[]> {
+  async listar(limite = 1000, offset = 0): Promise<Motorista[]> {
     const response = await apiClient.get<Motorista[]>('/api/v1/motoristas', {
       params: { limite, offset },
     })

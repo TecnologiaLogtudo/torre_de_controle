@@ -15,7 +15,11 @@ from app.operacao.schemas import (
     ResumoTorreResponse,
     ResumoEmpresaTorreResponse,
     DetalhamentoOperacionalResponse,
+    MotoristaStatusResponse,
     MotoristasStatusResponse,
+    AlterarStatusMotoristaRequest,
+    StatusOperacionalLoteRequest,
+    StatusOperacionalLoteResponse,
     EventoOperacionalResponse,
     ResultadoImportacaoResponse,
 )
@@ -151,7 +155,7 @@ def obter_detalhamento_operacional(
     placa: Optional[str] = Query(None),
     motorista_nome: Optional[str] = Query(None),
     motorista_id: Optional[UUID] = Query(None),
-    limit: int = Query(50, ge=1, le=100, alias="limite"),
+    limit: int = Query(1000, ge=1, le=1000, alias="limite"),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(obter_usuario_atual),
@@ -189,6 +193,44 @@ def obter_status_motoristas(
         data_filtro=data,
         empresa_id=empresa_id,
         motorista_nome=motorista_nome,
+    )
+
+
+@router.post(
+    "/motoristas/{motorista_id}/status",
+    response_model=MotoristaStatusResponse,
+    summary="Alterar status operacional do motorista na data",
+)
+def alterar_status_motorista(
+    motorista_id: UUID,
+    dados: AlterarStatusMotoristaRequest,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(obter_usuario_atual),
+):
+    """Altera o status operacional de um motorista para uma determinada data."""
+    return OperacaoService.alterar_status_motorista(
+        db=db,
+        motorista_id=motorista_id,
+        dados=dados,
+        usuario_id=usuario_atual.id,
+    )
+
+
+@router.post(
+    "/status-lote",
+    response_model=StatusOperacionalLoteResponse,
+    summary="Atualizar status operacional em lote de múltiplos recursos",
+)
+def atualizar_status_lote(
+    dados: StatusOperacionalLoteRequest,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(obter_usuario_atual),
+):
+    """Atualiza o status operacional de múltiplos recursos (alocações ou motoristas) em lote."""
+    return OperacaoService.atualizar_status_lote(
+        db=db,
+        dados=dados,
+        usuario_id=usuario_atual.id,
     )
 
 

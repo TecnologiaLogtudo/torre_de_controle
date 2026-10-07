@@ -28,6 +28,7 @@ export interface DetalhamentoOperacional {
   status_operacional: string
   motivo_indisponibilidade?: string | null
   agendamento_id?: string | null
+  alocacao_id?: string | null
 }
 
 export interface EventoOperacional {
@@ -77,6 +78,14 @@ export interface MotoristaStatus {
   status_operacional: 'DISPONIVEL' | 'PROGRAMADO' | 'EM_ROTA' | 'INDISPONIVEL' | 'SEM_ALOCACAO'
   motivo_indisponibilidade?: string | null
   agendamento_id?: string | null
+  alocacao_id?: string | null
+}
+
+export interface AlterarStatusMotoristaPayload {
+  data: string
+  novo_status: 'DISPONIVEL' | 'PROGRAMADO' | 'EM_ROTA' | 'INDISPONIVEL' | 'SEM_ALOCACAO'
+  motivo_indisponibilidade_id?: string | null
+  origem_alteracao?: string
 }
 
 export interface MotoristasStatus {
@@ -127,5 +136,23 @@ export interface ResultadoImportacao {
   vinculos_dedicados_criados: number
   ignorados_placa_existente: number
   itens_ignorados: ItemIgnoradoImportacao[]
+}
+
+// --- Alteração de Status em Lote ---
+export interface StatusOperacionalLotePayload {
+  alocacao_ids?: string[]
+  motorista_ids?: string[]
+  data?: string
+  novo_status: 'DISPONIVEL' | 'PROGRAMADO' | 'EM_ROTA' | 'INDISPONIVEL' | 'SEM_ALOCACAO' | string
+  motivo_indisponibilidade_id?: string | null
+  observacao?: string
+  origem_alteracao?: string
+}
+
+export interface StatusOperacionalLoteResponse {
+  sucesso: boolean
+  atualizados: number
+  novo_status: string
+  mensagem: string
 }
 

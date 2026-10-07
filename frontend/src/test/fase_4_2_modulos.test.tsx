@@ -205,7 +205,7 @@ describe('Suíte de Testes da Fase 4.2 — Módulos Operacionais e Interações 
     await waitFor(() => {
       expect(screen.getByText('ABC1D23')).toBeInTheDocument()
     })
-    expect(screen.getByText('HR-001')).toBeInTheDocument()
+    expect(screen.getByText('REFRIGERADO')).toBeInTheDocument()
   })
 
   it('deve listar motivos de indisponibilidade na MotivosIndisponibilidadePage', async () => {
@@ -480,4 +480,157 @@ describe('Suíte de Testes da Fase 4.2 — Módulos Operacionais e Interações 
 
     expect(selectMotorista.value).toBe('mot-spot-1')
   })
+
+  it('deve abrir drawer de vínculo e salvar vinculação de veículo na MotoristasPage', async () => {
+    vi.spyOn(motoristasService, 'listar').mockResolvedValue([
+      {
+        id: 'mot-10',
+        nome: 'Motorista Spot Silva',
+        ativo: true,
+        criado_em: '2026-08-21T10:00:00Z',
+        atualizado_em: '2026-08-21T10:00:00Z',
+      },
+    ])
+    vi.spyOn(veiculosService, 'listar').mockResolvedValue([
+      {
+        id: 'vec-10',
+        identificacao: 'HR-200',
+        placa: 'BRA2E19',
+        tipo_veiculo: 'HR',
+        especialidade: 'SECO',
+        ativo: true,
+        criado_em: '2026-08-21T10:00:00Z',
+        atualizado_em: '2026-08-21T10:00:00Z',
+      },
+    ])
+    vi.spyOn(contratosService, 'listarVinculosAtivos').mockResolvedValue([])
+    vi.spyOn(empresasService, 'listar').mockResolvedValue([])
+    const criarVinculoSpy = vi.spyOn(contratosService, 'criarVinculoDedicado').mockResolvedValue({
+      id: 'vinc-10',
+      empresa_id: null,
+      motorista_id: 'mot-10',
+      veiculo_id: 'vec-10',
+      tipo_veiculo: 'HR',
+      categoria_operacional: 'SPOT',
+      categoria: 'SPOT',
+      ativo: true,
+      criado_em: '2026-08-21T10:00:00Z',
+      atualizado_em: '2026-08-21T10:00:00Z',
+    })
+
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <MotoristasPage />
+        </MemoryRouter>
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Motorista Spot Silva')).toBeInTheDocument()
+    })
+
+    // Clica no botão de vincular veículo
+    const btnVincular = screen.getByRole('button', { name: /Vincular Veículo/i })
+    fireEvent.click(btnVincular)
+
+    await waitFor(() => {
+      expect(screen.getByText('Vincular Veículo ao Motorista')).toBeInTheDocument()
+    })
+
+    // Seleciona o veículo
+    const selectVeiculo = screen.getByLabelText(/Veículo Físico/i) as HTMLSelectElement
+    fireEvent.change(selectVeiculo, { target: { value: 'vec-10' } })
+
+    // Salva o vínculo
+    const btnSalvar = screen.getByRole('button', { name: /Salvar Vínculo/i })
+    fireEvent.click(btnSalvar)
+
+    await waitFor(() => {
+      expect(criarVinculoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          motorista_id: 'mot-10',
+          veiculo_id: 'vec-10',
+          categoria_operacional: 'SPOT',
+        })
+      )
+    })
+  })
+
+  it('deve abrir drawer de vínculo e salvar vinculação de motorista na VeiculosPage', async () => {
+    vi.spyOn(motoristasService, 'listar').mockResolvedValue([
+      {
+        id: 'mot-20',
+        nome: 'Motorista Veículo Teste',
+        ativo: true,
+        criado_em: '2026-08-21T10:00:00Z',
+        atualizado_em: '2026-08-21T10:00:00Z',
+      },
+    ])
+    vi.spyOn(veiculosService, 'listar').mockResolvedValue([
+      {
+        id: 'vec-20',
+        identificacao: 'FIO-10',
+        placa: 'ABC1D23',
+        tipo_veiculo: 'Fiorino',
+        especialidade: 'SECO',
+        ativo: true,
+        criado_em: '2026-08-21T10:00:00Z',
+        atualizado_em: '2026-08-21T10:00:00Z',
+      },
+    ])
+    vi.spyOn(contratosService, 'listarVinculosAtivos').mockResolvedValue([])
+    vi.spyOn(empresasService, 'listar').mockResolvedValue([])
+    const criarVinculoSpy = vi.spyOn(contratosService, 'criarVinculoDedicado').mockResolvedValue({
+      id: 'vinc-20',
+      empresa_id: null,
+      motorista_id: 'mot-20',
+      veiculo_id: 'vec-20',
+      tipo_veiculo: 'Fiorino',
+      categoria_operacional: 'SPOT',
+      categoria: 'SPOT',
+      ativo: true,
+      criado_em: '2026-08-21T10:00:00Z',
+      atualizado_em: '2026-08-21T10:00:00Z',
+    })
+
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <VeiculosPage />
+        </MemoryRouter>
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('ABC1D23')).toBeInTheDocument()
+    })
+
+    // Clica no botão de vincular motorista
+    const btnVincular = screen.getByRole('button', { name: /Vincular Motorista/i })
+    fireEvent.click(btnVincular)
+
+    await waitFor(() => {
+      expect(screen.getByText('Vincular Motorista ao Veículo')).toBeInTheDocument()
+    })
+
+    // Seleciona o motorista
+    const selectMotorista = screen.getByLabelText(/Motorista/i) as HTMLSelectElement
+    fireEvent.change(selectMotorista, { target: { value: 'mot-20' } })
+
+    // Salva o vínculo
+    const btnSalvar = screen.getByRole('button', { name: /Salvar Vínculo/i })
+    fireEvent.click(btnSalvar)
+
+    await waitFor(() => {
+      expect(criarVinculoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          motorista_id: 'mot-20',
+          veiculo_id: 'vec-20',
+          categoria_operacional: 'SPOT',
+        })
+      )
+    })
+  })
 })
+

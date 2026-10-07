@@ -195,3 +195,19 @@ def atualizar_status_operacional(
         origem=dados.origem_alteracao,
         usuario_id=usuario_atual.id,
     )
+
+
+# --- Salvar e Avançar Versão do Agendamento ---
+
+@router.post(
+    "/{agendamento_id}/salvar-versao",
+    response_model=AgendamentoResponse,
+    summary="Salvar agendamento e avançar versão oficial (v1 -> v2, etc.)",
+)
+def salvar_versao_agendamento(
+    agendamento_id: UUID,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(obter_usuario_atual),
+):
+    """Salva a programação do agendamento avançando a versão e gerando histórico."""
+    return AgendamentoService.salvar_versao_agendamento(db, agendamento_id, usuario_atual.id)

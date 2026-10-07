@@ -141,3 +141,89 @@ def test_desativar_vinculo_spot(db: Session):
     desativado = desativar_vinculo_motorista(db, v_spot, autor_id=base["usuario"].id)
     assert desativado.ativo is False
     assert obter_vinculo_ativo_motorista(db, base["motorista"].id) is None
+
+
+def test_atualizar_veiculo_vinculo_spot_existente(db: Session):
+    base = setup_base(db)
+
+    # 1. Cria veículo secundário
+    outro_veiculo = Veiculo(
+        identificacao="VEC-SPOT-02",
+        placa="SPT2B34",
+        tipo_veiculo="Fiorino",
+        especialidade="SECO",
+        ativo=True,
+    )
+    db.add(outro_veiculo)
+    db.commit()
+    db.refresh(outro_veiculo)
+
+    # 2. Vínculo inicial SPOT com veículo 1
+    v_inicial = criar_vinculo_motorista(
+        db,
+        MotoristaDedicadoVinculoCreate(
+            empresa_id=None,
+            motorista_id=base["motorista"].id,
+            veiculo_id=base["veiculo"].id,
+            tipo_veiculo="HR",
+            categoria_operacional="SPOT",
+        ),
+        autor_id=base["usuario"].id,
+    )
+    assert v_inicial.veiculo_id == base["veiculo"].id
+
+    # 3. Atualiza diretamente para o veículo secundário
+    v_atualizado = criar_vinculo_motorista(
+        db,
+        MotoristaDedicadoVinculoCreate(
+            empresa_id=None,
+            motorista_id=base["motorista"].id,
+            veiculo_id=outro_veiculo.id,
+            tipo_veiculo="Fiorino",
+            categoria_operacional="SPOT",
+        ),
+        autor_id=base["usuario"].id,
+    )
+
+    assert v_atualizado.id == v_inicial.id
+    assert v_atualizado.veiculo_id == outro_veiculo.id
+    assert v_atualizado.tipo_veiculo == "Fiorino"
+    assert v_atualizado.categoria_operacional == "SPOT"
+
+
+def test_bloqueio_veiculo_ja_vinculado_a_outro_motorista_spot(db: Session):
+    base = setup_base(db)
+
+    # Cria segundo motorista
+    outro_motorista = Motorista(nome="Motorista Spot Dois", ativo=True)
+    db.add(outro_motorista)
+    db.commit()
+    db.refresh(outro_motorista)
+
+    # Motorista 1 pega o veículo
+    criar_vinculo_motorista(
+        db,
+        MotoristaDedicadoVinculoCreate(
+            empresa_id=None,
+            motorista_id=base["motorista"].id,
+            veiculo_id=base["veiculo"].id,
+            tipo_veiculo="HR",
+            categoria_operacional="SPOT",
+        ),
+        autor_id=base["usuario"].id,
+    )
+
+    # Motorista 2 tenta pegar o mesmo veículo -> deve falhar
+    with pytest.raises(ValueError, match="já possui um vínculo ativo com outro motorista"):
+        criar_vinculo_motorista(
+            db,
+            MotoristaDedicadoVinculoCreate(
+                empresa_id=None,
+                motorista_id=outro_motorista.id,
+                veiculo_id=base["veiculo"].id,
+                tipo_veiculo="HR",
+                categoria_operacional="SPOT",
+            ),
+            autor_id=base["usuario"].id,
+        )
+

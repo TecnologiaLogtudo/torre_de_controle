@@ -58,8 +58,22 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       border: 'border-emerald-300',
       icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-800 shrink-0" />,
     },
+    ATIVA: {
+      label: 'Ativa',
+      bg: 'bg-emerald-100',
+      text: 'text-emerald-900 font-bold',
+      border: 'border-emerald-300',
+      icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-800 shrink-0" />,
+    },
     INATIVO: {
       label: 'Inativo',
+      bg: 'bg-slate-200',
+      text: 'text-slate-900 font-bold',
+      border: 'border-slate-400',
+      icon: <AlertTriangle className="w-3.5 h-3.5 text-slate-700 shrink-0" />,
+    },
+    INATIVA: {
+      label: 'Inativa',
       bg: 'bg-slate-200',
       text: 'text-slate-900 font-bold',
       border: 'border-slate-400',

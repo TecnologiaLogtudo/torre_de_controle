@@ -109,4 +109,10 @@ export const agendamentosService = {
     )
     return response.data
   },
+
+  // --- Versionamento Oficial ---
+  async salvarVersao(agendamentoId: string): Promise<Agendamento> {
+    const response = await apiClient.post<Agendamento>(`/api/v1/agendamentos/${agendamentoId}/salvar-versao`)
+    return response.data
+  },
 }

@@ -2,7 +2,7 @@ export type EspecialidadeVeiculo = 'SECO' | 'REFRIGERADO'
 
 export interface Veiculo {
   id: string
-  identificacao: string
+  identificacao?: string
   placa: string
   tipo_veiculo: string
   especialidade: EspecialidadeVeiculo
@@ -12,14 +12,14 @@ export interface Veiculo {
 }
 
 export interface VeiculoCreatePayload {
-  identificacao: string
+  identificacao?: string
   placa: string
   tipo_veiculo: string
   especialidade: EspecialidadeVeiculo
 }
 
 export interface VeiculoUpdatePayload {
-  identificacao: string
+  identificacao?: string
   placa: string
   tipo_veiculo: string
   especialidade: EspecialidadeVeiculo

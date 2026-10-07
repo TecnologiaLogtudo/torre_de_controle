@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { veiculosService } from '@/services/veiculos/veiculosService'
 import { contratosService } from '@/services/contratos/contratosService'
 import { motoristasService } from '@/services/motoristas/motoristasService'
+import { empresasService } from '@/services/empresas/empresasService'
 import { Veiculo, EspecialidadeVeiculo } from '@/types/veiculos'
 import { MotoristaDedicadoVinculo } from '@/types/contratos'
 import { Motorista } from '@/types/motoristas'
+import { Empresa } from '@/types/empresas'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { SearchInput } from '@/components/ui/SearchInput'
@@ -12,6 +14,7 @@ import { FilterBar } from '@/components/ui/FilterBar'
 import { Select } from '@/components/ui/Select'
 import { Table, TableHeader, TableBody, TableRow, TableHeadCell, TableCell } from '@/components/ui/Table'
 import { StatusBadge, PerfilBadge } from '@/components/ui/StatusBadge'
+import { Badge } from '@/components/ui/Badge'
 import { Drawer } from '@/components/ui/Drawer'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
@@ -19,12 +22,13 @@ import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { toast } from '@/components/feedback/Toaster'
 import { getErrorMessage } from '@/services/api/errors'
-import { Truck, Plus, Edit } from 'lucide-react'
+import { Truck, Plus, Edit, Link2, Unlink } from 'lucide-react'
 
 export const VeiculosPage: React.FC = () => {
   const [veiculos, setVeiculos] = useState<Veiculo[]>([])
   const [vinculos, setVinculos] = useState<MotoristaDedicadoVinculo[]>([])
   const [motoristas, setMotoristas] = useState<Motorista[]>([])
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,7 +40,6 @@ export const VeiculosPage: React.FC = () => {
   // Drawer Cadastro/Edição
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedVeiculo, setSelectedVeiculo] = useState<Veiculo | null>(null)
-  const [identificacaoForm, setIdentificacaoForm] = useState('')
   const [placaForm, setPlacaForm] = useState('')
   const [tipoForm, setTipoForm] = useState('')
   const [especialidadeForm, setEspecialidadeForm] = useState<EspecialidadeVeiculo>('SECO')
@@ -44,18 +47,30 @@ export const VeiculosPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
+  // Drawer Vinculação de Motorista
+  const [drawerVinculoOpen, setDrawerVinculoOpen] = useState(false)
+  const [veiculoParaVinculo, setVeiculoParaVinculo] = useState<Veiculo | null>(null)
+  const [vinculoAtualVeiculo, setVinculoAtualVeiculo] = useState<MotoristaDedicadoVinculo | null>(null)
+  const [motoristaIdForm, setMotoristaIdForm] = useState('')
+  const [categoriaForm, setCategoriaForm] = useState<'SPOT' | 'DEDICADO'>('SPOT')
+  const [empresaIdForm, setEmpresaIdForm] = useState('')
+  const [submittingVinculo, setSubmittingVinculo] = useState(false)
+  const [vinculoError, setVinculoError] = useState<string | null>(null)
+
   const carregarDados = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [vList, vincList, mList] = await Promise.all([
-        veiculosService.listar(),
+      const [vList, vincList, mList, empList] = await Promise.all([
+        veiculosService.listar(1000),
         contratosService.listarVinculosAtivos(1000).catch(() => []),
         motoristasService.listar(1000).catch(() => []),
+        empresasService.listar().catch(() => []),
       ])
       setVeiculos(vList)
       setVinculos(vincList)
       setMotoristas(mList)
+      setEmpresas(empList)
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro ao carregar lista de veículos.'))
     } finally {
@@ -69,7 +84,6 @@ export const VeiculosPage: React.FC = () => {
 
   const handleOpenNovo = () => {
     setSelectedVeiculo(null)
-    setIdentificacaoForm('')
     setPlacaForm('')
     setTipoForm('HR')
     setEspecialidadeForm('SECO')
@@ -80,7 +94,6 @@ export const VeiculosPage: React.FC = () => {
 
   const handleOpenEditar = (v: Veiculo) => {
     setSelectedVeiculo(v)
-    setIdentificacaoForm(v.identificacao)
     setPlacaForm(v.placa)
     setTipoForm(v.tipo_veiculo)
     setEspecialidadeForm(v.especialidade)
@@ -99,7 +112,7 @@ export const VeiculosPage: React.FC = () => {
       return
     }
 
-    if (!identificacaoForm.trim() || !tipoForm.trim()) {
+    if (!tipoForm.trim()) {
       setFormError('Preencha todos os campos obrigatórios.')
       return
     }
@@ -108,7 +121,6 @@ export const VeiculosPage: React.FC = () => {
     try {
       if (selectedVeiculo) {
         await veiculosService.atualizar(selectedVeiculo.id, {
-          identificacao: identificacaoForm.trim(),
           placa: placaClean,
           tipo_veiculo: tipoForm.trim(),
           especialidade: especialidadeForm,
@@ -117,7 +129,6 @@ export const VeiculosPage: React.FC = () => {
         toast.success(`Veículo "${placaClean}" atualizado com sucesso!`)
       } else {
         await veiculosService.criar({
-          identificacao: identificacaoForm.trim(),
           placa: placaClean,
           tipo_veiculo: tipoForm.trim(),
           especialidade: especialidadeForm,
@@ -155,6 +166,88 @@ export const VeiculosPage: React.FC = () => {
     }
   }
 
+  const handleOpenVinculo = (v: Veiculo) => {
+    setVeiculoParaVinculo(v)
+    const vinc = vinculos.find(vin => vin.veiculo_id === v.id && vin.ativo) || null
+    setVinculoAtualVeiculo(vinc)
+    setMotoristaIdForm(vinc?.motorista_id || '')
+    const cat = (vinc?.categoria || vinc?.categoria_operacional || 'SPOT') as 'SPOT' | 'DEDICADO'
+    setCategoriaForm(cat)
+    setEmpresaIdForm(vinc?.empresa_id || (empresas.length > 0 ? empresas[0].id : ''))
+    setVinculoError(null)
+    setDrawerVinculoOpen(true)
+  }
+
+  const motoristasDisponiveisParaVinculo = useMemo(() => {
+    const motoristasOcupadosPorOutros = new Set(
+      vinculos
+        .filter(vin => vin.ativo && vin.motorista_id && vin.veiculo_id !== veiculoParaVinculo?.id)
+        .map(vin => vin.motorista_id)
+    )
+    return motoristas.filter(m => m.ativo && !motoristasOcupadosPorOutros.has(m.id))
+  }, [motoristas, vinculos, veiculoParaVinculo])
+
+  const handleSalvarVinculo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!veiculoParaVinculo) return
+    setVinculoError(null)
+
+    if (!motoristaIdForm) {
+      setVinculoError('Selecione um motorista para vincular a este veículo.')
+      return
+    }
+
+    if (categoriaForm === 'DEDICADO' && !empresaIdForm) {
+      setVinculoError('Selecione a empresa contratante para vínculo dedicado.')
+      return
+    }
+
+    const motObj = motoristas.find(m => m.id === motoristaIdForm)
+
+    setSubmittingVinculo(true)
+    try {
+      await contratosService.criarVinculoDedicado({
+        empresa_id: categoriaForm === 'DEDICADO' ? empresaIdForm : undefined,
+        motorista_id: motoristaIdForm,
+        veiculo_id: veiculoParaVinculo.id,
+        tipo_veiculo: veiculoParaVinculo.tipo_veiculo,
+        categoria_operacional: categoriaForm,
+        categoria: categoriaForm,
+      })
+      toast.success(
+        `Motorista "${motObj?.nome || ''}" vinculado com sucesso ao veículo [${veiculoParaVinculo.placa}] (${categoriaForm})!`
+      )
+      setDrawerVinculoOpen(false)
+      await carregarDados()
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao salvar vínculo do veículo.')
+      setVinculoError(msg)
+      toast.error(msg)
+    } finally {
+      setSubmittingVinculo(false)
+    }
+  }
+
+  const handleDesvincular = async () => {
+    if (!vinculoAtualVeiculo) return
+    setSubmittingVinculo(true)
+    setVinculoError(null)
+    try {
+      await contratosService.desativarVinculoDedicado(vinculoAtualVeiculo.id)
+      toast.success(
+        `Vínculo do veículo [${veiculoParaVinculo?.placa}] desativado com sucesso. Ele agora está livre sem motorista associado.`
+      )
+      setDrawerVinculoOpen(false)
+      await carregarDados()
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao desvincular veículo.')
+      setVinculoError(msg)
+      toast.error(msg)
+    } finally {
+      setSubmittingVinculo(false)
+    }
+  }
+
   const getMotoristaVinculado = (veiculoId: string) => {
     const vinculo = vinculos.find(v => v.veiculo_id === veiculoId && v.ativo)
     if (!vinculo) return null
@@ -162,7 +255,9 @@ export const VeiculosPage: React.FC = () => {
   }
 
   const veiculosFiltrados = veiculos.filter(v => {
-    const matchesPlaca = v.placa.toLowerCase().includes(searchPlaca.toLowerCase()) || v.identificacao.toLowerCase().includes(searchPlaca.toLowerCase())
+    const matchesPlaca =
+      v.placa.toLowerCase().includes(searchPlaca.toLowerCase()) ||
+      (v.identificacao ? v.identificacao.toLowerCase().includes(searchPlaca.toLowerCase()) : false)
     const matchesTipo = !filtroTipo || v.tipo_veiculo === filtroTipo
     const matchesEsp = !filtroEspecialidade || v.especialidade === filtroEspecialidade
     return matchesPlaca && matchesTipo && matchesEsp
@@ -196,7 +291,7 @@ export const VeiculosPage: React.FC = () => {
               value={searchPlaca}
               onChange={e => setSearchPlaca(e.target.value)}
               onClear={() => setSearchPlaca('')}
-              placeholder="Buscar por placa ou identificação..."
+              placeholder="Buscar por placa..."
             />
           </div>
 
@@ -247,7 +342,6 @@ export const VeiculosPage: React.FC = () => {
           <TableHeader>
             <TableRow>
               <TableHeadCell>Placa</TableHeadCell>
-              <TableHeadCell>Identificação Interna</TableHeadCell>
               <TableHeadCell>Tipo de Veículo</TableHeadCell>
               <TableHeadCell>Especialidade</TableHeadCell>
               <TableHeadCell>Motorista Vinculado</TableHeadCell>
@@ -264,7 +358,6 @@ export const VeiculosPage: React.FC = () => {
                   <TableCell className="font-mono font-bold text-sky-700 text-sm">
                     {v.placa}
                   </TableCell>
-                  <TableCell className="font-semibold text-slate-900">{v.identificacao}</TableCell>
                   <TableCell className="text-slate-700">{v.tipo_veiculo}</TableCell>
                   <TableCell>
                     <PerfilBadge perfil={v.especialidade} />
@@ -284,14 +377,25 @@ export const VeiculosPage: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenEditar(v)}
-                      leftIcon={<Edit className="w-3.5 h-3.5" />}
-                    >
-                      Editar
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenVinculo(v)}
+                        leftIcon={<Link2 className="w-3.5 h-3.5" />}
+                        title="Vincular ou alterar motorista deste veículo"
+                      >
+                        {motorista ? 'Alterar Motorista' : 'Vincular Motorista'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenEditar(v)}
+                        leftIcon={<Edit className="w-3.5 h-3.5" />}
+                      >
+                        Editar
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               )
@@ -299,6 +403,126 @@ export const VeiculosPage: React.FC = () => {
           </TableBody>
         </Table>
       )}
+
+      {/* Drawer Vinculação de Motorista */}
+      <Drawer
+        isOpen={drawerVinculoOpen}
+        onClose={() => setDrawerVinculoOpen(false)}
+        title={vinculoAtualVeiculo ? 'Alterar Vínculo de Motorista' : 'Vincular Motorista ao Veículo'}
+        subtitle={`Veículo: ${veiculoParaVinculo?.tipo_veiculo || ''} - [${veiculoParaVinculo?.placa || ''}]`}
+        size="md"
+      >
+        <form onSubmit={handleSalvarVinculo} className="space-y-4">
+          {vinculoError && <Alert type="error">{vinculoError}</Alert>}
+
+          {vinculoAtualVeiculo && (
+            <div className="p-3 bg-sky-50 border border-sky-200 rounded-none text-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sky-900">Vínculo Atual Ativo</span>
+                <Badge variant={vinculoAtualVeiculo.categoria === 'DEDICADO' ? 'PROGRAMADO' : 'EM_BREVE'}>
+                  {vinculoAtualVeiculo.categoria || vinculoAtualVeiculo.categoria_operacional || 'SPOT'}
+                </Badge>
+              </div>
+              <div className="text-slate-700">
+                Motorista:{' '}
+                <strong>
+                  {motoristas.find(m => m.id === vinculoAtualVeiculo.motorista_id)?.nome || 'Motorista'}
+                </strong>
+              </div>
+              <div className="pt-2 border-t border-sky-200 flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={handleDesvincular}
+                  disabled={submittingVinculo}
+                  className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-300"
+                  leftIcon={<Unlink className="w-3.5 h-3.5" />}
+                >
+                  Desvincular Motorista Atual
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+              Categoria Operacional:
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setCategoriaForm('SPOT')}
+                className={`py-2 px-3 text-xs font-semibold border text-center transition-colors ${
+                  categoriaForm === 'SPOT'
+                    ? 'bg-sky-50 border-sky-600 text-sky-800'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                SPOT (Recurso Livre)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCategoriaForm('DEDICADO')}
+                className={`py-2 px-3 text-xs font-semibold border text-center transition-colors ${
+                  categoriaForm === 'DEDICADO'
+                    ? 'bg-indigo-50 border-indigo-600 text-indigo-800'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                DEDICADO (Empresa)
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              {categoriaForm === 'SPOT'
+                ? 'Recurso operacional livre, não associado a contrato fixo de empresa.'
+                : 'Recurso alocado exclusivamente para atendimento a uma empresa parceira.'}
+            </p>
+          </div>
+
+          {categoriaForm === 'DEDICADO' && (
+            <Select
+              label="Empresa Parceira / Contratante"
+              value={empresaIdForm}
+              onChange={e => setEmpresaIdForm(e.target.value)}
+              options={empresas.map(e => ({ value: e.id, label: `${e.nome} (${e.identificacao})` }))}
+              required
+            />
+          )}
+
+          <Select
+            label="Motorista (Operadores Disponíveis)"
+            value={motoristaIdForm}
+            onChange={e => setMotoristaIdForm(e.target.value)}
+            placeholder="Selecione o motorista..."
+            options={motoristasDisponiveisParaVinculo.map(m => ({
+              value: m.id,
+              label: m.nome,
+            }))}
+            required
+          />
+
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDrawerVinculoOpen(false)}
+              type="button"
+              disabled={submittingVinculo}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              isLoading={submittingVinculo}
+              type="submit"
+            >
+              Salvar Vínculo
+            </Button>
+          </div>
+        </form>
+      </Drawer>
 
       {/* Drawer Cadastro/Edição */}
       <Drawer
@@ -316,14 +540,6 @@ export const VeiculosPage: React.FC = () => {
             onChange={e => setPlacaForm(e.target.value.toUpperCase())}
             placeholder="Ex: ABC1D23"
             maxLength={7}
-            required
-          />
-
-          <Input
-            label="Identificação Interna / Prefixo"
-            value={identificacaoForm}
-            onChange={e => setIdentificacaoForm(e.target.value)}
-            placeholder="Ex: HR-001"
             required
           />
 

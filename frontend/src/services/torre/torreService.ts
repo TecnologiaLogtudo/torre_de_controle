@@ -8,7 +8,11 @@ import {
   FiltrosHistoricoEventos,
   FiltrosStatusMotoristas,
   MotoristasStatus,
+  MotoristaStatus,
+  AlterarStatusMotoristaPayload,
   ResultadoImportacao,
+  StatusOperacionalLotePayload,
+  StatusOperacionalLoteResponse,
 } from '@/types/torre'
 
 export const torreService = {
@@ -43,10 +47,29 @@ export const torreService = {
     return response.data
   },
 
+  async alterarStatusMotorista(
+    motoristaId: string,
+    payload: AlterarStatusMotoristaPayload
+  ): Promise<MotoristaStatus> {
+    const response = await apiClient.post<MotoristaStatus>(
+      `/api/v1/operacao/motoristas/${motoristaId}/status`,
+      payload
+    )
+    return response.data
+  },
+
   async listarHistoricoEventos(params: FiltrosHistoricoEventos = {}): Promise<EventoOperacional[]> {
     const response = await apiClient.get<EventoOperacional[]>('/api/v1/operacao/historico-eventos', {
       params,
     })
+    return response.data
+  },
+
+  async atualizarStatusLote(payload: StatusOperacionalLotePayload): Promise<StatusOperacionalLoteResponse> {
+    const response = await apiClient.post<StatusOperacionalLoteResponse>(
+      '/api/v1/operacao/status-lote',
+      payload
+    )
     return response.data
   },
 

@@ -365,11 +365,11 @@ def test_versionamento_consecutivo_agendamento(client):
     )
     assert res_ag.status_code == status.HTTP_201_CREATED
     ag_id = res_ag.json()["id"]
-    assert res_ag.json().get("versao") == 1
+    assert res_ag.json().get("versao") == 0
     assert len(res_ag.json()["alocacoes"]) > 0
     aloc_dedicada_id = res_ag.json()["alocacoes"][0]["id"]
 
-    # 1. Adicionar SPOT -> versão 2
+    # 1. Adicionar SPOT -> versão permanece 0 até o salvamento
     res_mot2 = client.post("/api/v1/motoristas", json={"nome": "Mot Versao 2"}, headers=headers)
     mot2_id = res_mot2.json()["id"]
     res_veic2 = client.post(
@@ -387,10 +387,10 @@ def test_versionamento_consecutivo_agendamento(client):
     assert res_spot.status_code == status.HTTP_201_CREATED
     aloc_spot_id = res_spot.json()["id"]
 
-    res_ag_v2 = client.get(f"/api/v1/agendamentos/{ag_id}", headers=headers)
-    assert res_ag_v2.json()["versao"] == 2
+    res_ag_check = client.get(f"/api/v1/agendamentos/{ag_id}", headers=headers)
+    assert res_ag_check.json()["versao"] == 0
 
-    # 2. Trocar veículo do dedicado -> versão 3
+    # 2. Trocar veículo do dedicado -> versão permanece 0
     res_veic3 = client.post(
         "/api/v1/veiculos",
         json={"identificacao": "VRS-003", "placa": "VRS3A11", "tipo_veiculo": "HR", "especialidade": "SECO"},
@@ -407,10 +407,7 @@ def test_versionamento_consecutivo_agendamento(client):
     assert res_troca.json()["veiculo_id"] == veic3_id
     assert res_troca.json()["categoria"] == "DEDICADO"
 
-    res_ag_v3 = client.get(f"/api/v1/agendamentos/{ag_id}", headers=headers)
-    assert res_ag_v3.json()["versao"] == 3
-
-    # 3. Atualizar status operacional -> versão 4
+    # 3. Atualizar status operacional -> versão permanece 0
     res_status = client.put(
         f"/api/v1/agendamentos/alocacoes/{aloc_dedicada_id}/status",
         json={"novo_status": "EM_ROTA"},
@@ -418,15 +415,22 @@ def test_versionamento_consecutivo_agendamento(client):
     )
     assert res_status.status_code == status.HTTP_200_OK
 
-    res_ag_v4 = client.get(f"/api/v1/agendamentos/{ag_id}", headers=headers)
-    assert res_ag_v4.json()["versao"] == 4
-
-    # 4. Remover SPOT -> versão 5
+    # 4. Remover SPOT -> versão permanece 0
     res_del = client.delete(f"/api/v1/agendamentos/alocacoes/{aloc_spot_id}", headers=headers)
     assert res_del.status_code == status.HTTP_204_NO_CONTENT
 
-    res_ag_v5 = client.get(f"/api/v1/agendamentos/{ag_id}", headers=headers)
-    assert res_ag_v5.json()["versao"] == 5
+    res_ag_pre_salvar = client.get(f"/api/v1/agendamentos/{ag_id}", headers=headers)
+    assert res_ag_pre_salvar.json()["versao"] == 0
+
+    # 5. Salvar Agendamento Oficial -> Versão inicial avança para v1
+    res_salvar = client.post(f"/api/v1/agendamentos/{ag_id}/salvar-versao", headers=headers)
+    assert res_salvar.status_code == status.HTTP_200_OK
+    assert res_salvar.json()["versao"] == 1
+
+    # Novo salvamento avança para versão 2
+    res_salvar2 = client.post(f"/api/v1/agendamentos/{ag_id}/salvar-versao", headers=headers)
+    assert res_salvar2.status_code == status.HTTP_200_OK
+    assert res_salvar2.json()["versao"] == 2
 
 
 def test_auto_alocacao_dedicado_indisponivel_com_alerta(client):

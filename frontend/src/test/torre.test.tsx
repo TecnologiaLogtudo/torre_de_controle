@@ -139,4 +139,77 @@ describe('Suíte de Testes da Fase 4.3 — Torre de Controle Operacional', () =>
       expect(mockResumo).toHaveBeenCalledTimes(2)
     })
   })
+
+  it('deve exibir coluna "Empresa" e abrir Drawer para alterar status individual do motorista na Torre', async () => {
+    vi.spyOn(torreService, 'obterResumoGeral').mockResolvedValue({
+      contratados: 10,
+      total: 8,
+      disponiveis: 3,
+      programados: 3,
+      em_rota: 2,
+      indisponiveis: 0,
+      vagas_nao_preenchidas: 2,
+    })
+    vi.spyOn(torreService, 'obterResumoPorEmpresa').mockResolvedValue([])
+    vi.spyOn(torreService, 'obterDetalhamento').mockResolvedValue([
+      {
+        motorista_id: 'mot-1',
+        motorista_nome: 'Carlos Santos',
+        veiculo_id: 'vec-1',
+        veiculo_identificacao: 'FIORINO-01',
+        placa: 'XYZ9K88',
+        tipo_veiculo: 'Fiorino',
+        especialidade: 'SECO',
+        categoria: 'SPOT',
+        status_operacional: 'PROGRAMADO',
+        empresa_nome: 'Logística Express',
+        alocacao_id: 'aloc-1',
+      },
+    ])
+    vi.spyOn(torreService, 'listarHistoricoEventos').mockResolvedValue([])
+    vi.spyOn(empresasService, 'listar').mockResolvedValue([])
+    const mockAtualizarLote = vi.spyOn(torreService, 'atualizarStatusLote').mockResolvedValue({
+      sucesso: true,
+      atualizados: 1,
+      novo_status: 'EM_ROTA',
+      mensagem: 'Atualizado',
+    })
+
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <TorrePage />
+        </MemoryRouter>
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Carlos Santos')).toBeInTheDocument()
+    })
+
+    // Verifica que o cabeçalho é "Empresa"
+    expect(screen.getByRole('columnheader', { name: 'Empresa' })).toBeInTheDocument()
+
+    // Clica no botão de alterar status de Carlos Santos
+    const btnAlterar = screen.getByRole('button', { name: 'Alterar status de Carlos Santos' })
+    fireEvent.click(btnAlterar)
+
+    // O Drawer deve abrir
+    await waitFor(() => {
+      expect(screen.getByText('Alterar Status: Carlos Santos')).toBeInTheDocument()
+    })
+
+    // Submete a alteração para salvar
+    const btnSalvar = screen.getByRole('button', { name: 'Salvar Status' })
+    fireEvent.click(btnSalvar)
+
+    await waitFor(() => {
+      expect(mockAtualizarLote).toHaveBeenCalledWith(
+        expect.objectContaining({
+          alocacao_ids: ['aloc-1'],
+          origem_alteracao: 'torre_cockpit',
+        })
+      )
+    })
+  })
 })

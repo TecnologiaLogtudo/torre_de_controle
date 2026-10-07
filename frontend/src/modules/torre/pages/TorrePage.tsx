@@ -22,7 +22,6 @@ export const TorrePage: React.FC = () => {
     loading,
     error,
     carregarDadosTorre,
-    handleDataChange,
     handleSelectEmpresa,
     empresaSelecionada,
   } = useTorreOperacional()
@@ -32,7 +31,6 @@ export const TorrePage: React.FC = () => {
       {/* Cabeçalho de Controle */}
       <TorreHeader
         dataFiltro={dataFiltro}
-        onDataChange={handleDataChange}
         onRefresh={carregarDadosTorre}
         ultimaAtualizacao={ultimaAtualizacao}
         isLoading={loading}
@@ -61,6 +59,7 @@ export const TorrePage: React.FC = () => {
             onFiltrosChange={setFiltrosDetalhamento}
             onClearFiltros={handleClearFiltros}
             isLoading={loading}
+            onReload={carregarDadosTorre}
           />
         </div>
 

@@ -197,3 +197,66 @@ def test_agendamento_cancelado_nao_entra_nos_kpis_da_torre(client):
     resumo_emp = next(e for e in res_resumo_depois.json() if e["empresa_id"] == empresa_id)
     assert resumo_emp["total"] == 0
 
+
+def test_detalhamento_torre_filtra_spots_disponiveis(client):
+    headers = obter_headers_autenticados(client)
+    res_emp = client.post(
+        "/api/v1/empresas",
+        json={"nome": "Empresa Filtro Detalhe", "identificacao": "66.666.666/0001-66"},
+        headers=headers,
+    )
+    empresa_id = res_emp.json()["id"]
+
+    from datetime import datetime, timezone
+    client.post(
+        f"/api/v1/contratos/empresas/{empresa_id}/configuracoes",
+        json={
+            "data_inicio": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
+            "capacidades": [{"tipo_veiculo": "HR", "especialidade": "SECO", "quantidade": 5}],
+        },
+        headers=headers,
+    )
+
+    data_teste = agora_local().date() + timedelta(days=1)
+
+    res_ag = client.post(
+        "/api/v1/agendamentos",
+        json={"empresa_id": empresa_id, "data": str(data_teste), "horario_inicio": "08:00:00"},
+        headers=headers,
+    )
+    assert res_ag.status_code == status.HTTP_201_CREATED
+    agendamento_id = res_ag.json()["id"]
+
+    # Cadastra SPOT 1 (Programado - deve aparecer)
+    res_m1 = client.post("/api/v1/motoristas", json={"nome": "Spot Programado"}, headers=headers)
+    res_v1 = client.post("/api/v1/veiculos", json={"identificacao": "V1", "placa": "PRG1111", "tipo_veiculo": "HR", "especialidade": "SECO"}, headers=headers)
+    client.post(
+        f"/api/v1/agendamentos/{agendamento_id}/spots",
+        json={"motorista_id": res_m1.json()["id"], "veiculo_id": res_v1.json()["id"], "categoria": "SPOT"},
+        headers=headers,
+    )
+
+    # Cadastra SPOT 2 (Disponível - NÃO deve aparecer no Detalhamento da Torre)
+    res_m2 = client.post("/api/v1/motoristas", json={"nome": "Spot Apenas Disponivel"}, headers=headers)
+    res_v2 = client.post("/api/v1/veiculos", json={"identificacao": "V2", "placa": "DSP2222", "tipo_veiculo": "HR", "especialidade": "SECO"}, headers=headers)
+    res_add_spot2 = client.post(
+        f"/api/v1/agendamentos/{agendamento_id}/spots",
+        json={"motorista_id": res_m2.json()["id"], "veiculo_id": res_v2.json()["id"], "categoria": "SPOT"},
+        headers=headers,
+    )
+    # Altera status do SPOT 2 para DISPONIVEL
+    client.put(
+        f"/api/v1/agendamentos/alocacoes/{res_add_spot2.json()['id']}/status",
+        json={"novo_status": "DISPONIVEL"},
+        headers=headers,
+    )
+
+    # Consulta o detalhamento da Torre
+    res_det = client.get(f"/api/v1/operacao/torre/detalhamento?data={data_teste}&empresa_id={empresa_id}", headers=headers)
+    assert res_det.status_code == status.HTTP_200_OK
+    itens = res_det.json()
+
+    nomes = [item["motorista_nome"] for item in itens]
+    assert "Spot Programado" in nomes
+    assert "Spot Apenas Disponivel" not in nomes
+

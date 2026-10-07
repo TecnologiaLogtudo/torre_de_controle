@@ -32,7 +32,18 @@ export function formatToBahia(
   if (!dateInput) return '-'
 
   try {
-    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
+    let date: Date
+    if (typeof dateInput === 'string') {
+      const trimmed = dateInput.trim()
+      // Se for formato apenas YYYY-MM-DD, adiciona T12:00:00 para evitar desvio de fuso
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        date = new Date(`${trimmed}T12:00:00`)
+      } else {
+        date = new Date(trimmed)
+      }
+    } else {
+      date = dateInput
+    }
     if (isNaN(date.getTime())) return '-'
 
     const userOptions = options ? cleanDefinedOptions(options) : {}
@@ -62,9 +73,18 @@ export function formatToBahia(
 }
 
 /**
- * Formata apenas a data (dd/mm/aaaa) no fuso America/Bahia.
+ * Formata apenas a data (dd/mm/aaaa) no fuso America/Bahia sem horas.
  */
 export function formatDateBahia(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return '-'
+  if (typeof dateInput === 'string') {
+    const trimmed = dateInput.trim()
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed)
+    if (match && (!trimmed.includes(':') || trimmed.includes('T00:00:00'))) {
+      const [, y, m, d] = match
+      return `${d}/${m}/${y}`
+    }
+  }
   return formatToBahia(dateInput, {
     year: 'numeric',
     month: '2-digit',

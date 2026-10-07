@@ -2,7 +2,9 @@ from sqlalchemy import (
     Column,
     ForeignKey,
     String,
-    Boolean
+    Boolean,
+    Date,
+    Index,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -19,13 +21,32 @@ class MotivoIndisponibilidade(BaseEntidade):
     def __repr__(self) -> str:
         return f"<MotivoIndisponibilidade nome={self.nome} ativo={self.ativo}>"
 
+class StatusOperacionalMotorista(BaseEntidade):
+    """Status operacional diário do motorista independente de agendamento de empresa."""
+    __tablename__ = "status_operacional_motoristas"
+
+    motorista_id = Column(UUID(as_uuid=True), ForeignKey("motoristas.id", ondelete="CASCADE"), nullable=False)
+    data = Column(Date, nullable=False)
+    status_operacional = Column(String(50), nullable=False, default="DISPONIVEL")  # DISPONIVEL, INDISPONIVEL, SEM_ALOCACAO
+    motivo_indisponibilidade_id = Column(UUID(as_uuid=True), ForeignKey("motivos_indisponibilidade.id", ondelete="SET NULL"), nullable=True)
+
+    motorista = relationship("Motorista")
+    motivo_indisponibilidade = relationship("MotivoIndisponibilidade")
+
+    __table_args__ = (
+        Index("idx_status_motorista_data", "motorista_id", "data", unique=True),
+    )
+
+    def __repr__(self) -> str:
+        return f"<StatusOperacionalMotorista motorista={self.motorista_id} data={self.data} status={self.status_operacional}>"
+
 class EventoOperacional(BaseEntidade):
     """Eventos históricos de mudança de status operacional."""
     __tablename__ = "eventos_operacionais"
 
-    empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id", ondelete="RESTRICT"), nullable=False)
+    empresa_id = Column(UUID(as_uuid=True), ForeignKey("empresas.id", ondelete="RESTRICT"), nullable=True)
     motorista_id = Column(UUID(as_uuid=True), ForeignKey("motoristas.id", ondelete="RESTRICT"), nullable=False)
-    veiculo_id = Column(UUID(as_uuid=True), ForeignKey("veiculos.id", ondelete="RESTRICT"), nullable=False)
+    veiculo_id = Column(UUID(as_uuid=True), ForeignKey("veiculos.id", ondelete="RESTRICT"), nullable=True)
     agendamento_id = Column(UUID(as_uuid=True), ForeignKey("agendamentos.id", ondelete="SET NULL"), nullable=True)
     categoria = Column(String(50), nullable=False) # DEDICADO ou SPOT
     status_anterior = Column(String(50), nullable=False)

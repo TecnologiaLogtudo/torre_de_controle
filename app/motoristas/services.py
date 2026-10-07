@@ -13,7 +13,7 @@ def obter_motorista_por_id(
 
 
 def listar_motoristas(
-    db: Session, limite: int = 50, offset: int = 0
+    db: Session, limite: int = 1000, offset: int = 0
 ) -> List[Motorista]:
     return db.query(Motorista).offset(offset).limit(limite).all()
 

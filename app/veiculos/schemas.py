@@ -1,11 +1,11 @@
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class VeiculoBase(BaseModel):
-    identificacao: str = Field(..., min_length=1, max_length=100)
+    identificacao: Optional[str] = Field(None, max_length=100)
     placa: str = Field(..., min_length=1, max_length=10)
     tipo_veiculo: str = Field(..., min_length=1, max_length=100)
     especialidade: Literal["SECO", "REFRIGERADO"]
@@ -16,7 +16,7 @@ class VeiculoCreate(VeiculoBase):
 
 
 class VeiculoUpdate(BaseModel):
-    identificacao: str = Field(..., min_length=1, max_length=100)
+    identificacao: Optional[str] = Field(None, max_length=100)
     placa: str = Field(..., min_length=7, max_length=8)
     tipo_veiculo: str = Field(..., min_length=1, max_length=100)
     especialidade: Literal["SECO", "REFRIGERADO"]

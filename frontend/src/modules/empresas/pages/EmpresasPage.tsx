@@ -9,13 +9,14 @@ import { SearchInput } from '@/components/ui/SearchInput'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { Table, TableHeader, TableBody, TableRow, TableHeadCell, TableCell } from '@/components/ui/Table'
 import { Badge } from '@/components/ui/Badge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Drawer } from '@/components/ui/Drawer'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { formatToBahia } from '@/utils/date'
+import { formatToBahia, formatDateBahia } from '@/utils/date'
 import { toast } from '@/components/feedback/Toaster'
 import { getErrorMessage } from '@/services/api/errors'
 import { Building2, Plus, Edit, Eye, History, FileText } from 'lucide-react'
@@ -111,6 +112,19 @@ export const EmpresasPage: React.FC = () => {
     }
   }
 
+  const handleToggleStatus = async (emp: Empresa) => {
+    try {
+      await empresasService.atualizar(emp.id, {
+        nome: emp.nome,
+        ativo: !emp.ativo,
+      })
+      toast.success(`Empresa "${emp.nome}" ${!emp.ativo ? 'ativada' : 'desativada'} com sucesso!`)
+      carregarEmpresas()
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao alterar status da empresa.'))
+    }
+  }
+
   const handleVerDetalhes = async (emp: Empresa) => {
     setEmpresaDetalhe(emp)
     setDetalhesOpen(true)
@@ -199,12 +213,14 @@ export const EmpresasPage: React.FC = () => {
                 <TableCell className="font-semibold text-slate-900">{emp.nome}</TableCell>
                 <TableCell className="font-mono text-slate-600">{emp.identificacao}</TableCell>
                 <TableCell>
-                  <Badge variant={emp.ativo ? 'SUCESSO' : 'ERRO'}>
-                    {emp.ativo ? 'Ativa' : 'Inativa'}
-                  </Badge>
+                  <StatusBadge
+                    status={emp.ativo ? 'ATIVA' : 'INATIVA'}
+                    onClick={() => handleToggleStatus(emp)}
+                    title="Clique para alternar entre Ativa e Inativa"
+                  />
                 </TableCell>
                 <TableCell className="text-slate-500">
-                  {formatToBahia(emp.criado_em, { hour: undefined, minute: undefined, second: undefined })}
+                  {formatDateBahia(emp.criado_em)}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">

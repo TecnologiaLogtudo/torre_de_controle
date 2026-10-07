@@ -75,8 +75,8 @@ export const ContratosPage: React.FC = () => {
         contratosService.obterConfiguracaoVigente(empresaId).catch(() => null),
         contratosService.obterHistoricoConfiguracoes(empresaId).catch(() => []),
         contratosService.listarVinculosAtivos(1000).catch(() => []),
-        motoristasService.listar().catch(() => []),
-        veiculosService.listar().catch(() => []),
+        motoristasService.listar(1000).catch(() => []),
+        veiculosService.listar(1000).catch(() => []),
       ])
 
       setConfiguracaoVigente(vigt)
@@ -459,7 +459,9 @@ export const ContratosPage: React.FC = () => {
                           <TableCell className="font-semibold text-slate-900">{m?.nome || 'Motorista'}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1.5 font-mono text-xs">
-                              <span className="text-slate-600">{vec?.tipo_veiculo} - {vec?.identificacao}</span>
+                              <span className="text-slate-600">
+                                {vec?.tipo_veiculo}{vec?.identificacao && vec.identificacao !== vec.placa ? ` - ${vec.identificacao}` : ''}
+                              </span>
                               <span className="font-bold text-sky-700">[{vec?.placa || 'Sem placa'}]</span>
                             </div>
                           </TableCell>
@@ -684,7 +686,7 @@ export const ContratosPage: React.FC = () => {
             placeholder="Selecione o veículo..."
             options={veiculosElegiveisDedicados.map(v => ({
               value: v.id,
-              label: `${v.tipo_veiculo} - ${v.identificacao} [${v.placa}] (${v.especialidade})`,
+              label: `${v.tipo_veiculo}${v.identificacao && v.identificacao !== v.placa ? ` - ${v.identificacao}` : ''} [${v.placa}] (${v.especialidade})`,
             }))}
             required
           />

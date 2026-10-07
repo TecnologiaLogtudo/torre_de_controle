@@ -266,7 +266,7 @@ class AgendamentoService:
             data=dados.data,
             horario_inicio=dados.horario_inicio or time(8, 0, 0),
             status="PROGRAMADO",
-            versao=1,
+            versao=0,
             criado_por_id=usuario_id,
             contrato_configuracao_id=contrato_config_id,
         )
@@ -466,7 +466,6 @@ class AgendamentoService:
                         db.add(evento)
 
         if alteracoes:
-            agendamento.versao = (agendamento.versao or 1) + 1
             db.commit()
             db.refresh(agendamento)
 
@@ -504,7 +503,6 @@ class AgendamentoService:
             db, dados.motorista_id, dados.veiculo_id, agendamento_id
         )
 
-        agendamento.versao = (agendamento.versao or 1) + 1
         alocacao = AlocacaoOperacional(
             agendamento_id=agendamento_id,
             motorista_id=dados.motorista_id,
@@ -564,7 +562,6 @@ class AgendamentoService:
         db.flush()
 
         # Cria a nova alocação SPOT
-        agendamento.versao = (agendamento.versao or 1) + 1
         nova_alocacao = AlocacaoOperacional(
             agendamento_id=agendamento_id,
             motorista_id=dados.motorista_id,
@@ -610,7 +607,6 @@ class AgendamentoService:
             )
 
         agendamento_id = alocacao.agendamento_id
-        agendamento.versao = (agendamento.versao or 1) + 1
         db.delete(alocacao)
         db.commit()
 
@@ -661,7 +657,6 @@ class AgendamentoService:
 
         veiculo_antigo_id = alocacao.veiculo_id
         alocacao.veiculo_id = dados.veiculo_id
-        agendamento.versao = (agendamento.versao or 1) + 1
 
         motivo_txt = f" Motivo: {dados.motivo}" if dados.motivo else ""
         historico = HistoricoAgendamento(
@@ -714,8 +709,6 @@ class AgendamentoService:
             alocacao.motivo_indisponibilidade_id = None
 
         alocacao.status_operacional = novo_status
-        if alocacao.agendamento:
-            alocacao.agendamento.versao = (alocacao.agendamento.versao or 1) + 1
         db.commit()
         db.refresh(alocacao)
 
@@ -736,3 +729,33 @@ class AgendamentoService:
         db.commit()
 
         return alocacao
+
+    @staticmethod
+    def salvar_versao_agendamento(
+        db: Session,
+        agendamento_id: UUID,
+        usuario_id: UUID,
+        descricao: Optional[str] = None,
+    ) -> Agendamento:
+        agendamento = AgendamentoService.buscar_por_id(db, agendamento_id)
+        if agendamento.status in ["CONCLUIDO", "CANCELADO"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Não é permitido versionar um agendamento com status {agendamento.status}.",
+            )
+
+        agendamento.versao = (agendamento.versao or 0) + 1
+        db.commit()
+        db.refresh(agendamento)
+
+        historico = HistoricoAgendamento(
+            agendamento_id=agendamento.id,
+            alterado_por_id=usuario_id,
+            tipo_alteracao="NOVA_VERSAO",
+            descricao=descricao or f"Programação salva e versionada para v{agendamento.versao}.",
+        )
+        db.add(historico)
+        db.commit()
+        db.refresh(agendamento)
+
+        return agendamento

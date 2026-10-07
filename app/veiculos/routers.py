@@ -37,7 +37,12 @@ def cadastrar_veiculo(
             detail="Já existe um veículo cadastrado com esta placa.",
         )
     # Valida identificação duplicada
-    if obter_veiculo_por_identificacao(db, dados.identificacao):
+    identificacao_efetiva = (
+        dados.identificacao.strip()
+        if dados.identificacao and dados.identificacao.strip()
+        else dados.placa.strip().upper()
+    )
+    if obter_veiculo_por_identificacao(db, identificacao_efetiva):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Já existe um veículo cadastrado com esta identificação.",
@@ -51,7 +56,7 @@ def cadastrar_veiculo(
 def obter_veiculos(
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(obter_usuario_atual),
-    limite: int = 50,
+    limite: int = 1000,
     offset: int = 0,
 ):
     """Lista todos os veículos cadastrados."""
@@ -101,8 +106,13 @@ def alterar_veiculo(
             detail="A placa fornecida já está em uso por outro veículo.",
         )
 
+    identificacao_efetiva = (
+        dados.identificacao.strip()
+        if dados.identificacao and dados.identificacao.strip()
+        else dados.placa.strip().upper()
+    )
     veiculo_identificacao = obter_veiculo_por_identificacao(
-        db, dados.identificacao
+        db, identificacao_efetiva
     )
     if veiculo_identificacao and veiculo_identificacao.id != id:
         raise HTTPException(

@@ -2,7 +2,7 @@ import { apiClient } from '../api/client'
 import { Veiculo, VeiculoCreatePayload, VeiculoUpdatePayload } from '@/types/veiculos'
 
 export const veiculosService = {
-  async listar(limite = 50, offset = 0): Promise<Veiculo[]> {
+  async listar(limite = 1000, offset = 0): Promise<Veiculo[]> {
     const response = await apiClient.get<Veiculo[]>('/api/v1/veiculos', {
       params: { limite, offset },
     })

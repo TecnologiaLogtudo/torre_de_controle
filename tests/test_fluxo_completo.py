@@ -10,6 +10,9 @@ from app.veiculos.models import Veiculo
 from app.contratos.models import ContratoConfiguracao, MotoristaDedicadoVinculo
 from app.auditoria.models import Auditoria
 from app.core.datetime_utils import TZ_BAHIA, para_local
+from app.core.security import criar_token_acesso
+from app.usuarios.services import criar_usuario
+from app.usuarios.schemas import UsuarioCreate
 
 # ==========================================
 # TESTES DE BOOTSTRAP E AUTENTICAÇÃO
@@ -139,6 +142,47 @@ def test_cadastro_entidades_basicas(client: TestClient, db: Session):
         "/api/v1/veiculos", json=payload_veiculo_invalido, headers=headers
     )
     assert res_veic_err.status_code == 422  # Unprocessable Entity (Pydantic)
+
+
+def test_cadastro_veiculo_sem_identificacao(client: TestClient, db: Session):
+    timestamp_sfx = str(int(datetime.now().timestamp()))[-4:]
+    usuario_adm = criar_usuario(
+        db,
+        UsuarioCreate(
+            nome="Admin Veiculo Test",
+            email=f"admin_veic_{timestamp_sfx}@logtudo.com",
+            senha="SenhaForte123!",
+            ativo=True,
+        ),
+    )
+    headers = {"Authorization": f"Bearer {criar_token_acesso(sub=str(usuario_adm.id))}"}
+
+    placa_teste = f"NOI{timestamp_sfx}"
+    payload = {
+        "placa": placa_teste,
+        "tipo_veiculo": "HR",
+        "especialidade": "SECO",
+    }
+    res = client.post("/api/v1/veiculos", json=payload, headers=headers)
+    assert res.status_code == 201
+    data = res.json()
+    assert data["placa"] == placa_teste
+    assert data["identificacao"] == placa_teste
+    veiculo_id = data["id"]
+
+    # Atualiza sem passar identificacao
+    payload_update = {
+        "placa": placa_teste,
+        "tipo_veiculo": "Fiorino",
+        "especialidade": "REFRIGERADO",
+        "ativo": True,
+    }
+    res_put = client.put(f"/api/v1/veiculos/{veiculo_id}", json=payload_update, headers=headers)
+    assert res_put.status_code == 200
+    data_put = res_put.json()
+    assert data_put["tipo_veiculo"] == "Fiorino"
+    assert data_put["especialidade"] == "REFRIGERADO"
+    assert data_put["identificacao"] == placa_teste
 
 
 # ==========================================

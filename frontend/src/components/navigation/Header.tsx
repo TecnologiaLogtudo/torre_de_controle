@@ -48,12 +48,6 @@ export const Header: React.FC<{ onToggleMobileSidebar?: () => void }> = ({
 
       {/* Direita: Usuário Autenticado + Profile Menu */}
       <div className="flex items-center gap-4">
-        {/* Status Operacional da API */}
-        <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-none text-xs text-emerald-700 font-mono">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span className="font-medium">API Conectada</span>
-        </div>
-
         {/* Menu do Usuário */}
         {user && (
           <Dropdown

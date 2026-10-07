@@ -41,7 +41,7 @@ def cadastrar_motorista(
 def obter_motoristas(
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(obter_usuario_atual),
-    limite: int = 50,
+    limite: int = 1000,
     offset: int = 0,
 ):
     """Lista todos os motoristas cadastrados."""

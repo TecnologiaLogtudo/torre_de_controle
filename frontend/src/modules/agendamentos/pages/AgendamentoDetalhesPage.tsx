@@ -12,7 +12,11 @@ import { Drawer } from '@/components/ui/Drawer'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { formatToBahia } from '@/utils/date'
+import { formatToBahia, formatDateBahia } from '@/utils/date'
+import { agendamentosService } from '@/services/agendamentos/agendamentosService'
+import { torreService } from '@/services/torre/torreService'
+import { toast } from '@/components/feedback/Toaster'
+import { getErrorMessage } from '@/services/api/errors'
 import {
   Calendar,
   Clock,
@@ -27,6 +31,10 @@ import {
   UserCheck,
   Activity,
   CheckCircle2,
+  Save,
+  Layers,
+  CheckSquare,
+  Square,
 } from 'lucide-react'
 
 export const AgendamentoDetalhesPage: React.FC = () => {
@@ -90,7 +98,87 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     getVeiculoInfo,
     getVeiculoObj,
     getPermittedNextStatuses,
+    carregarDetalhes,
   } = useAgendamentoDetalhes(id)
+
+  // Estado para Salvamento Formal e Versionamento
+  const [salvandoVersao, setSalvandoVersao] = React.useState(false)
+  const [alteracoesNaoSalvas, setAlteracoesNaoSalvas] = React.useState(false)
+
+  // Estado para Seleção e Ação em Lote
+  const [selectedAlocacoes, setSelectedAlocacoes] = React.useState<string[]>([])
+  const [drawerLoteOpen, setDrawerLoteOpen] = React.useState(false)
+  const [loteNovoStatus, setLoteNovoStatus] = React.useState<StatusOperacional>('PROGRAMADO')
+  const [loteMotivoId, setLoteMotivoId] = React.useState<string>('')
+  const [submittingLote, setSubmittingLote] = React.useState(false)
+  const [loteFormError, setLoteFormError] = React.useState<string | null>(null)
+
+  const handleSalvarVersao = async () => {
+    if (!agendamento) return
+    setSalvandoVersao(true)
+    try {
+      const atualizado = await agendamentosService.salvarVersao(agendamento.id)
+      toast.success(`Agendamento salvo com sucesso! Nova versão oficial: v${atualizado.versao}`)
+      setAlteracoesNaoSalvas(false)
+      await carregarDetalhes()
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao salvar agendamento.'))
+    } finally {
+      setSalvandoVersao(false)
+    }
+  }
+
+  const toggleSelectAlocacao = (alocId: string) => {
+    setSelectedAlocacoes(prev =>
+      prev.includes(alocId) ? prev.filter(id => id !== alocId) : [...prev, alocId]
+    )
+  }
+
+  const handleToggleSelectAll = () => {
+    if (!agendamento) return
+    const todasIds = agendamento.alocacoes.map(a => a.id)
+    if (selectedAlocacoes.length === todasIds.length) {
+      setSelectedAlocacoes([])
+    } else {
+      setSelectedAlocacoes(todasIds)
+    }
+  }
+
+  const handleSalvarStatusLote = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoteFormError(null)
+
+    if (selectedAlocacoes.length === 0) {
+      setLoteFormError('Nenhuma vaga selecionada.')
+      return
+    }
+
+    if (loteNovoStatus === 'INDISPONIVEL' && !loteMotivoId) {
+      setLoteFormError('Selecione o motivo de indisponibilidade.')
+      return
+    }
+
+    setSubmittingLote(true)
+    try {
+      await torreService.atualizarStatusLote({
+        alocacao_ids: selectedAlocacoes,
+        novo_status: loteNovoStatus,
+        motivo_indisponibilidade_id: loteNovoStatus === 'INDISPONIVEL' ? loteMotivoId : undefined,
+        origem_alteracao: 'agendamento_lote',
+      })
+      toast.success(`Status de ${selectedAlocacoes.length} vaga(s) atualizado para ${loteNovoStatus}!`)
+      setSelectedAlocacoes([])
+      setDrawerLoteOpen(false)
+      setAlteracoesNaoSalvas(true)
+      await carregarDetalhes()
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao atualizar status em lote.')
+      setLoteFormError(msg)
+      toast.error(msg)
+    } finally {
+      setSubmittingLote(false)
+    }
+  }
 
   const historicoOrdenado = React.useMemo(() => {
     return [...historico].sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
@@ -147,28 +235,88 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           subtitle={`Programação para ${empresa?.nome || 'Empresa'}`}
           badge={
             <div className="flex items-center gap-2">
-              <span
-                className="px-2 py-0.5 rounded-none text-xs font-mono font-bold bg-slate-100 text-sky-700 border border-slate-300"
-                title="Versão do Agendamento (incrementada a cada alteração)"
-              >
-                v{agendamento.versao || 1}
-              </span>
+              {agendamento.versao && agendamento.versao > 0 ? (
+                <span
+                  className="px-2 py-0.5 rounded-none text-xs font-mono font-bold bg-slate-100 text-sky-700 border border-slate-300"
+                  title="Versão Oficial do Agendamento"
+                >
+                  v{agendamento.versao}
+                </span>
+              ) : (
+                <span
+                  className="px-2 py-0.5 rounded-none text-xs font-mono font-bold bg-amber-50 text-amber-800 border border-amber-300"
+                  title="Agendamento criado mas ainda não salvo oficialmente"
+                >
+                  Pendente de Salvar (v1)
+                </span>
+              )}
               <StatusBadge status={agendamento.status} />
             </div>
           }
           actions={
             agendamento.status !== 'CANCELADO' && (
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => setCancelModalOpen(true)}
-                leftIcon={<XCircle className="w-4 h-4" />}
-              >
-                Cancelar Agendamento
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSalvarVersao}
+                  isLoading={salvandoVersao}
+                  leftIcon={<Save className="w-4 h-4" />}
+                  title={!agendamento.versao || agendamento.versao === 0 ? 'Salvar agendamento e oficializar versão v1' : 'Salvar alterações e gerar uma nova versão oficial da escala'}
+                >
+                  {!agendamento.versao || agendamento.versao === 0 ? 'Salvar Agendamento (Oficializar v1)' : 'Salvar Agendamento'}
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setCancelModalOpen(true)}
+                  leftIcon={<XCircle className="w-4 h-4" />}
+                >
+                  Cancelar Agendamento
+                </Button>
+              </div>
             )
           }
         />
+      </div>
+
+      {alteracoesNaoSalvas && (
+        <Alert type="info">
+          Existem modificações operacionais recentes nesta programação. Clique em <strong>"Salvar Agendamento"</strong> acima para registrar oficialmente a nova versão da escala.
+        </Alert>
+      )}
+
+      {/* Barra de Ações em Lote */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-100 p-2.5 border border-slate-300">
+        <div className="flex items-center gap-2 text-xs">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleToggleSelectAll}
+            leftIcon={selectedAlocacoes.length === agendamento.alocacoes.length ? <CheckSquare className="w-4 h-4 text-sky-600" /> : <Square className="w-4 h-4 text-slate-500" />}
+          >
+            {selectedAlocacoes.length === agendamento.alocacoes.length ? 'Desmarcar Todas' : 'Selecionar Todas as Vagas'}
+          </Button>
+          {selectedAlocacoes.length > 0 && (
+            <span className="font-semibold text-slate-700">
+              ({selectedAlocacoes.length} vaga(s) selecionada(s))
+            </span>
+          )}
+        </div>
+
+        {selectedAlocacoes.length > 0 && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setLoteFormError(null)
+              setDrawerLoteOpen(true)
+            }}
+            leftIcon={<Layers className="w-4 h-4" />}
+          >
+            Alterar Status em Lote ({selectedAlocacoes.length})
+          </Button>
+        )}
       </div>
 
       {/* Card de Resumo da Programação */}
@@ -184,7 +332,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
             <span className="text-slate-500 block mb-0.5">Data da Programação:</span>
             <span className="font-mono font-bold text-slate-900 text-sm flex items-center gap-1.5">
               <Calendar className="w-4 h-4 text-sky-600" />
-              {formatToBahia(agendamento.data, { hour: undefined, minute: undefined, second: undefined })}
+              {formatDateBahia(agendamento.data)}
             </span>
           </div>
 
@@ -233,9 +381,18 @@ export const AgendamentoDetalhesPage: React.FC = () => {
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2.5">
-                    <span className="text-xs font-bold text-slate-700">
-                      VAGA DEDICADA #{idx + 1}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedAlocacoes.includes(aloc.id)}
+                        onChange={() => toggleSelectAlocacao(aloc.id)}
+                        className="w-4 h-4 text-sky-600 border-slate-300 rounded-none focus:ring-sky-500 cursor-pointer"
+                        aria-label={`Selecionar Vaga Dedicada #${idx + 1}`}
+                      />
+                      <span className="text-xs font-bold text-slate-700">
+                        VAGA DEDICADA #{idx + 1}
+                      </span>
+                    </div>
                     <StatusBadge status={aloc.status_operacional} />
                   </div>
 
@@ -342,6 +499,13 @@ export const AgendamentoDetalhesPage: React.FC = () => {
               >
                 <div className="space-y-1 text-xs">
                   <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedAlocacoes.includes(spot.id)}
+                      onChange={() => toggleSelectAlocacao(spot.id)}
+                      className="w-4 h-4 text-sky-600 border-slate-300 rounded-none focus:ring-sky-500 cursor-pointer"
+                      aria-label="Selecionar Vaga SPOT"
+                    />
                     <StatusBadge status="SPOT" showIcon={false} size="sm" />
                     <span className="font-bold text-slate-900 text-sm">
                       {getMotoristaNome(spot.motorista_id)}
@@ -399,23 +563,45 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {historicoOrdenado.map((h, idx) => (
-              <div key={h.id} className="p-3.5 bg-slate-50/90 border border-slate-200 rounded-none flex items-start gap-3 text-xs">
-                <History className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-800 uppercase tracking-wider">{h.tipo_alteracao}</span>
-                      <span className="px-1.5 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-mono font-bold">
-                        v{historicoOrdenado.length - idx}
-                      </span>
+            {historicoOrdenado.map((h) => {
+              const isNovaVersao = h.tipo_alteracao === 'NOVA_VERSAO'
+              const matchVersao = h.descricao.match(/v(\d+)/i)
+              const versaoOficial = isNovaVersao && matchVersao ? `v${matchVersao[1]}` : null
+
+              return (
+                <div
+                  key={h.id}
+                  className={`p-3.5 border rounded-none flex items-start gap-3 text-xs ${
+                    isNovaVersao
+                      ? 'bg-emerald-50/70 border-emerald-300'
+                      : 'bg-slate-50/90 border-slate-200'
+                  }`}
+                >
+                  <History className={`w-4 h-4 shrink-0 mt-0.5 ${isNovaVersao ? 'text-emerald-700' : 'text-sky-600'}`} />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-800 uppercase tracking-wider">{h.tipo_alteracao}</span>
+                        {versaoOficial && (
+                          <span
+                            className={`px-1.5 py-0.5 border text-[10px] font-mono font-bold ${
+                              isNovaVersao
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : 'bg-slate-100 text-slate-700 border-slate-300'
+                            }`}
+                            title="Versão Oficial Salva"
+                          >
+                            {versaoOficial}
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-mono text-slate-500 text-[11px]">{formatToBahia(h.criado_em)}</span>
                     </div>
-                    <span className="font-mono text-slate-500 text-[11px]">{formatToBahia(h.criado_em)}</span>
+                    <p className="text-slate-700 text-xs leading-relaxed">{formatarDescricaoHistorico(h.descricao)}</p>
                   </div>
-                  <p className="text-slate-700 text-xs leading-relaxed">{formatarDescricaoHistorico(h.descricao)}</p>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </Card>
@@ -446,7 +632,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
             placeholder="Selecione o veículo..."
             options={veiculosSpotElegiveis.map(v => ({
               value: v.id,
-              label: `${v.tipo_veiculo} - ${v.identificacao} [${v.placa}] (${v.especialidade})`,
+              label: `${v.tipo_veiculo}${v.identificacao && v.identificacao !== v.placa ? ` - ${v.identificacao}` : ''} [${v.placa}] (${v.especialidade})`,
             }))}
             required
           />
@@ -557,6 +743,55 @@ export const AgendamentoDetalhesPage: React.FC = () => {
             </Button>
             <Button variant="primary" size="sm" isLoading={submittingTroca} type="submit">
               Confirmar Troca de Veículo
+            </Button>
+          </div>
+        </form>
+      </Drawer>
+
+      {/* Drawer Alterar Status em Lote */}
+      <Drawer
+        isOpen={drawerLoteOpen}
+        onClose={() => setDrawerLoteOpen(false)}
+        title={`Alterar Status em Lote (${selectedAlocacoes.length} vagas)`}
+        subtitle="Atualize a situação operacional de múltiplos recursos selecionados simultaneamente"
+      >
+        <form onSubmit={handleSalvarStatusLote} className="space-y-4">
+          {loteFormError && <Alert type="error">{loteFormError}</Alert>}
+
+          <Select
+            label="Novo Status Operacional para os Selecionados"
+            value={loteNovoStatus}
+            onChange={e => setLoteNovoStatus(e.target.value as StatusOperacional)}
+            options={[
+              { value: 'PROGRAMADO', label: 'PROGRAMADO (Na Escala)' },
+              { value: 'EM_ROTA', label: 'EM ROTA (Em Viagem)' },
+              { value: 'DISPONIVEL', label: 'DISPONÍVEL (Livre)' },
+              { value: 'INDISPONIVEL', label: 'INDISPONÍVEL (Registrar Motivo)' },
+            ]}
+            required
+          />
+
+          {loteNovoStatus === 'INDISPONIVEL' && (
+            <Select
+              label="Motivo de Indisponibilidade"
+              value={loteMotivoId}
+              onChange={e => setLoteMotivoId(e.target.value)}
+              placeholder="Selecione o motivo..."
+              options={motivos.map(m => ({ value: m.id, label: m.nome }))}
+              required
+            />
+          )}
+
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-none text-xs text-slate-700">
+            <strong>Ação Coletiva:</strong> O status das {selectedAlocacoes.length} alocações selecionadas será atualizado de forma atômica no backend com registro na trilha de auditoria.
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
+            <Button variant="outline" size="sm" onClick={() => setDrawerLoteOpen(false)} type="button">
+              Cancelar
+            </Button>
+            <Button variant="primary" size="sm" isLoading={submittingLote} type="submit">
+              Aplicar a Todos os Selecionados
             </Button>
           </div>
         </form>

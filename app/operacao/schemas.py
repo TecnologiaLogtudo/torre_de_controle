@@ -73,6 +73,7 @@ class DetalhamentoOperacionalResponse(BaseModel):
     status_operacional: str
     motivo_indisponibilidade: Optional[str] = None
     agendamento_id: Optional[UUID] = None
+    alocacao_id: Optional[UUID] = None
 
 # --- Status de Motoristas (Visão Consolidada) ---
 class MotoristaStatusResponse(BaseModel):
@@ -88,6 +89,13 @@ class MotoristaStatusResponse(BaseModel):
     status_operacional: str  # DISPONIVEL, PROGRAMADO, EM_ROTA, INDISPONIVEL, SEM_ALOCACAO
     motivo_indisponibilidade: Optional[str] = None
     agendamento_id: Optional[UUID] = None
+    alocacao_id: Optional[UUID] = None
+
+class AlterarStatusMotoristaRequest(BaseModel):
+    data: date
+    novo_status: str  # DISPONIVEL, PROGRAMADO, EM_ROTA, INDISPONIVEL, SEM_ALOCACAO
+    motivo_indisponibilidade_id: Optional[UUID] = None
+    origem_alteracao: Optional[str] = "painel_status_motoristas"
 
 class MotoristasStatusResponse(BaseModel):
     data: date
@@ -136,3 +144,19 @@ class ResultadoImportacaoResponse(BaseModel):
     vinculos_dedicados_criados: int
     ignorados_placa_existente: int
     itens_ignorados: List[ItemIgnoradoImportacao] = []
+ 
+# --- Alteração de Status em Lote ---
+class StatusOperacionalLoteRequest(BaseModel):
+    alocacao_ids: Optional[List[UUID]] = None
+    motorista_ids: Optional[List[UUID]] = None
+    data: Optional[date] = None
+    novo_status: str
+    motivo_indisponibilidade_id: Optional[UUID] = None
+    observacao: Optional[str] = None
+    origem_alteracao: Optional[str] = "lote"
+
+class StatusOperacionalLoteResponse(BaseModel):
+    sucesso: bool = True
+    atualizados: int
+    novo_status: str
+    mensagem: str

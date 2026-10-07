@@ -51,11 +51,12 @@ export const TableRow: React.FC<TableRowProps> = ({ children, className = '', on
 export interface TableHeadCellProps {
   children: React.ReactNode
   className?: string
+  compact?: boolean
 }
 
-export const TableHeadCell: React.FC<TableHeadCellProps> = ({ children, className = '' }) => {
+export const TableHeadCell: React.FC<TableHeadCellProps> = ({ children, className = '', compact = false }) => {
   return (
-    <th className={`px-4 py-3 font-semibold uppercase tracking-wider text-[11px] text-slate-500 whitespace-nowrap ${className}`}>
+    <th className={`${compact ? 'px-2.5 py-1.5' : 'px-4 py-3'} font-semibold uppercase tracking-wider text-[11px] text-slate-500 whitespace-nowrap ${className}`}>
       {children}
     </th>
   )
@@ -65,11 +66,12 @@ export interface TableCellProps {
   children: React.ReactNode
   className?: string
   colSpan?: number
+  compact?: boolean
 }
 
-export const TableCell: React.FC<TableCellProps> = ({ children, className = '', colSpan }) => {
+export const TableCell: React.FC<TableCellProps> = ({ children, className = '', colSpan, compact = false }) => {
   return (
-    <td colSpan={colSpan} className={`px-4 py-3 text-slate-700 ${className}`}>
+    <td colSpan={colSpan} className={`${compact ? 'px-2.5 py-1.5' : 'px-4 py-3'} text-slate-700 ${className}`}>
       {children}
     </td>
   )

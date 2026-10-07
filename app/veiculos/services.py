@@ -23,18 +23,29 @@ def obter_veiculo_por_identificacao(
 
 
 def listar_veiculos(
-    db: Session, limite: int = 50, offset: int = 0
+    db: Session, limite: int = 1000, offset: int = 0
 ) -> List[Veiculo]:
-    return db.query(Veiculo).offset(offset).limit(limite).all()
+    return (
+        db.query(Veiculo)
+        .order_by(Veiculo.criado_em.desc())
+        .offset(offset)
+        .limit(limite)
+        .all()
+    )
 
 
 def criar_veiculo(
     db: Session, dados: VeiculoCreate, autor_id: uuid.UUID
 ) -> Veiculo:
     """Cria um veículo e registra na auditoria."""
+    identificacao_efetiva = (
+        dados.identificacao.strip()
+        if dados.identificacao and dados.identificacao.strip()
+        else dados.placa.strip().upper()
+    )
     veiculo = Veiculo(
-        identificacao=dados.identificacao,
-        placa=dados.placa.upper(),
+        identificacao=identificacao_efetiva,
+        placa=dados.placa.strip().upper(),
         tipo_veiculo=dados.tipo_veiculo,
         especialidade=dados.especialidade,
         ativo=True,
@@ -80,8 +91,13 @@ def atualizar_veiculo(
         "ativo": veiculo.ativo,
     }
 
-    veiculo.identificacao = dados.identificacao
-    veiculo.placa = dados.placa.upper()
+    identificacao_efetiva = (
+        dados.identificacao.strip()
+        if dados.identificacao and dados.identificacao.strip()
+        else dados.placa.strip().upper()
+    )
+    veiculo.identificacao = identificacao_efetiva
+    veiculo.placa = dados.placa.strip().upper()
     veiculo.tipo_veiculo = dados.tipo_veiculo
     veiculo.especialidade = dados.especialidade
     estava_ativo = veiculo.ativo

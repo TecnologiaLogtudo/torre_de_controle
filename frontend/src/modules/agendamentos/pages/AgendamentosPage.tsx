@@ -18,7 +18,7 @@ import { Drawer } from '@/components/ui/Drawer'
 import { Alert } from '@/components/ui/Alert'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { formatToBahia, getHojeBahiaIso, formatDateBahia } from '@/utils/date'
+import { getHojeBahiaIso, formatDateBahia } from '@/utils/date'
 import { toast } from '@/components/feedback/Toaster'
 import { getErrorMessage } from '@/services/api/errors'
 import { Calendar, Plus, Eye, Clock, CheckCircle2, Building2 } from 'lucide-react'
@@ -228,7 +228,7 @@ export const AgendamentosPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHeadCell>Empresa Contratante</TableHeadCell>
+                <TableHeadCell>Empresa</TableHeadCell>
                 <TableHeadCell>Data Operacional</TableHeadCell>
                 <TableHeadCell>Horário de Início</TableHeadCell>
                 <TableHeadCell>Status & Versão</TableHeadCell>
@@ -243,7 +243,7 @@ export const AgendamentosPage: React.FC = () => {
                     {getEmpresaNome(ag.empresa_id)}
                   </TableCell>
                   <TableCell className="font-mono text-slate-700">
-                    {formatToBahia(ag.data, { hour: undefined, minute: undefined, second: undefined })}
+                    {formatDateBahia(ag.data)}
                   </TableCell>
                   <TableCell className="font-mono text-sky-700 font-bold">
                     {ag.horario_inicio || '08:00:00'}

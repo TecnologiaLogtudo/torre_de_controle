@@ -7,6 +7,99 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ## [Unreleased]
 
+### Adicionado & Corrigido (Desacoplamento de Status SPOT e Isolamento por Empresa)
+- **Desacoplamento do Status Operacional de Motoristas SPOT (`app/operacao/models.py`, `app/operacao/services.py`, `tests/test_status_motoristas.py`)**:
+  - Criado o modelo e tabela `status_operacional_motoristas` com índice único `(motorista_id, data)` para armazenar o status operacional diário de motoristas SPOT de forma independente, sem necessidade ou dependência de atrelamento a um `Agendamento` ou empresa contratante.
+  - Flexibilizadas as colunas `empresa_id` e `veiculo_id` na tabela `eventos_operacionais` para `nullable=True`, garantindo trilha de auditoria completa mesmo em transições de status de recursos livres.
+  - Refatorados `alterar_status_motorista`, `atualizar_status_lote`, `obter_resumo_por_empresa` e `obter_resumo_geral`:
+    - Recursos SPOT disponíveis ou indisponíveis permanecem no pool geral de frota livre sem vínculo com empresas parceiras.
+    - A tabela **Situação Operacional por Empresa** agora consolida exclusivamente recursos dedicados/contratados ou SPOTs formalmente agendados (`PROGRAMADO`) ou em rota (`EM_ROTA`) para a respectiva empresa, eliminando a exibição errônea de SPOTs livres na linha de empresas parceiras (ex: 3 Corações).
+    - Os **KPIs Gerais** do topo da Torre de Controle continuam contabilizando toda a frota ativa (recursos dedicados e SPOTs livres de acordo com o status operacional diário).
+    - Executada limpeza corretiva de alocações indevidas no banco de dados e migração para `status_operacional_motoristas`, regularizando o agendamento da 3 Corações em 07/10/2026 de 163 recursos para 0 recursos alocados.
+- **Resolução de Conflito de Endereçamento de Login Local (`frontend/.env`, `frontend/vite.config.ts`)**:
+  - Fixado `VITE_API_URL` e proxy do Vite em `http://127.0.0.1:8000`, prevenindo colisão de portas entre o IPv6 `[::1]:8000` (usado por containers Docker locais) e o Uvicorn no IPv4.
+
+### Adicionado & Corrigido (Melhorias Operacionais do Cockpit & Agendamentos)
+- **Correção no Filtro de Seleção (`frontend/src/components/ui/Select.tsx`)**:
+  - Removido o atributo `disabled` da opção padrão/vazia do componente `<Select />` (`<option value="">{placeholder}</option>`), permitindo que operadores limpem filtros e retornem à visualização completa `(Todos)` após realizar uma filtragem.
+- **Formatação de Data Operacional no Agendamento (`frontend/src/utils/date.ts`, `AgendamentosPage.tsx`)**:
+  - Ajustada a função `formatDateBahia` para exibir exclusivamente a data no padrão brasileiro `DD/MM/AAAA` (sem carimbo de horas `HH:mm`) e sem sofrer distorção para o dia anterior decorrente da interpretação UTC de strings `YYYY-MM-DD`.
+  - Atualizada a listagem de agendamentos (`AgendamentosPage.tsx`) para apresentar a Data Operacional limpa.
+- **Alternância Rápida de Status em Empresas e Usuários (`EmpresasPage.tsx`, `UsuariosPage.tsx`, `StatusBadge.tsx`)**:
+  - Convertido o badge de status das tabelas de Empresas e Usuários para o componente interativo `<StatusBadge>`, permitindo que administradores cliquem diretamente no badge para alternar o status (`ATIVO` / `INATIVO`) com feedback imediato via toast e atualização reativa da listagem.
+- **Expansão do Limite de Motoristas na API e Consultas (`app/motoristas/routers.py`, `app/motoristas/services.py`, `motoristasService.ts`, `app/operacao/routers.py`, `app/operacao/services.py`)**:
+  - Elevado o limite padrão e máximo de listagem de motoristas de 50 para 1000 registros, garantindo que motoristas cadastrados além do 50º registro não sejam arbitrariamente truncados da tela ou das alocações SPOT.
+- **Filtro de Motoristas Ocupados na Escala de Agendamento (`useAgendamentoDetalhes.ts`)**:
+  - Aprimorada a listagem de `motoristasSpotElegiveis` para ocultar automaticamente motoristas que já estejam com status operacional `PROGRAMADO`, `EM_ROTA` ou `INDISPONIVEL` na data do agendamento, prevenindo conflitos e dupla alocação antes mesmo da submissão.
+- **Cockpit em Tempo Real da Torre de Controle (`TorreHeader.tsx`, `TorrePage.tsx`)**:
+  - Removido o input seletor de data da Torre de Controle, fixando a tela no dia corrente (`hoje`) com indicador visual vivo em verde ("Hoje: DD/MM/AAAA"). Consultas retroativas ou futuras são direcionadas à tela de Agendamentos.
+- **Alteração de Status Operacional em Lote (`app/operacao/schemas.py`, `app/operacao/services.py`, `app/operacao/routers.py`, `torreService.ts`, `DetalhamentoTorre.tsx`, `AgendamentoDetalhesPage.tsx`)**:
+  - Implementado o endpoint `POST /api/v1/operacao/status-lote` com suporte à alteração simultânea por `alocacao_ids` e `motorista_ids`, com validação atômica, justificativa obrigatória para `INDISPONIVEL` e trilha de auditoria completa em `eventos_operacionais`.
+  - Adicionadas caixas de seleção (checkboxes individuais e seleção global), barra de controle de seleção e Drawer dedicado tanto na tela de detalhes do agendamento quanto no detalhamento da Torre de Controle.
+- **Botão Salvar Agendamento & Versionamento Oficial Estrito (`app/agendamentos/services.py`, `app/operacao/services.py`, `app/agendamentos/routers.py`, `agendamentosService.ts`, `AgendamentoDetalhesPage.tsx`)**:
+  - Implementado o endpoint `POST /api/v1/agendamentos/{agendamento_id}/salvar-versao` e o botão `"Salvar Agendamento"` no cabeçalho do agendamento.
+  - Eliminados os incrementos automáticos prematuros de versão que ocorriam a cada micro-ação intermediária (`adicionar_spot`, `substituir_spot`, `remover_spot`, `trocar_veiculo_dedicado`, `atualizar_status_operacional`). A criação agora nasce em `versao = 0` (pendente de salvar). O primeiro salvamento oficializa a versão `v1`, e salvamentos subsequentes avançam consecutivamente (`v2, v3...`).
+  - Corrigida a renderização do histórico no frontend (`AgendamentoDetalhesPage.tsx`), removendo a numeração artificial sequencial (`v{total - idx}`) que rotulava cada micro-ação como uma versão separada. Agora, as badges de versão oficial são reservadas exclusivamente para `NOVA_VERSAO` (`v1, v2, v3...`) disparadas pelo salvamento deliberado do operador.
+- **Compactação e Ajuste do Detalhamento Operacional (`DetalhamentoTorre.tsx`, `Table.tsx`, `AgendamentosPage.tsx`)**:
+  - Renomeado o cabeçalho da coluna `"Empresa Contratante"` para `"Empresa"` nas tabelas da Torre de Controle e de Agendamentos.
+  - Adicionada propriedade `compact` aos componentes de cabeçalho (`TableHeadCell`) e célula (`TableCell`), reduzindo o padding para `px-2.5 py-1.5`.
+  - Removida a exibição da identificação interna na coluna 'Veículo / Placa' (apresentando apenas `{tipo_veiculo} [{placa}]`).
+  - Achada e compactada a tabela com larguras truncadas inteligentes em colunas secundárias e `whitespace-nowrap`, garantindo a visibilidade imediata da coluna 'Status Operacional' sem necessidade de rolagem horizontal desnecessária.
+- **Alteração Individual de Status na Torre de Controle (`DetalhamentoTorre.tsx`, `torre.test.tsx`)**:
+  - Implementada funcionalidade de alterar o status operacional diretamente pela página principal da Torre de Controle, permitindo clicar no badge de status ou no botão de ação rápida da linha.
+  - Adicionado Drawer lateral dedicado para seleção do novo status operacional (`DISPONIVEL`, `PROGRAMADO`, `EM_ROTA`, `INDISPONIVEL`), com obrigatoriedade de motivo para indisponibilidade e feedback imediato via toast.
+  - Atualização reativa de toda a Torre de Controle (cards executivos, resumo por empresa e detalhamento) após a confirmação da alteração.
+- **Mudança de Status em Massa na Página "Status do Motorista" (`StatusMotoristasPage.tsx`, `statusMotoristas.test.tsx`)**:
+  - Implementada funcionalidade de seleção múltipla de motoristas (checkboxes individuais e global no cabeçalho da tabela) com barra contextual de ações em lote.
+  - Implementado Drawer lateral dedicado para alteração de status em massa (`DISPONIVEL`, `INDISPONIVEL` com motivo obrigatório e `SEM_ALOCACAO`), conectado ao endpoint `/api/v1/operacao/status-lote`.
+  - Adicionado banner com ação rápida inteligente para selecionar ou converter diretamente todos os motoristas `SEM_ALOCACAO` para `DISPONIVEL` em 1 clique.
+  - Executada a migração/atualização em lote na base de dados, convertendo todos os 156 motoristas com status "Sem Alocação" para o status "Disponível".
+- **Filtragem de Recursos no Detalhamento Operacional da Torre (`app/operacao/services.py`, `DetalhamentoTorre.tsx`, `test_torre_e_operacao_completa.py`)**:
+  - Restrita a listagem da tabela "Detalhamento Operacional dos Recursos" para exibir exclusivamente:
+    1. Motoristas de categoria `DEDICADO` (em qualquer status operacional);
+    2. Recursos de categoria `SPOT` que foram agendados (`PROGRAMADO`) ou estão em rota (`EM_ROTA`).
+  - Recursos SPOT livres ou ociosos (`DISPONIVEL`, `SEM_ALOCACAO`) ficam ocultos desta tabela, focando o detalhamento estritamente na execução contratual e agendada da data.
+  - Implementado tanto no backend (via cláusula SQL otimizada no `obter_detalhamento_operacional`) quanto no frontend (`detalhamentoVisivel`), com teste automatizado de cobertura `test_detalhamento_torre_filtra_spots_disponiveis`.
+- **Testes Automatizados de Regressão**:
+  - Atualizado `tests/test_agendamentos.py` e criado `tests/test_status_lote_e_versao.py` garantindo que o agendamento nasce em `v0`, que adições SPOT e alterações de status mantêm a versão inalterada, e que o primeiro acionamento de `salvar-versao` oficializa a `v1`.
+
+### Adicionado (Status Operacional de Motoristas)
+- **Alteração Direta de Status na Página "Status do Motorista" (`StatusMotoristasPage.tsx`, `torreService.ts`, `app/operacao/routers.py`, `app/operacao/services.py`, `app/operacao/schemas.py`)**:
+  - Implementado Drawer lateral e botão de ação rápida "Alterar Status" (além de clique direto no badge de status) para alterar o status operacional (`DISPONIVEL`, `PROGRAMADO`, `EM_ROTA`, `INDISPONIVEL`, `SEM_ALOCACAO`) de motoristas ativos na data selecionada.
+  - **Regra de Negócio para Categoria SPOT**: Como motoristas SPOT operam sob demanda e não possuem vínculo fixo com uma empresa, os status `PROGRAMADO` e `EM_ROTA` ficam estritamente bloqueados nesta tela (com botões desabilitados, etiqueta informativa de requerimento de agendamento e validação `HTTP 400` no backend). Para escalá-los em uma rota, o operador deve vinculá-los formalmente via tela de Agendamentos.
+  - Motoristas SPOT podem ser alternados entre `DISPONIVEL` (disponíveis para escala), `INDISPONIVEL` (com motivo obrigatório) e `SEM_ALOCACAO`, mantendo o vínculo com empresa nulo na exibição consolidada.
+  - Motoristas da categoria `DEDICADO` (com empresa fixa vinculada) mantêm acesso a todos os 5 status operacionais.
+  - Trilha de auditoria operacional gravada na tabela `eventos_operacionais` a cada transição de status.
+  - Testes automatizados cobrindo tanto as transições válidas quanto os bloqueios de motoristas SPOT no backend (`tests/test_status_motoristas.py`) e no frontend (`frontend/src/test/statusMotoristas.test.tsx`).
+
+### Modificado (Cadastro e Gestão de Veículos)
+- **Remoção da Obrigatoriedade de Identificação Interna de Veículos (`app/veiculos/schemas.py`, `app/veiculos/services.py`, `app/veiculos/routers.py`, `frontend/src/types/veiculos.ts`, `VeiculosPage.tsx`)**:
+  - Tornado opcional o campo `identificacao` nos schemas de criação e atualização de veículos no backend, adotando fallback automático para a `placa` quando omitido para preservar a integridade e unicidade do banco de dados sem necessidade de migração física.
+  - Removido o campo obrigatório "Identificação Interna / Prefixo" do formulário de cadastro e edição de veículos (Drawer) no frontend.
+  - Removida a coluna redundante "Identificação Interna" da tabela de veículos, mantendo a placa em destaque como identificador único principal.
+  - Aprimorada a formatação dos seletores de veículos em `MotoristasPage.tsx`, `ContratosPage.tsx` e `AgendamentoDetalhesPage.tsx` para evitar repetição visual desnecessária quando a identificação for omitida ou coincidir com a placa.
+  - Adicionado teste automatizado de regressão cobrindo criação e atualização de veículos sem identificação em `tests/test_fluxo_completo.py`.
+
+### Adicionado (Vínculo e Correlação Direta Motorista-Veículo)
+- **Vinculação Direta de Veículo na Gestão de Motoristas (`MotoristasPage.tsx`)**:
+  - Adicionado botão de ação rápida `"Vincular Veículo"` / `"Alterar Veículo"` em cada linha da tabela de motoristas.
+  - Implementado Drawer dedicado permitindo vincular qualquer veículo da frota física a um motorista, com suporte tanto a recursos **SPOT** (livre, sem necessidade de empresa ou contrato) quanto **DEDICADO** (associado a empresa contratante).
+  - Adicionado botão para `"Desvincular Veículo Atual"`, liberando o motorista de volta para SPOT livre sem veículo associado.
+- **Vinculação Direta de Motorista na Gestão de Veículos (`VeiculosPage.tsx`)**:
+  - Adicionado botão de ação rápida `"Vincular Motorista"` / `"Alterar Motorista"` em cada linha da tabela de veículos.
+  - Implementado Drawer dedicado permitindo vincular motoristas disponíveis ao veículo físico selecionado, com opção de desvinculação direta.
+- **Atualização Direta de Vínculos SPOT no Backend (`app/contratos/services.py`)**:
+  - Flexibilizado `criar_vinculo_motorista` para permitir a atualização direta de veículo em registros SPOT existentes (sem necessidade de desativação manual prévia), com validação contra veículos já em uso ativo por outro motorista e trilha de auditoria completa.
+  - Suporte à transição direta DEDICADO -> SPOT.
+- **Testes Automatizados de Regressão e Validação**:
+  - Criados testes unitários no backend em `tests/test_contratos_vinculos_spot.py` cobrindo a atualização direta de veículo SPOT e o bloqueio de duplicidade de veículo.
+  - Adicionados testes de integração no frontend em `src/test/fase_4_2_modulos.test.tsx` garantindo a correta abertura dos Drawers e o envio dos payloads de vinculação SPOT.
+
+### Corrigido (Listagem de Veículos & Paginação)
+- **Elevação do Limite e Ordenação de Veículos (`app/veiculos/services.py`, `app/veiculos/routers.py`, `veiculosService.ts`, `VeiculosPage.tsx`, `MotoristasPage.tsx`, `ContratosPage.tsx`, `useAgendamentoDetalhes.ts`)**:
+  - Elevado o limite padrão de consulta de 50 para 1000 registros tanto no backend quanto no frontend, resolvendo o problema onde veículos cadastrados além do 50º registro ficavam omitidos da listagem e da busca.
+  - Adicionada ordenação decrescente por data de criação (`.order_by(Veiculo.criado_em.desc())`), garantindo que veículos recém-cadastrados apareçam imediatamente no topo da tabela.
+
 ### Corrigido (Deploy & Roteamento Reverso)
 - **Compatibilidade com Proxy Reverso e Traefik no Coolify (`app/main.py`)**:
   - Implementado suporte de dupla resolução nos roteadores da API para responderem tanto sob `/api/v1` quanto sob `/v1` (prefixo reduzido decorrente de `stripprefix` do Traefik no Coolify quando mapeado em `/api`), eliminando o erro 404 em chamadas como `/api/v1/auth/login`.

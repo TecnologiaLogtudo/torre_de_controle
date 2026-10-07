@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/Button'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { Table, TableHeader, TableBody, TableRow, TableHeadCell, TableCell } from '@/components/ui/Table'
-import { Badge } from '@/components/ui/Badge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Drawer } from '@/components/ui/Drawer'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { formatToBahia } from '@/utils/date'
+import { formatDateBahia } from '@/utils/date'
 import { toast } from '@/components/feedback/Toaster'
 import { getErrorMessage } from '@/services/api/errors'
 import { Users, Plus, Edit } from 'lucide-react'
@@ -108,6 +108,18 @@ export const UsuariosPage: React.FC = () => {
     }
   }
 
+  const handleToggleStatus = async (u: Usuario) => {
+    try {
+      await usuariosService.atualizar(u.id, {
+        ativo: !u.ativo,
+      })
+      toast.success(`Usuário "${u.nome}" ${!u.ativo ? 'ativado' : 'desativado'} com sucesso!`)
+      carregarUsuarios()
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao alterar status do usuário.'))
+    }
+  }
+
   const usuariosFiltrados = usuarios.filter(u =>
     u.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -176,12 +188,14 @@ export const UsuariosPage: React.FC = () => {
                 <TableCell className="font-semibold text-slate-900">{u.nome}</TableCell>
                 <TableCell className="font-mono text-slate-600">{u.email}</TableCell>
                 <TableCell>
-                  <Badge variant={u.ativo ? 'SUCESSO' : 'ERRO'}>
-                    {u.ativo ? 'Ativo' : 'Inativo'}
-                  </Badge>
+                  <StatusBadge
+                    status={u.ativo ? 'ATIVO' : 'INATIVO'}
+                    onClick={() => handleToggleStatus(u)}
+                    title="Clique para alternar entre Ativo e Inativo"
+                  />
                 </TableCell>
                 <TableCell className="text-slate-500">
-                  {formatToBahia(u.criado_em, { hour: undefined, minute: undefined, second: undefined })}
+                  {formatDateBahia(u.criado_em)}
                 </TableCell>
                 <TableCell className="text-right">
                   <Button

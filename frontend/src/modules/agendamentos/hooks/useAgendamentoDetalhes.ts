@@ -14,7 +14,7 @@ import { Motorista } from '@/types/motoristas'
 import { Veiculo } from '@/types/veiculos'
 import { MotivoIndisponibilidade } from '@/types/motivos'
 import { MotoristaDedicadoVinculo } from '@/types/contratos'
-import { DetalhamentoOperacional } from '@/types/torre'
+import { DetalhamentoOperacional, MotoristaStatus } from '@/types/torre'
 
 export function useAgendamentoDetalhes(id: string | undefined) {
   const [agendamento, setAgendamento] = useState<Agendamento | null>(null)
@@ -25,6 +25,7 @@ export function useAgendamentoDetalhes(id: string | undefined) {
   const [motivos, setMotivos] = useState<MotivoIndisponibilidade[]>([])
   const [vinculosDedicados, setVinculosDedicados] = useState<MotoristaDedicadoVinculo[]>([])
   const [detalhamentoTorre, setDetalhamentoTorre] = useState<DetalhamentoOperacional[]>([])
+  const [statusMotoristas, setStatusMotoristas] = useState<MotoristaStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -60,14 +61,15 @@ export function useAgendamentoDetalhes(id: string | undefined) {
       const agData = await agendamentosService.buscarPorId(id)
       setAgendamento(agData)
 
-      const [empData, histData, mList, vList, motList, vincList, torreList] = await Promise.all([
+      const [empData, histData, mList, vList, motList, vincList, torreList, statusMotData] = await Promise.all([
         empresasService.buscarPorId(agData.empresa_id).catch(() => null),
         agendamentosService.obterHistorico(agData.id).catch(() => []),
-        motoristasService.listar().catch(() => []),
-        veiculosService.listar().catch(() => []),
+        motoristasService.listar(1000).catch(() => []),
+        veiculosService.listar(1000).catch(() => []),
         motivosService.listarMotivos(true).catch(() => []),
-        contratosService.listarVinculosAtivos().catch(() => []),
-        torreService.obterDetalhamento({ data: agData.data }).catch(() => []),
+        contratosService.listarVinculosAtivos(1000).catch(() => []),
+        torreService.obterDetalhamento({ data: agData.data, limite: 1000 }).catch(() => []),
+        torreService.obterStatusMotoristas({ data: agData.data }).catch(() => null),
       ])
 
       setEmpresa(empData)
@@ -77,6 +79,7 @@ export function useAgendamentoDetalhes(id: string | undefined) {
       setMotivos(motList)
       setVinculosDedicados(vincList)
       setDetalhamentoTorre(torreList)
+      setStatusMotoristas(statusMotData?.motoristas || [])
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro ao carregar detalhes do agendamento.'))
     } finally {
@@ -120,14 +123,29 @@ export function useAgendamentoDetalhes(id: string | undefined) {
         .map(d => d.motorista_id)
     )
 
+    const motoristasOcupadosNoStatus = new Set(
+      statusMotoristas
+        .filter(s => {
+          if (targetAlocacaoId && s.agendamento_id === agendamento.id) {
+            const alocAlvo = agendamento.alocacoes.find(a => a.id === targetAlocacaoId)
+            if (alocAlvo && alocAlvo.motorista_id === s.motorista_id) {
+              return false
+            }
+          }
+          return ['PROGRAMADO', 'EM_ROTA', 'INDISPONIVEL'].includes(s.status_operacional)
+        })
+        .map(s => s.motorista_id)
+    )
+
     return motoristas.filter(m => {
       if (!m.ativo) return false
       if (motoristasDedicadosSet.has(m.id)) return false
       if (motoristasAlocadosNoAgendamento.has(m.id)) return false
       if (motoristasOcupadosNaTorre.has(m.id)) return false
+      if (motoristasOcupadosNoStatus.has(m.id)) return false
       return true
     })
-  }, [agendamento, vinculosDedicados, motoristas, detalhamentoTorre, targetAlocacaoId])
+  }, [agendamento, vinculosDedicados, motoristas, detalhamentoTorre, statusMotoristas, targetAlocacaoId])
 
   // Veículos elegíveis para inclusão SPOT:
   // 1. Não pode ter vínculo DEDICADO ativo com NENHUMA empresa

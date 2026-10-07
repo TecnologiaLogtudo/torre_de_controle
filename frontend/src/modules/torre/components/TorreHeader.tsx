@@ -1,11 +1,10 @@
 import React from 'react'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { formatDateBahia } from '@/utils/date'
 import { RefreshCw, Clock } from 'lucide-react'
 
 export interface TorreHeaderProps {
   dataFiltro: string
-  onDataChange: (data: string) => void
   onRefresh: () => void
   ultimaAtualizacao: string | null
   isLoading: boolean
@@ -13,7 +12,6 @@ export interface TorreHeaderProps {
 
 export const TorreHeader: React.FC<TorreHeaderProps> = ({
   dataFiltro,
-  onDataChange,
   onRefresh,
   ultimaAtualizacao,
   isLoading,
@@ -29,13 +27,13 @@ export const TorreHeader: React.FC<TorreHeaderProps> = ({
 
       <div className="flex flex-col items-start md:items-end gap-1.5 shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-36">
-            <Input
-              type="date"
-              value={dataFiltro}
-              onChange={e => onDataChange(e.target.value)}
-              className="text-xs py-1.5"
-            />
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 text-xs text-slate-700">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="font-semibold text-slate-600">Hoje:</span>
+            <span className="font-mono font-bold text-sky-800">{formatDateBahia(dataFiltro)}</span>
           </div>
 
           <Button

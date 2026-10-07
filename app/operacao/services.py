@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import date, datetime, time
+from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.core.datetime_utils import inicio_do_dia_utc, fim_do_dia_utc, agora_local
@@ -157,14 +158,36 @@ class OperacaoService:
 
         if empresa_id:
             resumo_empresas = [r for r in resumo_empresas if r.empresa_id == empresa_id]
+            contratados = sum(r.contratados for r in resumo_empresas)
+            total = sum(r.total for r in resumo_empresas)
+            disponiveis = sum(r.disponiveis for r in resumo_empresas)
+            programados = sum(r.programados for r in resumo_empresas)
+            em_rota = sum(r.em_rota for r in resumo_empresas)
+            indisponiveis = sum(r.indisponiveis for r in resumo_empresas)
+            vagas_nao_preenchidas = sum(r.vagas_nao_preenchidas for r in resumo_empresas)
 
+            return ResumoTorreResponse(
+                contratados=contratados,
+                total=total,
+                disponiveis=disponiveis,
+                programados=programados,
+                em_rota=em_rota,
+                indisponiveis=indisponiveis,
+                vagas_nao_preenchidas=vagas_nao_preenchidas,
+            )
+
+        # Sem filtro de empresa: Visão Consolidada Geral da Torre de Controle
         contratados = sum(r.contratados for r in resumo_empresas)
-        total = sum(r.total for r in resumo_empresas)
-        disponiveis = sum(r.disponiveis for r in resumo_empresas)
-        programados = sum(r.programados for r in resumo_empresas)
-        em_rota = sum(r.em_rota for r in resumo_empresas)
-        indisponiveis = sum(r.indisponiveis for r in resumo_empresas)
         vagas_nao_preenchidas = sum(r.vagas_nao_preenchidas for r in resumo_empresas)
+
+        # Obtém o status consolidado de todos os motoristas ativos na data (inclui dedicados e spots)
+        status_geral = OperacaoService.obter_status_motoristas(db, data_ref)
+
+        programados = sum(1 for m in status_geral.motoristas if m.status_operacional == "PROGRAMADO")
+        em_rota = sum(1 for m in status_geral.motoristas if m.status_operacional == "EM_ROTA")
+        disponiveis = sum(1 for m in status_geral.motoristas if m.status_operacional == "DISPONIVEL")
+        indisponiveis = sum(1 for m in status_geral.motoristas if m.status_operacional == "INDISPONIVEL")
+        total = programados + em_rota + disponiveis + indisponiveis
 
         return ResumoTorreResponse(
             contratados=contratados,
@@ -205,11 +228,17 @@ class OperacaoService:
             )
 
             alocacoes = query.all()
-            total = len(alocacoes)
-            disponiveis = sum(1 for a in alocacoes if a.status_operacional == "DISPONIVEL")
-            programados = sum(1 for a in alocacoes if a.status_operacional == "PROGRAMADO")
-            em_rota = sum(1 for a in alocacoes if a.status_operacional == "EM_ROTA")
-            indisponiveis = sum(1 for a in alocacoes if a.status_operacional == "INDISPONIVEL")
+            # Apenas alocações que pertencem de fato à empresa (dedicados ou spots agendados/em rota)
+            alocacoes_empresa = [
+                a for a in alocacoes
+                if a.categoria != "SPOT" or a.status_operacional in ("PROGRAMADO", "EM_ROTA", "INDISPONIVEL")
+            ]
+            total = len(alocacoes_empresa)
+            # Motoristas SPOT livres não entram como disponíveis na empresa parceira
+            disponiveis = sum(1 for a in alocacoes_empresa if a.status_operacional == "DISPONIVEL" and a.categoria != "SPOT")
+            programados = sum(1 for a in alocacoes_empresa if a.status_operacional == "PROGRAMADO")
+            em_rota = sum(1 for a in alocacoes_empresa if a.status_operacional == "EM_ROTA")
+            indisponiveis = sum(1 for a in alocacoes_empresa if a.status_operacional == "INDISPONIVEL")
             vagas_nao_preenchidas = max(0, contratados - total)
 
             resultado.append(
@@ -241,16 +270,27 @@ class OperacaoService:
         placa: Optional[str] = None,
         motorista_nome: Optional[str] = None,
         motorista_id: Optional[UUID] = None,
-        limite: int = 50,
+        limite: int = 1000,
         offset: int = 0,
     ) -> List[DetalhamentoOperacionalResponse]:
+        filtro_recursos_cockpit = or_(
+            AlocacaoOperacional.categoria != "SPOT",
+            and_(
+                AlocacaoOperacional.categoria == "SPOT",
+                AlocacaoOperacional.status_operacional.in_(["PROGRAMADO", "EM_ROTA"]),
+            ),
+        )
+
         query = (
             db.query(AlocacaoOperacional)
             .join(Agendamento)
             .join(Motorista)
             .join(Veiculo)
             .join(Empresa, Agendamento.empresa_id == Empresa.id)
-            .filter(Agendamento.status != "CANCELADO")
+            .filter(
+                Agendamento.status != "CANCELADO",
+                filtro_recursos_cockpit,
+            )
         )
 
         if data_filtro:
@@ -292,6 +332,7 @@ class OperacaoService:
                     status_operacional=a.status_operacional,
                     motivo_indisponibilidade=motivo_nome,
                     agendamento_id=a.agendamento_id,
+                    alocacao_id=a.id,
                 )
             )
 
@@ -340,7 +381,16 @@ class OperacaoService:
 
         # Vínculos dedicados ativos para enriquecer empresa/veículo/categoria
         from app.contratos.models import MotoristaDedicadoVinculo
+        from app.operacao.models import StatusOperacionalMotorista
         vinculos = db.query(MotoristaDedicadoVinculo).filter(MotoristaDedicadoVinculo.ativo == True).all()
+
+        # Status diários de motoristas gravados sem agendamento
+        status_diarios = {
+            s.motorista_id: s
+            for s in db.query(StatusOperacionalMotorista)
+            .filter(StatusOperacionalMotorista.data == data_ref)
+            .all()
+        }
 
         resultado: List[MotoristaStatusResponse] = []
         contagem = {"DISPONIVEL": 0, "PROGRAMADO": 0, "EM_ROTA": 0, "INDISPONIVEL": 0, "SEM_ALOCACAO": 0}
@@ -351,8 +401,13 @@ class OperacaoService:
 
             if aloc:
                 status_op = aloc.status_operacional
-                empresa_nome = aloc.agendamento.empresa.nome if aloc.agendamento.empresa else None
-                empresa_id_resp = aloc.agendamento.empresa_id
+                # Se for categoria SPOT e não tiver vínculo dedicado com empresa, não exibe empresa_nome
+                if aloc.categoria == "SPOT" and (not vinculo or not vinculo.empresa_id):
+                    empresa_nome = None
+                    empresa_id_resp = None
+                else:
+                    empresa_nome = aloc.agendamento.empresa.nome if aloc.agendamento.empresa else None
+                    empresa_id_resp = aloc.agendamento.empresa_id
                 veiculo_id_resp = aloc.veiculo_id
                 veiculo = aloc.veiculo
                 placa = veiculo.placa if veiculo else None
@@ -361,8 +416,16 @@ class OperacaoService:
                 categoria = aloc.categoria
                 motivo = aloc.motivo_indisponibilidade.nome if aloc.motivo_indisponibilidade else None
                 agendamento_id = aloc.agendamento_id
+                alocacao_id = aloc.id
             else:
-                status_op = "SEM_ALOCACAO"
+                s_diario = status_diarios.get(m.id)
+                if s_diario:
+                    status_op = s_diario.status_operacional
+                    motivo = s_diario.motivo_indisponibilidade.nome if s_diario.motivo_indisponibilidade else None
+                else:
+                    status_op = "SEM_ALOCACAO"
+                    motivo = None
+
                 empresa_id_resp = vinculo.empresa_id if vinculo else None
                 empresa_nome = None
                 if empresa_id_resp:
@@ -378,9 +441,12 @@ class OperacaoService:
                         placa = vec.placa
                         veiculo_tipo = vec.tipo_veiculo
                         veiculo_especialidade = vec.especialidade
-                categoria = vinculo.categoria_operacional if vinculo else None
-                motivo = None
+                categoria = vinculo.categoria_operacional if vinculo else "SPOT"
                 agendamento_id = None
+                alocacao_id = None
+
+            if empresa_id and empresa_id_resp != empresa_id:
+                continue
 
             if status_op in contagem:
                 contagem[status_op] += 1
@@ -399,6 +465,7 @@ class OperacaoService:
                     status_operacional=status_op,
                     motivo_indisponibilidade=motivo,
                     agendamento_id=agendamento_id,
+                    alocacao_id=alocacao_id,
                 )
             )
 
@@ -411,6 +478,479 @@ class OperacaoService:
             indisponiveis=contagem["INDISPONIVEL"],
             sem_alocacao=contagem["SEM_ALOCACAO"],
             motoristas=resultado,
+        )
+
+    @staticmethod
+    def alterar_status_motorista(
+        db: Session,
+        motorista_id: UUID,
+        dados: "AlterarStatusMotoristaRequest",
+        usuario_id: UUID,
+    ) -> "MotoristaStatusResponse":
+        from datetime import time
+        from app.operacao.schemas import MotoristaStatusResponse
+        from app.agendamentos.models import Agendamento, AlocacaoOperacional
+        from app.operacao.models import EventoOperacional
+        from app.contratos.models import MotoristaDedicadoVinculo
+        from app.motoristas.models import Motorista
+        from app.veiculos.models import Veiculo
+        from app.empresas.models import Empresa
+
+        motorista = db.query(Motorista).filter(Motorista.id == motorista_id).first()
+        if not motorista:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Motorista não encontrado.",
+            )
+
+        status_permitidos = ["DISPONIVEL", "PROGRAMADO", "EM_ROTA", "INDISPONIVEL", "SEM_ALOCACAO"]
+        if dados.novo_status not in status_permitidos:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Status operacional inválido: {dados.novo_status}.",
+            )
+
+        nome_motivo = None
+        if dados.novo_status == "INDISPONIVEL":
+            if not dados.motivo_indisponibilidade_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="É obrigatório informar o motivo de indisponibilidade.",
+                )
+            motivo = OperacaoService.buscar_motivo_por_id(db, dados.motivo_indisponibilidade_id)
+            nome_motivo = motivo.nome
+
+        # Busca alocação existente para o motorista na data
+        alocacao = (
+            db.query(AlocacaoOperacional)
+            .join(Agendamento, AlocacaoOperacional.agendamento_id == Agendamento.id)
+            .filter(
+                AlocacaoOperacional.motorista_id == motorista_id,
+                Agendamento.data == dados.data,
+                Agendamento.status != "CANCELADO",
+            )
+            .order_by(AlocacaoOperacional.criado_em.desc())
+            .first()
+        )
+
+        vinculo = (
+            db.query(MotoristaDedicadoVinculo)
+            .filter(
+                MotoristaDedicadoVinculo.motorista_id == motorista_id,
+                MotoristaDedicadoVinculo.ativo == True,
+            )
+            .first()
+        )
+
+        # Determina se o motorista pertence à categoria SPOT (sem empresa vinculada)
+        categoria_efetiva = (
+            alocacao.categoria if alocacao
+            else (vinculo.categoria_operacional if vinculo else "SPOT")
+        )
+        tem_empresa_dedicada = bool(vinculo and vinculo.empresa_id)
+        is_spot = (categoria_efetiva == "SPOT") or (not tem_empresa_dedicada)
+
+        if is_spot and dados.novo_status in ("PROGRAMADO", "EM_ROTA"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Motoristas da categoria SPOT não possuem vínculo com empresa e não podem ser alterados para 'Programado' ou 'Em Rota' diretamente nesta tela. Para programá-los, realize o agendamento através da tela de Agendamentos vinculando-os à empresa contratante.",
+            )
+
+        if alocacao:
+            status_anterior = alocacao.status_operacional
+            if dados.novo_status == "SEM_ALOCACAO" or (is_spot and dados.novo_status == "DISPONIVEL"):
+                # Libera o motorista SPOT da alocação da empresa contratante e registra o status geral
+                from app.operacao.models import StatusOperacionalMotorista
+                s_diario = (
+                    db.query(StatusOperacionalMotorista)
+                    .filter(
+                        StatusOperacionalMotorista.motorista_id == motorista_id,
+                        StatusOperacionalMotorista.data == dados.data,
+                    )
+                    .first()
+                )
+                if not s_diario:
+                    s_diario = StatusOperacionalMotorista(
+                        motorista_id=motorista_id,
+                        data=dados.data,
+                        status_operacional=dados.novo_status,
+                    )
+                    db.add(s_diario)
+                else:
+                    s_diario.status_operacional = dados.novo_status
+                    s_diario.motivo_indisponibilidade_id = None
+
+                evento = EventoOperacional(
+                    empresa_id=alocacao.agendamento.empresa_id if alocacao.agendamento else None,
+                    motorista_id=alocacao.motorista_id,
+                    veiculo_id=alocacao.veiculo_id,
+                    agendamento_id=alocacao.agendamento_id,
+                    categoria=alocacao.categoria,
+                    status_anterior=status_anterior,
+                    novo_status=dados.novo_status,
+                    motivo_indisponibilidade=None,
+                    usuario_id=usuario_id,
+                    origem_alteracao=dados.origem_alteracao or "status_motoristas",
+                )
+                db.add(evento)
+                db.delete(alocacao)
+                db.commit()
+
+                # Retorna dados atualizados
+                emp_nome = None
+                if vinculo and vinculo.empresa_id:
+                    emp = db.query(Empresa).filter(Empresa.id == vinculo.empresa_id).first()
+                    emp_nome = emp.nome if emp else None
+                placa = None
+                v_tipo = None
+                v_esp = None
+                if vinculo and vinculo.veiculo_id:
+                    vec = db.query(Veiculo).filter(Veiculo.id == vinculo.veiculo_id).first()
+                    if vec:
+                        placa = vec.placa
+                        v_tipo = vec.tipo_veiculo
+                        v_esp = vec.especialidade
+
+                return MotoristaStatusResponse(
+                    motorista_id=motorista.id,
+                    motorista_nome=motorista.nome,
+                    empresa_id=vinculo.empresa_id if vinculo else None,
+                    empresa_nome=emp_nome,
+                    veiculo_id=vinculo.veiculo_id if vinculo else None,
+                    veiculo_placa=placa,
+                    veiculo_tipo=v_tipo,
+                    veiculo_especialidade=v_esp,
+                    categoria=vinculo.categoria_operacional if vinculo else "SPOT",
+                    status_operacional=dados.novo_status,
+                    motivo_indisponibilidade=None,
+                    agendamento_id=None,
+                    alocacao_id=None,
+                )
+            else:
+                alocacao.status_operacional = dados.novo_status
+                alocacao.motivo_indisponibilidade_id = (
+                    dados.motivo_indisponibilidade_id if dados.novo_status == "INDISPONIVEL" else None
+                )
+
+                evento = EventoOperacional(
+                    empresa_id=alocacao.agendamento.empresa_id,
+                    motorista_id=alocacao.motorista_id,
+                    veiculo_id=alocacao.veiculo_id,
+                    agendamento_id=alocacao.agendamento_id,
+                    categoria=alocacao.categoria,
+                    status_anterior=status_anterior,
+                    novo_status=dados.novo_status,
+                    motivo_indisponibilidade=nome_motivo,
+                    usuario_id=usuario_id,
+                    origem_alteracao=dados.origem_alteracao or "status_motoristas",
+                )
+                db.add(evento)
+                db.commit()
+                db.refresh(alocacao)
+
+                ret_emp_id = None if (is_spot and not tem_empresa_dedicada) else alocacao.agendamento.empresa_id
+                ret_emp_nome = (
+                    None
+                    if (is_spot and not tem_empresa_dedicada)
+                    else (alocacao.agendamento.empresa.nome if alocacao.agendamento.empresa else None)
+                )
+
+                return MotoristaStatusResponse(
+                    motorista_id=motorista.id,
+                    motorista_nome=motorista.nome,
+                    empresa_id=ret_emp_id,
+                    empresa_nome=ret_emp_nome,
+                    veiculo_id=alocacao.veiculo_id,
+                    veiculo_placa=alocacao.veiculo.placa if alocacao.veiculo else None,
+                    veiculo_tipo=alocacao.veiculo.tipo_veiculo if alocacao.veiculo else None,
+                    veiculo_especialidade=alocacao.veiculo.especialidade if alocacao.veiculo else None,
+                    categoria=alocacao.categoria,
+                    status_operacional=alocacao.status_operacional,
+                    motivo_indisponibilidade=nome_motivo,
+                    agendamento_id=alocacao.agendamento_id,
+                    alocacao_id=alocacao.id,
+                )
+        else:
+            # Motorista não tem alocação num agendamento na data
+            # Se for DEDICADO com empresa vinculada e for colocado em PROGRAMADO ou EM_ROTA, cria a alocação no agendamento da empresa
+            if vinculo and vinculo.empresa_id and dados.novo_status in ("PROGRAMADO", "EM_ROTA"):
+                agendamento = (
+                    db.query(Agendamento)
+                    .filter(
+                        Agendamento.empresa_id == vinculo.empresa_id,
+                        Agendamento.data == dados.data,
+                        Agendamento.status != "CANCELADO",
+                    )
+                    .first()
+                )
+                if not agendamento:
+                    agendamento = Agendamento(
+                        empresa_id=vinculo.empresa_id,
+                        data=dados.data,
+                        horario_inicio=time(8, 0),
+                        status="PROGRAMADO",
+                        versao=0,
+                        criado_por_id=usuario_id,
+                    )
+                    db.add(agendamento)
+                    db.flush()
+
+                nova_alocacao = AlocacaoOperacional(
+                    agendamento_id=agendamento.id,
+                    motorista_id=motorista.id,
+                    veiculo_id=vinculo.veiculo_id,
+                    categoria=vinculo.categoria_operacional,
+                    status_operacional=dados.novo_status,
+                )
+                db.add(nova_alocacao)
+                db.flush()
+
+                evento = EventoOperacional(
+                    empresa_id=vinculo.empresa_id,
+                    motorista_id=motorista.id,
+                    veiculo_id=vinculo.veiculo_id,
+                    agendamento_id=agendamento.id,
+                    categoria=vinculo.categoria_operacional,
+                    status_anterior="SEM_ALOCACAO",
+                    novo_status=dados.novo_status,
+                    motivo_indisponibilidade=None,
+                    usuario_id=usuario_id,
+                    origem_alteracao=dados.origem_alteracao or "status_motoristas",
+                )
+                db.add(evento)
+                db.commit()
+                db.refresh(nova_alocacao)
+
+                emp = db.query(Empresa).filter(Empresa.id == vinculo.empresa_id).first()
+                vec = db.query(Veiculo).filter(Veiculo.id == vinculo.veiculo_id).first() if vinculo.veiculo_id else None
+
+                return MotoristaStatusResponse(
+                    motorista_id=motorista.id,
+                    motorista_nome=motorista.nome,
+                    empresa_id=vinculo.empresa_id,
+                    empresa_nome=emp.nome if emp else None,
+                    veiculo_id=vinculo.veiculo_id,
+                    veiculo_placa=vec.placa if vec else None,
+                    veiculo_tipo=vec.tipo_veiculo if vec else None,
+                    veiculo_especialidade=vec.especialidade if vec else None,
+                    categoria=vinculo.categoria_operacional,
+                    status_operacional=nova_alocacao.status_operacional,
+                    motivo_indisponibilidade=None,
+                    agendamento_id=agendamento.id,
+                    alocacao_id=nova_alocacao.id,
+                )
+
+            # Para os demais casos (motoristas SPOT ou sem vínculo com empresa), grava status em StatusOperacionalMotorista
+            from app.operacao.models import StatusOperacionalMotorista
+            s_diario = (
+                db.query(StatusOperacionalMotorista)
+                .filter(
+                    StatusOperacionalMotorista.motorista_id == motorista_id,
+                    StatusOperacionalMotorista.data == dados.data,
+                )
+                .first()
+            )
+            status_anterior = s_diario.status_operacional if s_diario else "DISPONIVEL"
+            if not s_diario:
+                s_diario = StatusOperacionalMotorista(
+                    motorista_id=motorista_id,
+                    data=dados.data,
+                    status_operacional=dados.novo_status,
+                    motivo_indisponibilidade_id=(
+                        dados.motivo_indisponibilidade_id if dados.novo_status == "INDISPONIVEL" else None
+                    ),
+                )
+                db.add(s_diario)
+            else:
+                s_diario.status_operacional = dados.novo_status
+                s_diario.motivo_indisponibilidade_id = (
+                    dados.motivo_indisponibilidade_id if dados.novo_status == "INDISPONIVEL" else None
+                )
+
+            categoria = vinculo.categoria_operacional if vinculo else "SPOT"
+            evento = EventoOperacional(
+                empresa_id=vinculo.empresa_id if (vinculo and vinculo.empresa_id) else None,
+                motorista_id=motorista.id,
+                veiculo_id=vinculo.veiculo_id if (vinculo and vinculo.veiculo_id) else None,
+                agendamento_id=None,
+                categoria=categoria,
+                status_anterior=status_anterior,
+                novo_status=dados.novo_status,
+                motivo_indisponibilidade=nome_motivo,
+                usuario_id=usuario_id,
+                origem_alteracao=dados.origem_alteracao or "status_motoristas",
+            )
+            db.add(evento)
+            db.commit()
+            db.refresh(s_diario)
+
+            emp_nome = None
+            if vinculo and vinculo.empresa_id:
+                emp = db.query(Empresa).filter(Empresa.id == vinculo.empresa_id).first()
+                emp_nome = emp.nome if emp else None
+            placa = None
+            v_tipo = None
+            v_esp = None
+            if vinculo and vinculo.veiculo_id:
+                vec = db.query(Veiculo).filter(Veiculo.id == vinculo.veiculo_id).first()
+                if vec:
+                    placa = vec.placa
+                    v_tipo = vec.tipo_veiculo
+                    v_esp = vec.especialidade
+
+            return MotoristaStatusResponse(
+                motorista_id=motorista.id,
+                motorista_nome=motorista.nome,
+                empresa_id=vinculo.empresa_id if vinculo else None,
+                empresa_nome=emp_nome,
+                veiculo_id=vinculo.veiculo_id if vinculo else None,
+                veiculo_placa=placa,
+                veiculo_tipo=v_tipo,
+                veiculo_especialidade=v_esp,
+                categoria=categoria,
+                status_operacional=s_diario.status_operacional,
+                motivo_indisponibilidade=nome_motivo,
+                agendamento_id=None,
+                alocacao_id=None,
+            )
+
+    @staticmethod
+    def atualizar_status_lote(
+        db: Session,
+        dados: "StatusOperacionalLoteRequest",
+        usuario_id: UUID,
+    ) -> "StatusOperacionalLoteResponse":
+        from app.operacao.schemas import StatusOperacionalLoteResponse, AlterarStatusMotoristaRequest
+        from app.agendamentos.models import Agendamento, AlocacaoOperacional
+        from app.operacao.models import EventoOperacional
+        from app.contratos.models import MotoristaDedicadoVinculo
+
+        status_permitidos = ["DISPONIVEL", "PROGRAMADO", "EM_ROTA", "INDISPONIVEL", "SEM_ALOCACAO"]
+        if dados.novo_status not in status_permitidos:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Status operacional inválido: {dados.novo_status}.",
+            )
+
+        nome_motivo = None
+        if dados.novo_status == "INDISPONIVEL":
+            if not dados.motivo_indisponibilidade_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="É obrigatório informar o motivo de indisponibilidade.",
+                )
+            motivo = OperacaoService.buscar_motivo_por_id(db, dados.motivo_indisponibilidade_id)
+            nome_motivo = motivo.nome
+
+        atualizados = 0
+
+        # Caso 1: Lote por alocacao_ids
+        if dados.alocacao_ids:
+            for aloc_id in dados.alocacao_ids:
+                aloc = db.query(AlocacaoOperacional).filter(AlocacaoOperacional.id == aloc_id).first()
+                if not aloc:
+                    continue
+
+                vinculo = (
+                    db.query(MotoristaDedicadoVinculo)
+                    .filter(
+                        MotoristaDedicadoVinculo.motorista_id == aloc.motorista_id,
+                        MotoristaDedicadoVinculo.ativo == True,
+                    )
+                    .first()
+                )
+                is_spot = (aloc.categoria == "SPOT") or not (vinculo and vinculo.empresa_id)
+
+                if is_spot and dados.novo_status in ("PROGRAMADO", "EM_ROTA"):
+                    if not aloc.agendamento_id:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Motoristas SPOT não podem ter status 'Programado' ou 'Em Rota' sem agendamento.",
+                        )
+
+                status_ant = aloc.status_operacional
+                if dados.novo_status == "SEM_ALOCACAO" or (is_spot and dados.novo_status == "DISPONIVEL"):
+                    from app.operacao.models import StatusOperacionalMotorista
+                    data_alvo = aloc.agendamento.data if aloc.agendamento else agora_local().date()
+                    s_diario = (
+                        db.query(StatusOperacionalMotorista)
+                        .filter(
+                            StatusOperacionalMotorista.motorista_id == aloc.motorista_id,
+                            StatusOperacionalMotorista.data == data_alvo,
+                        )
+                        .first()
+                    )
+                    if not s_diario:
+                        s_diario = StatusOperacionalMotorista(
+                            motorista_id=aloc.motorista_id,
+                            data=data_alvo,
+                            status_operacional=dados.novo_status,
+                        )
+                        db.add(s_diario)
+                    else:
+                        s_diario.status_operacional = dados.novo_status
+                        s_diario.motivo_indisponibilidade_id = None
+
+                    evento = EventoOperacional(
+                        empresa_id=aloc.agendamento.empresa_id if aloc.agendamento else None,
+                        motorista_id=aloc.motorista_id,
+                        veiculo_id=aloc.veiculo_id,
+                        agendamento_id=aloc.agendamento_id,
+                        categoria=aloc.categoria,
+                        status_anterior=status_ant,
+                        novo_status=dados.novo_status,
+                        motivo_indisponibilidade=None,
+                        usuario_id=usuario_id,
+                        origem_alteracao=dados.origem_alteracao or "lote",
+                    )
+                    db.add(evento)
+                    db.delete(aloc)
+                    atualizados += 1
+                else:
+                    aloc.status_operacional = dados.novo_status
+                    aloc.motivo_indisponibilidade_id = (
+                        dados.motivo_indisponibilidade_id if dados.novo_status == "INDISPONIVEL" else None
+                    )
+                    evento = EventoOperacional(
+                        empresa_id=aloc.agendamento.empresa_id,
+                        motorista_id=aloc.motorista_id,
+                        veiculo_id=aloc.veiculo_id,
+                        agendamento_id=aloc.agendamento_id,
+                        categoria=aloc.categoria,
+                        status_anterior=status_ant,
+                        novo_status=dados.novo_status,
+                        motivo_indisponibilidade=nome_motivo,
+                        usuario_id=usuario_id,
+                        origem_alteracao=dados.origem_alteracao or "lote",
+                    )
+                    db.add(evento)
+                    atualizados += 1
+
+        # Caso 2: Lote por motorista_ids
+        elif dados.motorista_ids:
+            data_alvo = dados.data or agora_local().date()
+            for m_id in dados.motorista_ids:
+                req_individual = AlterarStatusMotoristaRequest(
+                    data=data_alvo,
+                    novo_status=dados.novo_status,
+                    motivo_indisponibilidade_id=dados.motivo_indisponibilidade_id,
+                    origem_alteracao=dados.origem_alteracao or "lote",
+                )
+                OperacaoService.alterar_status_motorista(
+                    db=db,
+                    motorista_id=m_id,
+                    dados=req_individual,
+                    usuario_id=usuario_id,
+                )
+                atualizados += 1
+
+        db.commit()
+
+        return StatusOperacionalLoteResponse(
+            sucesso=True,
+            atualizados=atualizados,
+            novo_status=dados.novo_status,
+            mensagem=f"Status de {atualizados} recurso(s) atualizado(s) com sucesso para {dados.novo_status}.",
         )
 
     # --- Histórico de Eventos Operacionais ---

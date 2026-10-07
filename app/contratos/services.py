@@ -363,6 +363,109 @@ def criar_vinculo_motorista(
                 estado_posterior=estado_posterior,
             )
             return vinculo_existente
+        elif vinculo_existente.categoria_operacional == "SPOT" and not dados.empresa_id:
+            # Atualização de veículo em vínculo SPOT existente
+            if dados.veiculo_id and dados.veiculo_id != vinculo_existente.veiculo_id:
+                outro_vinculo = (
+                    db.query(MotoristaDedicadoVinculo)
+                    .filter(
+                        MotoristaDedicadoVinculo.veiculo_id == dados.veiculo_id,
+                        MotoristaDedicadoVinculo.ativo == True,
+                        MotoristaDedicadoVinculo.motorista_id != dados.motorista_id,
+                    )
+                    .first()
+                )
+                if outro_vinculo:
+                    raise ValueError(
+                        "O veículo selecionado já possui um vínculo ativo com outro motorista."
+                    )
+            estado_anterior = {
+                "id": str(vinculo_existente.id),
+                "empresa_id": str(vinculo_existente.empresa_id) if vinculo_existente.empresa_id else None,
+                "motorista_id": str(vinculo_existente.motorista_id),
+                "veiculo_id": str(vinculo_existente.veiculo_id) if vinculo_existente.veiculo_id else None,
+                "tipo_veiculo": vinculo_existente.tipo_veiculo,
+                "categoria_operacional": vinculo_existente.categoria_operacional,
+                "ativo": vinculo_existente.ativo,
+            }
+            vinculo_existente.veiculo_id = dados.veiculo_id
+            if tipo_veiculo:
+                vinculo_existente.tipo_veiculo = tipo_veiculo
+            db.commit()
+            db.refresh(vinculo_existente)
+
+            estado_posterior = {
+                "id": str(vinculo_existente.id),
+                "empresa_id": str(vinculo_existente.empresa_id) if vinculo_existente.empresa_id else None,
+                "motorista_id": str(vinculo_existente.motorista_id),
+                "veiculo_id": str(vinculo_existente.veiculo_id) if vinculo_existente.veiculo_id else None,
+                "tipo_veiculo": vinculo_existente.tipo_veiculo,
+                "categoria_operacional": vinculo_existente.categoria_operacional,
+                "ativo": vinculo_existente.ativo,
+            }
+            registrar_auditoria(
+                db=db,
+                usuario_id=autor_id,
+                entidade_afetada="motoristas_dedicados_vinculos",
+                entidade_id=vinculo_existente.id,
+                acao="ATUALIZAR",
+                estado_anterior=estado_anterior,
+                estado_posterior=estado_posterior,
+            )
+            return vinculo_existente
+        elif vinculo_existente.categoria_operacional == "DEDICADO" and not dados.empresa_id and (dados.categoria_operacional == "SPOT" or dados.categoria == "SPOT"):
+            # Transição DEDICADO -> SPOT (libera da empresa)
+            if dados.veiculo_id and dados.veiculo_id != vinculo_existente.veiculo_id:
+                outro_vinculo = (
+                    db.query(MotoristaDedicadoVinculo)
+                    .filter(
+                        MotoristaDedicadoVinculo.veiculo_id == dados.veiculo_id,
+                        MotoristaDedicadoVinculo.ativo == True,
+                        MotoristaDedicadoVinculo.motorista_id != dados.motorista_id,
+                    )
+                    .first()
+                )
+                if outro_vinculo:
+                    raise ValueError(
+                        "O veículo selecionado já possui um vínculo ativo com outro motorista."
+                    )
+            estado_anterior = {
+                "id": str(vinculo_existente.id),
+                "empresa_id": str(vinculo_existente.empresa_id) if vinculo_existente.empresa_id else None,
+                "motorista_id": str(vinculo_existente.motorista_id),
+                "veiculo_id": str(vinculo_existente.veiculo_id) if vinculo_existente.veiculo_id else None,
+                "tipo_veiculo": vinculo_existente.tipo_veiculo,
+                "categoria_operacional": vinculo_existente.categoria_operacional,
+                "ativo": vinculo_existente.ativo,
+            }
+            vinculo_existente.empresa_id = None
+            vinculo_existente.categoria_operacional = "SPOT"
+            if dados.veiculo_id:
+                vinculo_existente.veiculo_id = dados.veiculo_id
+            if tipo_veiculo:
+                vinculo_existente.tipo_veiculo = tipo_veiculo
+            db.commit()
+            db.refresh(vinculo_existente)
+
+            estado_posterior = {
+                "id": str(vinculo_existente.id),
+                "empresa_id": None,
+                "motorista_id": str(vinculo_existente.motorista_id),
+                "veiculo_id": str(vinculo_existente.veiculo_id) if vinculo_existente.veiculo_id else None,
+                "tipo_veiculo": vinculo_existente.tipo_veiculo,
+                "categoria_operacional": vinculo_existente.categoria_operacional,
+                "ativo": vinculo_existente.ativo,
+            }
+            registrar_auditoria(
+                db=db,
+                usuario_id=autor_id,
+                entidade_afetada="motoristas_dedicados_vinculos",
+                entidade_id=vinculo_existente.id,
+                acao="ATUALIZAR",
+                estado_anterior=estado_anterior,
+                estado_posterior=estado_posterior,
+            )
+            return vinculo_existente
         else:
             raise ValueError(
                 "Este motorista já possui um vínculo ativo no momento."
@@ -378,10 +481,15 @@ def criar_vinculo_motorista(
             )
             .first()
         )
-        if vinculo_veiculo and vinculo_veiculo.categoria_operacional == "DEDICADO" and dados.empresa_id:
-            raise ValueError(
-                "Este veículo já possui um vínculo dedicado ativo com outra empresa no momento."
-            )
+        if vinculo_veiculo:
+            if vinculo_veiculo.categoria_operacional == "DEDICADO" and dados.empresa_id:
+                raise ValueError(
+                    "Este veículo já possui um vínculo dedicado ativo com outra empresa no momento."
+                )
+            else:
+                raise ValueError(
+                    "Este veículo já possui um vínculo ativo com outro motorista no momento."
+                )
 
     # Se informado com empresa_id, torna-se DEDICADO; caso contrário, respeita categoria ou padrão SPOT
     categoria_operacional = "DEDICADO" if dados.empresa_id else (dados.categoria_operacional or "SPOT")
