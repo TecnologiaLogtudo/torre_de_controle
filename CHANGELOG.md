@@ -7,6 +7,19 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ## [Unreleased]
 
+### Adicionado & Aprimorado (Ordenação Prioritária de Recursos por Status Operacional)
+- **Hierarquia de Status Operacional nas Listagens (`app/operacao/services.py`, `DetalhamentoTorre.tsx`, `StatusMotoristasPage.tsx`, `tests/test_status_motoristas.py`)**:
+  - Implementada ordenação estrita de motoristas nas tabelas "Status de Motoristas" e "Detalhamento Operacional dos Recursos":
+    1. `EM_ROTA` (Em rota)
+    2. `PROGRAMADO` (Programados)
+    3. `DISPONIVEL` (Disponíveis)
+    4. `INDISPONIVEL` (Indisponíveis)
+    5. `SEM_ALOCACAO` / outros (Sem alocação)
+    - Desempate em ordem alfabética ascendente pelo nome do motorista.
+  - No backend, incorporada ordenação via SQL `case()` em `obter_detalhamento_operacional` e sort em memória em `obter_status_motoristas`.
+  - No frontend, incorporada ordenação local em `DetalhamentoTorre` e `StatusMotoristasPage` garantindo que buscas e filtros preservem a hierarquia operacional.
+  - Cobertura com novo teste de regressão `test_ordenacao_status_motoristas_e_detalhamento`.
+
 ### Adicionado & Corrigido (Desacoplamento de Status SPOT e Isolamento por Empresa)
 - **Migração Automática no Startup da Aplicação e DDLs Defensivos (`app/main.py`, `alembic/`)**:
   - Implementada execução defensiva de DDLs no startup da API (`ALTER TABLE eventos_operacionais ALTER COLUMN ... DROP NOT NULL` e `CREATE TABLE IF NOT EXISTS status_operacional_motoristas`), garantindo que instâncias em produção e VPS migrem o banco automaticamente sem intervenção manual e evitando falhas HTTP 500 no endpoint `/api/v1/operacao/status-lote`.

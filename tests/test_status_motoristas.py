@@ -277,3 +277,100 @@ def test_alterar_status_motorista_sem_alocacao_e_com_alocacao(client, db):
     assert res_dedic_prog.status_code == status.HTTP_200_OK
     assert res_dedic_prog.json()["status_operacional"] == "PROGRAMADO"
     assert res_dedic_prog.json()["empresa_id"] == emp_id
+
+
+def test_ordenacao_status_motoristas_e_detalhamento(client):
+    headers = obter_headers_autenticados(client)
+    hoje = agora_local().date()
+
+    # Cria empresa
+    res_emp = client.post(
+        "/api/v1/empresas",
+        json={"nome": "Empresa Ordem Teste", "identificacao": "88.888.888/0001-88"},
+        headers=headers,
+    )
+    emp_id = res_emp.json()["id"]
+
+    from datetime import datetime, timezone, timedelta
+    client.post(
+        f"/api/v1/contratos/empresas/{emp_id}/configuracoes",
+        json={
+            "data_inicio": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
+            "capacidades": [{"tipo_veiculo": "TOCO", "especialidade": "SECO", "quantidade": 10}],
+        },
+        headers=headers,
+    )
+
+    # Cria 4 veículos
+    v_ids = []
+    for i in range(4):
+        res_v = client.post(
+            "/api/v1/veiculos",
+            json={"identificacao": f"V-ORD-{i}", "placa": f"ORD{i}A99", "tipo_veiculo": "TOCO", "especialidade": "SECO"},
+            headers=headers,
+        )
+        v_ids.append(res_v.json()["id"])
+
+    # Cria 4 motoristas dedicados com a empresa
+    m_ids = []
+    for nome in ["Zelia (Dedicado)", "Bruno (Dedicado)", "Carlos (Dedicado)", "Daniel (Dedicado)"]:
+        res_m = client.post("/api/v1/motoristas", json={"nome": nome}, headers=headers)
+        m_ids.append(res_m.json()["id"])
+
+    for i in range(4):
+        client.post(
+            "/api/v1/motoristas/dedicados/vinculos",
+            json={
+                "empresa_id": emp_id,
+                "motorista_id": m_ids[i],
+                "veiculo_id": v_ids[i],
+                "tipo_veiculo": "TOCO",
+                "categoria_operacional": "DEDICADO",
+            },
+            headers=headers,
+        )
+
+    # Cria agendamento para o dia (auto-aloca os 4 dedicados como DISPONIVEL)
+    res_ag = client.post(
+        "/api/v1/agendamentos",
+        json={"empresa_id": emp_id, "data": str(hoje), "horario_inicio": "08:00:00"},
+        headers=headers,
+    )
+    assert res_ag.status_code == status.HTTP_201_CREATED
+
+    # Motivo de indisponibilidade
+    res_motivos = client.get("/api/v1/operacao/motivos-indisponibilidade", headers=headers)
+    motivo_id = res_motivos.json()[0]["id"]
+
+    # Atribui status diferentes:
+    # m_ids[0]: DISPONIVEL
+    # m_ids[1]: INDISPONIVEL
+    # m_ids[2]: EM_ROTA
+    # m_ids[3]: PROGRAMADO
+    client.post(f"/api/v1/operacao/motoristas/{m_ids[0]}/status", json={"data": str(hoje), "novo_status": "DISPONIVEL"}, headers=headers)
+    client.post(f"/api/v1/operacao/motoristas/{m_ids[1]}/status", json={"data": str(hoje), "novo_status": "INDISPONIVEL", "motivo_indisponibilidade_id": motivo_id}, headers=headers)
+    client.post(f"/api/v1/operacao/motoristas/{m_ids[2]}/status", json={"data": str(hoje), "novo_status": "EM_ROTA"}, headers=headers)
+    client.post(f"/api/v1/operacao/motoristas/{m_ids[3]}/status", json={"data": str(hoje), "novo_status": "PROGRAMADO"}, headers=headers)
+
+    # Consulta motoristas-status filtrando por essa empresa
+    res_st = client.get(f"/api/v1/operacao/motoristas-status?empresa_id={emp_id}&data={hoje}", headers=headers)
+    assert res_st.status_code == status.HTTP_200_OK
+    lista_st = res_st.json()["motoristas"]
+    assert len(lista_st) == 4
+
+    # Ordem deve ser estritamente: 1 - EM_ROTA, 2 - PROGRAMADO, 3 - DISPONIVEL, 4 - INDISPONIVEL
+    assert lista_st[0]["status_operacional"] == "EM_ROTA"
+    assert lista_st[1]["status_operacional"] == "PROGRAMADO"
+    assert lista_st[2]["status_operacional"] == "DISPONIVEL"
+    assert lista_st[3]["status_operacional"] == "INDISPONIVEL"
+
+    # Consulta torre detalhamento
+    res_det = client.get(f"/api/v1/operacao/torre/detalhamento?empresa_id={emp_id}&data={hoje}", headers=headers)
+    assert res_det.status_code == status.HTTP_200_OK
+    lista_det = res_det.json()
+    assert len(lista_det) == 4
+    assert lista_det[0]["status_operacional"] == "EM_ROTA"
+    assert lista_det[1]["status_operacional"] == "PROGRAMADO"
+    assert lista_det[2]["status_operacional"] == "DISPONIVEL"
+    assert lista_det[3]["status_operacional"] == "INDISPONIVEL"
+

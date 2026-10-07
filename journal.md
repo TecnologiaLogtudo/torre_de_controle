@@ -2,6 +2,24 @@
 
 ## [2026-10-07] Desacoplamento de Status SPOT, Versionamento Oficial de Agendamento, Ações em Lote e Refinamento de UI
 
+### Ordenação Prioritária de Recursos por Status Operacional
+- **Regra de Prioridade Estrita nas Listagens de Recursos (`app/operacao/services.py`, `DetalhamentoTorre.tsx`, `StatusMotoristasPage.tsx`)**:
+  - Implementada ordenação operacional hierárquica para as listas de recursos em **Status de Motoristas** e **Detalhamento Operacional dos Recursos** (Torre de Controle):
+    1. `EM_ROTA` (Em rota)
+    2. `PROGRAMADO` (Programados)
+    3. `DISPONIVEL` (Disponíveis)
+    4. `INDISPONIVEL` (Indisponíveis)
+    5. `SEM_ALOCACAO` / outros (Sem alocação)
+    - Critério de desempate: Ordem alfabética ascendente pelo nome do motorista (`motorista_nome`).
+  - **Backend**:
+    - `obter_detalhamento_operacional`: Ordenação direta via cláusula SQL `order_by(case(...), Motorista.nome.asc())`.
+    - `obter_status_motoristas`: Ordenação em memória após agregação consolidada de alocações e status diários SPOT.
+  - **Frontend**:
+    - `DetalhamentoTorre.tsx`: Ordenação reativa via `useMemo` com tabela de pesos de status e desempate `localeCompare`.
+    - `StatusMotoristasPage.tsx`: Ordenação da lista filtrada respeitando a hierarquia operacional e ordem alfabética.
+  - **Testes Automatizados**:
+    - Criado teste de integração `test_ordenacao_status_motoristas_e_detalhamento` validando a sequência retornada em ambos os endpoints.
+
 ### Hotfix: Migração Automática no Startup da VPS, DDLs Defensivos e Favicon Base Path
 - **Migração Automática no Backend (`app/main.py`, `alembic/`)**:
   - Adicionadas instruções DDL defensivas no evento `@app.on_event("startup")` para aplicar automaticamente no PostgreSQL da VPS as alterações estruturais:

@@ -56,10 +56,26 @@ export const DetalhamentoTorre: React.FC<DetalhamentoTorreProps> = ({
   }, [])
 
   // Regra de exibição da Torre: Mostra dedicados (todos os status) e apenas spots agendados ou em rota
+  // Ordem prioritária de exibição: 1- Em rota, 2- Programados, 3- Disponíveis, 4- Indisponíveis
+  const statusOrdemPeso: Record<string, number> = {
+    EM_ROTA: 1,
+    PROGRAMADO: 2,
+    DISPONIVEL: 3,
+    INDISPONIVEL: 4,
+    SEM_ALOCACAO: 5,
+  }
+
   const detalhamentoVisivel = React.useMemo(() => {
-    return detalhamento.filter(item => {
+    const filtrados = detalhamento.filter(item => {
       if (item.categoria !== 'SPOT') return true
       return item.status_operacional === 'PROGRAMADO' || item.status_operacional === 'EM_ROTA'
+    })
+
+    return [...filtrados].sort((a, b) => {
+      const pesoA = statusOrdemPeso[a.status_operacional] ?? 99
+      const pesoB = statusOrdemPeso[b.status_operacional] ?? 99
+      if (pesoA !== pesoB) return pesoA - pesoB
+      return a.motorista_nome.localeCompare(b.motorista_nome)
     })
   }, [detalhamento])
 

@@ -311,6 +311,15 @@ class OperacaoService:
             query = query.filter(Motorista.nome.ilike(f"%{motorista_nome}%"))
         if motorista_id:
             query = query.filter(AlocacaoOperacional.motorista_id == motorista_id)
+        from sqlalchemy import case
+        ordem_status = case(
+            (AlocacaoOperacional.status_operacional == "EM_ROTA", 1),
+            (AlocacaoOperacional.status_operacional == "PROGRAMADO", 2),
+            (AlocacaoOperacional.status_operacional == "DISPONIVEL", 3),
+            (AlocacaoOperacional.status_operacional == "INDISPONIVEL", 4),
+            else_=5,
+        )
+        query = query.order_by(ordem_status, Motorista.nome.asc())
 
         alocacoes = query.offset(offset).limit(limite).all()
         resultado = []
@@ -468,6 +477,15 @@ class OperacaoService:
                     alocacao_id=alocacao_id,
                 )
             )
+
+        ordem_status_map = {
+            "EM_ROTA": 1,
+            "PROGRAMADO": 2,
+            "DISPONIVEL": 3,
+            "INDISPONIVEL": 4,
+            "SEM_ALOCACAO": 5,
+        }
+        resultado.sort(key=lambda x: (ordem_status_map.get(x.status_operacional, 99), x.motorista_nome.lower()))
 
         return MotoristasStatusResponse(
             data=data_ref,

@@ -253,12 +253,27 @@ export const StatusMotoristasPage: React.FC = () => {
     }
   }
 
-  const motoristasFiltrados: MotoristaStatus[] = (statusData?.motoristas || []).filter(m => {
-    const matchNome = m.motorista_nome.toLowerCase().includes(searchNome.toLowerCase())
-    if (!matchNome) return false
-    if (filtroStatus !== 'TODOS' && m.status_operacional !== filtroStatus) return false
-    return true
-  })
+  const statusOrdemPeso: Record<string, number> = {
+    EM_ROTA: 1,
+    PROGRAMADO: 2,
+    DISPONIVEL: 3,
+    INDISPONIVEL: 4,
+    SEM_ALOCACAO: 5,
+  }
+
+  const motoristasFiltrados: MotoristaStatus[] = (statusData?.motoristas || [])
+    .filter(m => {
+      const matchNome = m.motorista_nome.toLowerCase().includes(searchNome.toLowerCase())
+      if (!matchNome) return false
+      if (filtroStatus !== 'TODOS' && m.status_operacional !== filtroStatus) return false
+      return true
+    })
+    .sort((a, b) => {
+      const pesoA = statusOrdemPeso[a.status_operacional] ?? 99
+      const pesoB = statusOrdemPeso[b.status_operacional] ?? 99
+      if (pesoA !== pesoB) return pesoA - pesoB
+      return a.motorista_nome.localeCompare(b.motorista_nome)
+    })
 
   return (
     <div className="space-y-6">
