@@ -260,3 +260,33 @@ def test_detalhamento_torre_filtra_spots_disponiveis(client):
     assert "Spot Programado" in nomes
     assert "Spot Apenas Disponivel" not in nomes
 
+
+def test_historico_eventos_com_eventos_sem_empresa_e_sem_veiculo(client):
+    headers = obter_headers_autenticados(client)
+
+    # 1. Cria motorista SPOT sem empresa e sem veiculo
+    res_m = client.post("/api/v1/motoristas", json={"nome": "Motorista Spot Livre Evento"}, headers=headers)
+    assert res_m.status_code == status.HTTP_201_CREATED
+    m_id = res_m.json()["id"]
+
+    hoje = agora_local().date()
+    # 2. Altera status operacional para DISPONIVEL (gera evento com empresa_id=None e veiculo_id=None)
+    res_st = client.post(
+        f"/api/v1/operacao/motoristas/{m_id}/status",
+        json={"data": str(hoje), "novo_status": "DISPONIVEL"},
+        headers=headers,
+    )
+    assert res_st.status_code == status.HTTP_200_OK
+
+    # 3. Consulta historico-eventos (deve retornar 200 sem erro 500 de ResponseValidationError)
+    res_hist = client.get("/api/v1/operacao/historico-eventos?limite=20", headers=headers)
+    assert res_hist.status_code == status.HTTP_200_OK
+
+    eventos = res_hist.json()
+    evento_spot = next((e for e in eventos if e["motorista_id"] == m_id), None)
+    assert evento_spot is not None
+    assert evento_spot["empresa_id"] is None
+    assert evento_spot["veiculo_id"] is None
+    assert evento_spot["novo_status"] == "DISPONIVEL"
+
+

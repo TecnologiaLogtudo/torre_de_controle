@@ -12,6 +12,10 @@
   - Importados todos os modelos explicitamente em `app/main.py` e `alembic/env.py` garantindo que o SQLAlchemy registre `status_operacional_motoristas` no `Base.metadata`.
   - Ajustado fallback em `OperacaoService.alterar_status_motorista` para utilizar `"SEM_ALOCACAO"` como `status_anterior` padrão de recursos sem histórico prévio.
   - Resolvido o erro HTTP 500 no endpoint `/api/v1/operacao/status-lote`.
+- **Resolução do Erro 500 em `historico-eventos` (`app/operacao/schemas.py`, `frontend/src/types/torre.ts`)**:
+  - Flexibilizados os campos `empresa_id` e `veiculo_id` em `EventoOperacionalResponse` para `Optional[UUID] = None` (e `string | null` no TypeScript), sanando a exceção `ResponseValidationError` do FastAPI disparada ao listar eventos de motoristas SPOT livres.
+  - Atualizado fallback no `HistoricoEventosPage.tsx` para apresentar `"Sem Vínculo (SPOT)"` quando `empresa_nome` for nulo.
+  - Adicionado teste automatizado de regressão `test_historico_eventos_com_eventos_sem_empresa_e_sem_veiculo`.
 - **Resolução do Erro 404 de Favicon no Frontend (`frontend/index.html`)**:
   - Corrigido o caminho de `href="./favicon.svg"` para `href="/torre-de-controle/favicon.svg"`, garantindo que navegações em rotas SPA profundas (ex: `/app/motoristas`, `/app/configuracoes`) não sofram falha 404 por resolução relativa.
 

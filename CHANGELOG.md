@@ -11,6 +11,8 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 - **Migração Automática no Startup da Aplicação e DDLs Defensivos (`app/main.py`, `alembic/`)**:
   - Implementada execução defensiva de DDLs no startup da API (`ALTER TABLE eventos_operacionais ALTER COLUMN ... DROP NOT NULL` e `CREATE TABLE IF NOT EXISTS status_operacional_motoristas`), garantindo que instâncias em produção e VPS migrem o banco automaticamente sem intervenção manual e evitando falhas HTTP 500 no endpoint `/api/v1/operacao/status-lote`.
   - Criada a migração oficial do Alembic `9c0d1e2f3a4b_status_operacional_motoristas_e_eventos_nullable.py`.
+- **Resolução do Erro 500 no Histórico de Eventos (`app/operacao/schemas.py`, `frontend/src/types/torre.ts`)**:
+  - Flexibilizados os campos `empresa_id` e `veiculo_id` em `EventoOperacionalResponse` para `Optional[UUID] = None`, eliminando o erro de validação Pydantic (`ResponseValidationError`) ao serializar eventos de recursos SPOT livres.
 - **Correção de Favicon em Rotas SPA (`frontend/index.html`)**:
   - Atualizado o link do favicon para o caminho absoluto `/torre-de-controle/favicon.svg`, eliminando erros HTTP 404 em navegações por rotas profundas da aplicação.
 - **Desacoplamento do Status Operacional de Motoristas SPOT (`app/operacao/models.py`, `app/operacao/services.py`, `tests/test_status_motoristas.py`)**:

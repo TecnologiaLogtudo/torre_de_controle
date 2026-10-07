@@ -110,11 +110,11 @@ class MotoristasStatusResponse(BaseModel):
 # --- Eventos Operacionais ---
 class EventoOperacionalResponse(BaseModel):
     id: UUID
-    empresa_id: UUID
+    empresa_id: Optional[UUID] = None
     empresa_nome: Optional[str] = None
     motorista_id: UUID
     motorista_nome: Optional[str] = None
-    veiculo_id: UUID
+    veiculo_id: Optional[UUID] = None
     veiculo_placa: Optional[str] = None
     agendamento_id: Optional[UUID] = None
     categoria: str

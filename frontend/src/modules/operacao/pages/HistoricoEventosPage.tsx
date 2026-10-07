@@ -386,7 +386,7 @@ export const HistoricoEventosPage: React.FC = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-purple-600 shrink-0" />
-                        <span className="font-semibold text-slate-900">{item.empresa_nome || 'Empresa'}</span>
+                        <span className="font-semibold text-slate-900">{item.empresa_nome || 'Sem Vínculo (SPOT)'}</span>
                       </div>
                     </TableCell>
                     <TableCell>

@@ -33,11 +33,11 @@ export interface DetalhamentoOperacional {
 
 export interface EventoOperacional {
   id: string
-  empresa_id: string
+  empresa_id?: string | null
   empresa_nome?: string | null
   motorista_id: string
   motorista_nome?: string | null
-  veiculo_id: string
+  veiculo_id?: string | null
   veiculo_placa?: string | null
   agendamento_id?: string | null
   categoria: string
