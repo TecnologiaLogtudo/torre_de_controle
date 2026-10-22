@@ -105,6 +105,25 @@ export const AgendamentoDetalhesPage: React.FC = () => {
   const [salvandoVersao, setSalvandoVersao] = React.useState(false)
   const [alteracoesNaoSalvas, setAlteracoesNaoSalvas] = React.useState(false)
 
+  // Estado para Conclusão de Agendamento
+  const [concluirModalOpen, setConcluirModalOpen] = React.useState(false)
+  const [concluindo, setConcluindo] = React.useState(false)
+
+  const handleConfirmarConclusao = async () => {
+    if (!agendamento) return
+    setConcluindo(true)
+    try {
+      await agendamentosService.concluir(agendamento.id)
+      toast.success('Agendamento concluído com sucesso! Recursos liberados.')
+      setConcluirModalOpen(false)
+      await carregarDetalhes()
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao concluir agendamento.'))
+    } finally {
+      setConcluindo(false)
+    }
+  }
+
   // Estado para Seleção e Ação em Lote
   const [selectedAlocacoes, setSelectedAlocacoes] = React.useState<string[]>([])
   const [drawerLoteOpen, setDrawerLoteOpen] = React.useState(false)
@@ -254,7 +273,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
             </div>
           }
           actions={
-            agendamento.status !== 'CANCELADO' && (
+            agendamento.status !== 'CANCELADO' && agendamento.status !== 'CONCLUIDO' && (
               <div className="flex items-center gap-2">
                 <Button
                   variant="primary"
@@ -266,6 +285,17 @@ export const AgendamentoDetalhesPage: React.FC = () => {
                 >
                   {!agendamento.versao || agendamento.versao === 0 ? 'Salvar Agendamento (Oficializar v1)' : 'Salvar Agendamento'}
                 </Button>
+                {agendamento.versao && agendamento.versao >= 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                    onClick={() => setConcluirModalOpen(true)}
+                    leftIcon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                  >
+                    Concluir Agendamento
+                  </Button>
+                )}
                 <Button
                   variant="danger"
                   size="sm"
@@ -796,6 +826,19 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           </div>
         </form>
       </Drawer>
+
+      {/* Modal de Conclusão de Agendamento */}
+      <ConfirmDialog
+        isOpen={concluirModalOpen}
+        onClose={() => setConcluirModalOpen(false)}
+        onConfirm={handleConfirmarConclusao}
+        title="Concluir Agendamento"
+        message="Tem certeza que deseja concluir este agendamento? Todas as viagens em aberto serão finalizadas e os motoristas/veículos retornarão para o status DISPONÍVEL."
+        confirmText="Sim, Concluir"
+        cancelText="Voltar"
+        variant="primary"
+        isLoading={concluindo}
+      />
 
       {/* Modal de Cancelamento */}
       <ConfirmDialog

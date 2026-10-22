@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, date, time, timedelta
 from typing import List, Optional
 from uuid import UUID
@@ -24,9 +25,11 @@ from app.operacao.services import (
     DIAS_ANTECEDENCIA_MAXIMA_AGENDAMENTO_CHAVE,
 )
 
+logger = logging.getLogger(__name__)
+
 TRANSICOES_AGENDAMENTO_PERMITIDAS = {
     "RASCUNHO": ["PROGRAMADO", "CANCELADO"],
-    "PROGRAMADO": ["EM_EXECUCAO", "CANCELADO"],
+    "PROGRAMADO": ["EM_EXECUCAO", "CANCELADO", "CONCLUIDO"],
     "EM_EXECUCAO": ["CONCLUIDO", "CANCELADO"],
     "CONCLUIDO": [],
     "CANCELADO": [],
@@ -101,6 +104,9 @@ class AgendamentoService:
             .first()
         )
         if duplicado_mesmo_agendamento:
+            logger.warning(
+                f"[Alocacao Conflito] Agendamento {agendamento_id}: Motorista {motorista_id} ou veículo {veiculo_id} já alocado na programação (alocação {duplicado_mesmo_agendamento.id})."
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="O motorista ou o veículo informado já está alocado nesta mesma programação. Escolha um recurso livre ou substitua a alocação existente.",
@@ -122,11 +128,17 @@ class AgendamentoService:
         )
         if vinculo_motorista_dedic:
             if vinculo_motorista_dedic.empresa_id != agendamento_alvo.empresa_id:
+                logger.warning(
+                    f"[Alocacao Conflito] Motorista {motorista_id} é DEDICADO exclusivo da empresa {vinculo_motorista_dedic.empresa_id}, agendamento é da empresa {agendamento_alvo.empresa_id}."
+                )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="O motorista informado é DEDICADO exclusivo de outra empresa e não pode ser agendado nesta empresa.",
                 )
             if not permitir_troca_veiculo_dedicado and vinculo_motorista_dedic.veiculo_id and vinculo_motorista_dedic.veiculo_id != veiculo_id:
+                logger.warning(
+                    f"[Alocacao Conflito] Motorista DEDICADO {motorista_id} vinculado ao veículo fixo {vinculo_motorista_dedic.veiculo_id}, mas foi solicitado {veiculo_id}."
+                )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Este motorista é DEDICADO e está vinculado a outro veículo específico. Ele só pode operar com seu veículo cadastrado no contrato.",
@@ -143,6 +155,9 @@ class AgendamentoService:
             .first()
         )
         if vinculo_veiculo_dedic and vinculo_veiculo_dedic.empresa_id != agendamento_alvo.empresa_id:
+            logger.warning(
+                f"[Alocacao Conflito] Veículo {veiculo_id} é DEDICADO exclusivo da empresa {vinculo_veiculo_dedic.empresa_id}, agendamento é da empresa {agendamento_alvo.empresa_id}."
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="O veículo informado é DEDICADO exclusivo de outra empresa e não pode ser escalado nesta empresa.",
@@ -164,6 +179,9 @@ class AgendamentoService:
             .first()
         )
         if indisponivel_motorista:
+            logger.warning(
+                f"[Alocacao Conflito] Motorista {motorista_id} marcado como INDISPONÍVEL na data {agendamento_alvo.data} ou dia anterior {data_anterior}."
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="O motorista informado está marcado como INDISPONÍVEL. Ele só poderá ser agendado após seu status ser regularizado para DISPONÍVEL.",
@@ -182,6 +200,9 @@ class AgendamentoService:
             .first()
         )
         if indisponivel_veiculo:
+            logger.warning(
+                f"[Alocacao Conflito] Veículo {veiculo_id} marcado como INDISPONÍVEL na data {agendamento_alvo.data} ou dia anterior {data_anterior}."
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="O veículo informado está marcado como INDISPONÍVEL. Ele só poderá ser agendado após seu status ser regularizado para DISPONÍVEL.",
@@ -206,6 +227,9 @@ class AgendamentoService:
             .first()
         )
         if conflito_motorista:
+            logger.warning(
+                f"[Alocacao Conflito] Motorista {motorista_id} com alocação concorrente (status: {conflito_motorista.status_operacional}) no agendamento {conflito_motorista.agendamento_id}."
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="O motorista informado já está alocado ou com status diferente de DISPONÍVEL (programado ou em rota ativa). Ele só poderá ser agendado após a liberação operacional.",
@@ -230,6 +254,9 @@ class AgendamentoService:
             .first()
         )
         if conflito_veiculo:
+            logger.warning(
+                f"[Alocacao Conflito] Veículo {veiculo_id} com alocação concorrente (status: {conflito_veiculo.status_operacional}) no agendamento {conflito_veiculo.agendamento_id}."
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="O veículo informado já está alocado ou com status diferente de DISPONÍVEL (programado ou em rota ativa). Ele só poderá ser agendado após a liberação operacional.",
@@ -485,6 +512,66 @@ class AgendamentoService:
         return AgendamentoService.atualizar_agendamento(
             db, agendamento_id, AgendamentoUpdate(status="CANCELADO"), usuario_id
         )
+
+    @staticmethod
+    def concluir_agendamento(db: Session, agendamento_id: UUID, usuario_id: UUID) -> Agendamento:
+        agendamento = AgendamentoService.buscar_por_id(db, agendamento_id)
+        if agendamento.status == "CONCLUIDO":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Este agendamento já se encontra CONCLUÍDO.",
+            )
+        if agendamento.status == "CANCELADO":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Não é possível concluir um agendamento CANCELADO.",
+            )
+        if agendamento.versao < 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Apenas agendamentos com versão oficial salva (v1 ou superior) podem ser concluídos.",
+            )
+        hoje = agora_local().date()
+        if agendamento.data > hoje:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Não é permitido concluir agendamentos com data futura.",
+            )
+
+        status_ant = agendamento.status
+        agendamento.status = "CONCLUIDO"
+
+        total_baixados = 0
+        for aloc in agendamento.alocacoes:
+            if aloc.status_operacional in ["PROGRAMADO", "EM_ROTA"]:
+                aloc_status_ant = aloc.status_operacional
+                aloc.status_operacional = "DISPONIVEL"
+                total_baixados += 1
+                evento = EventoOperacional(
+                    empresa_id=agendamento.empresa_id,
+                    motorista_id=aloc.motorista_id,
+                    veiculo_id=aloc.veiculo_id,
+                    agendamento_id=agendamento.id,
+                    categoria=aloc.categoria,
+                    status_anterior=aloc_status_ant,
+                    novo_status="DISPONIVEL",
+                    motivo_indisponibilidade="Retorno/Conclusão de Agendamento",
+                    usuario_id=usuario_id,
+                    origem_alteracao="CONCLUSAO_AGENDAMENTO",
+                )
+                db.add(evento)
+
+        historico = HistoricoAgendamento(
+            agendamento_id=agendamento.id,
+            alterado_por_id=usuario_id,
+            tipo_alteracao="CONCLUSAO",
+            descricao=f"Agendamento concluído (status anterior: {status_ant}). {total_baixados} recurso(s) baixado(s) para DISPONÍVEL.",
+        )
+        db.add(historico)
+        db.commit()
+        db.refresh(agendamento)
+        return agendamento
+
 
     # --- Gestão de Alocações (Dedicados & SPOT) ---
 

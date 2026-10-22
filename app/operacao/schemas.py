@@ -74,6 +74,7 @@ class DetalhamentoOperacionalResponse(BaseModel):
     motivo_indisponibilidade: Optional[str] = None
     agendamento_id: Optional[UUID] = None
     alocacao_id: Optional[UUID] = None
+    data_inicio_rota: Optional[date] = None
 
 # --- Status de Motoristas (Visão Consolidada) ---
 class MotoristaStatusResponse(BaseModel):
@@ -90,6 +91,7 @@ class MotoristaStatusResponse(BaseModel):
     motivo_indisponibilidade: Optional[str] = None
     agendamento_id: Optional[UUID] = None
     alocacao_id: Optional[UUID] = None
+    data_inicio_rota: Optional[date] = None
 
 class AlterarStatusMotoristaRequest(BaseModel):
     data: date

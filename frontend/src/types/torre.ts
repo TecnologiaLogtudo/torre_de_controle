@@ -29,6 +29,7 @@ export interface DetalhamentoOperacional {
   motivo_indisponibilidade?: string | null
   agendamento_id?: string | null
   alocacao_id?: string | null
+  data_inicio_rota?: string | null
 }
 
 export interface EventoOperacional {
@@ -79,6 +80,7 @@ export interface MotoristaStatus {
   motivo_indisponibilidade?: string | null
   agendamento_id?: string | null
   alocacao_id?: string | null
+  data_inicio_rota?: string | null
 }
 
 export interface AlterarStatusMotoristaPayload {

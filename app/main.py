@@ -59,6 +59,31 @@ def startup_event():
         except Exception:
             pass
         try:
+            # Regularização retroativa de agendamentos anteriores a 21/10/2026:
+            # 1. Conclui agendamentos antigos ainda em aberto
+            conn.execute(text("""
+                UPDATE agendamentos
+                SET status = 'CONCLUIDO'
+                WHERE data < '2026-10-21' AND status NOT IN ('CONCLUIDO', 'CANCELADO');
+            """))
+            # 2. Libera alocações antigas pendentes para DISPONIVEL
+            conn.execute(text("""
+                UPDATE alocacoes_operacionais
+                SET status_operacional = 'DISPONIVEL'
+                FROM agendamentos
+                WHERE alocacoes_operacionais.agendamento_id = agendamentos.id
+                  AND agendamentos.data < '2026-10-21'
+                  AND alocacoes_operacionais.status_operacional IN ('EM_ROTA', 'PROGRAMADO', 'INDISPONIVEL');
+            """))
+            # 3. Libera status diários de motoristas gravados em datas passadas
+            conn.execute(text("""
+                UPDATE status_operacional_motoristas
+                SET status_operacional = 'DISPONIVEL'
+                WHERE data < '2026-10-21' AND status_operacional IN ('EM_ROTA', 'INDISPONIVEL');
+            """))
+        except Exception:
+            pass
+        try:
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS status_operacional_motoristas (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

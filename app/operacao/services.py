@@ -223,8 +223,15 @@ class OperacaoService:
 
             query = db.query(AlocacaoOperacional).join(Agendamento).filter(
                 Agendamento.empresa_id == emp.id,
-                Agendamento.data == data_ref,
                 Agendamento.status != "CANCELADO",
+                or_(
+                    Agendamento.data == data_ref,
+                    and_(
+                        Agendamento.data < data_ref,
+                        AlocacaoOperacional.status_operacional == "EM_ROTA",
+                        Agendamento.status.in_(["PROGRAMADO", "EM_EXECUCAO"]),
+                    ),
+                ),
             )
 
             alocacoes = query.all()
@@ -294,7 +301,16 @@ class OperacaoService:
         )
 
         if data_filtro:
-            query = query.filter(Agendamento.data == data_filtro)
+            query = query.filter(
+                or_(
+                    Agendamento.data == data_filtro,
+                    and_(
+                        Agendamento.data < data_filtro,
+                        AlocacaoOperacional.status_operacional == "EM_ROTA",
+                        Agendamento.status.in_(["PROGRAMADO", "EM_EXECUCAO"]),
+                    ),
+                )
+            )
         if empresa_id:
             query = query.filter(Agendamento.empresa_id == empresa_id)
         if status_filtro:
@@ -326,6 +342,7 @@ class OperacaoService:
 
         for a in alocacoes:
             motivo_nome = a.motivo_indisponibilidade.nome if a.motivo_indisponibilidade else None
+            data_inicio = a.agendamento.data if (data_filtro and a.agendamento.data < data_filtro and a.status_operacional == "EM_ROTA") else None
             resultado.append(
                 DetalhamentoOperacionalResponse(
                     empresa_id=a.agendamento.empresa_id,
@@ -342,6 +359,7 @@ class OperacaoService:
                     motivo_indisponibilidade=motivo_nome,
                     agendamento_id=a.agendamento_id,
                     alocacao_id=a.id,
+                    data_inicio_rota=data_inicio,
                 )
             )
 
@@ -360,13 +378,20 @@ class OperacaoService:
 
         data_ref = data_filtro or agora_local().date()
 
-        # Alocações do dia (fonte primária do status operacional)
+        # Alocações do dia + rotas ativas de datas passadas
         query = (
             db.query(AlocacaoOperacional, Agendamento)
             .join(Agendamento, AlocacaoOperacional.agendamento_id == Agendamento.id)
             .filter(
-                Agendamento.data == data_ref,
                 Agendamento.status != "CANCELADO",
+                or_(
+                    Agendamento.data == data_ref,
+                    and_(
+                        Agendamento.data < data_ref,
+                        AlocacaoOperacional.status_operacional == "EM_ROTA",
+                        Agendamento.status.in_(["PROGRAMADO", "EM_EXECUCAO"]),
+                    ),
+                ),
             )
         )
         if empresa_id:
@@ -410,6 +435,7 @@ class OperacaoService:
 
             if aloc:
                 status_op = aloc.status_operacional
+                data_inicio_rota = aloc.agendamento.data if (aloc.agendamento.data < data_ref and status_op == "EM_ROTA") else None
                 # Se for categoria SPOT e não tiver vínculo dedicado com empresa, não exibe empresa_nome
                 if aloc.categoria == "SPOT" and (not vinculo or not vinculo.empresa_id):
                     empresa_nome = None
@@ -475,6 +501,7 @@ class OperacaoService:
                     motivo_indisponibilidade=motivo,
                     agendamento_id=agendamento_id,
                     alocacao_id=alocacao_id,
+                    data_inicio_rota=data_inicio_rota if aloc else None,
                 )
             )
 
@@ -550,6 +577,23 @@ class OperacaoService:
             .order_by(AlocacaoOperacional.criado_em.desc())
             .first()
         )
+
+        # Se não há alocação na data, busca alocação em aberto de rota passada para dar baixa
+        if not alocacao:
+            aloc_passada = (
+                db.query(AlocacaoOperacional)
+                .join(Agendamento, AlocacaoOperacional.agendamento_id == Agendamento.id)
+                .filter(
+                    AlocacaoOperacional.motorista_id == motorista_id,
+                    AlocacaoOperacional.status_operacional == "EM_ROTA",
+                    Agendamento.status.in_(["PROGRAMADO", "EM_EXECUCAO"]),
+                    Agendamento.data < dados.data,
+                )
+                .order_by(Agendamento.data.desc())
+                .first()
+            )
+            if aloc_passada:
+                alocacao = aloc_passada
 
         vinculo = (
             db.query(MotoristaDedicadoVinculo)

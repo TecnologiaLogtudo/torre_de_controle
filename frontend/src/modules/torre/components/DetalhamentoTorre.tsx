@@ -18,6 +18,7 @@ import { torreService } from '@/services/torre/torreService'
 import { motivosService } from '@/services/motivos/motivosService'
 import { toast } from '@/components/feedback/Toaster'
 import { getErrorMessage } from '@/services/api/errors'
+import { formatDateBahia } from '@/utils/date'
 import { Truck, UserCheck, Layers, CheckSquare, Square, Edit3 } from 'lucide-react'
 
 export interface DetalhamentoTorreProps {
@@ -448,6 +449,14 @@ export const DetalhamentoTorre: React.FC<DetalhamentoTorreProps> = ({
                           className="cursor-pointer hover:ring-1 hover:ring-sky-400 transition-all"
                           title="Clique para alterar status operacional"
                         />
+                        {item.status_operacional === 'EM_ROTA' && item.data_inicio_rota && (
+                          <span
+                            className="px-1.5 py-0.5 rounded-none text-[10px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300"
+                            title={`Rota iniciada em ${formatDateBahia(item.data_inicio_rota)} e ainda pendente de retorno.`}
+                          >
+                            desde {formatDateBahia(item.data_inicio_rota).slice(0, 5)}
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleOpenAlterarStatusIndividual(item)}

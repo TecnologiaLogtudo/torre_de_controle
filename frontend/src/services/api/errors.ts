@@ -1,7 +1,12 @@
 import { AxiosError } from 'axios'
 import { ApiError } from '@/types/api'
+export type { ApiError }
 
 export function parseApiError(error: unknown): ApiError {
+  if (isApiError(error)) {
+    return error
+  }
+
   if (isAxiosError(error)) {
     const status = error.response?.status
     const data = error.response?.data as { detail?: string | Array<{ msg?: string; loc?: string[] }>; message?: string } | undefined
@@ -85,6 +90,20 @@ export function parseApiError(error: unknown): ApiError {
     }
   }
 
+  if (typeof error === 'object' && error !== null) {
+    const obj = error as Record<string, unknown>
+    const detail = typeof obj.detail === 'string' ? obj.detail : undefined
+    const message = typeof obj.message === 'string' ? obj.message : undefined
+    if (detail || message) {
+      return {
+        statusCode: typeof obj.statusCode === 'number' ? obj.statusCode : undefined,
+        message: message || detail || 'Ocorreu um erro ao processar sua requisição.',
+        detail,
+        raw: error,
+      }
+    }
+  }
+
   return {
     message: 'Ocorreu um erro inesperado ao processar sua requisição.',
     raw: error,
@@ -104,8 +123,17 @@ export function isApiError(error: unknown): error is ApiError {
   )
 }
 
-export function getErrorMessage(error: unknown, fallback = 'Ocorreu um erro inesperado.'): string {
+export const MSG_ERRO_INESPERADO_PADRAO = 'Ocorreu um erro inesperado ao processar sua requisição.'
+
+export function getErrorMessage(error: unknown, fallback = MSG_ERRO_INESPERADO_PADRAO): string {
   if (!error) return fallback
+  if (isApiError(error)) {
+    if (error.detail) return error.detail
+    if (error.message && error.message !== MSG_ERRO_INESPERADO_PADRAO) return error.message
+    return fallback
+  }
   const parsed = parseApiError(error)
-  return parsed.detail || parsed.message || fallback
+  if (parsed.detail) return parsed.detail
+  if (parsed.message && parsed.message !== MSG_ERRO_INESPERADO_PADRAO) return parsed.message
+  return fallback
 }

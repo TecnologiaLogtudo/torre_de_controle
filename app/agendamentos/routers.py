@@ -102,6 +102,20 @@ def atualizar_agendamento(
 
 
 @router.post(
+    "/{agendamento_id}/concluir",
+    response_model=AgendamentoResponse,
+    summary="Concluir agendamento e baixar recursos para DISPONIVEL",
+)
+def concluir_agendamento(
+    agendamento_id: UUID,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(obter_usuario_atual),
+):
+    """Conclui um agendamento oficializado (data <= hoje), baixando recursos em rota/programados para DISPONÍVEL."""
+    return AgendamentoService.concluir_agendamento(db, agendamento_id, usuario_atual.id)
+
+
+@router.post(
     "/{agendamento_id}/cancelar",
     response_model=AgendamentoResponse,
     summary="Cancelar agendamento",

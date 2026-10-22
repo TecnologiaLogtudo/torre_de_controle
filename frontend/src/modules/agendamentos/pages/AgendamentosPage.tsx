@@ -15,6 +15,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHeadCell, TableCell } fro
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Pagination } from '@/components/ui/Pagination'
 import { Drawer } from '@/components/ui/Drawer'
+import { Modal } from '@/components/ui/Modal'
 import { Alert } from '@/components/ui/Alert'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -46,6 +47,25 @@ export const AgendamentosPage: React.FC = () => {
   const [configVigente, setConfigVigente] = useState<ContratoConfiguracao | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+
+  // Modal de Concluir Agendamento
+  const [agendamentoParaConcluir, setAgendamentoParaConcluir] = useState<Agendamento | null>(null)
+  const [concluindo, setConcluindo] = useState(false)
+
+  const handleConfirmarConcluir = async () => {
+    if (!agendamentoParaConcluir) return
+    setConcluindo(true)
+    try {
+      await agendamentosService.concluir(agendamentoParaConcluir.id)
+      toast.success('Agendamento concluído com sucesso! Recursos retornados para Disponível.')
+      setAgendamentoParaConcluir(null)
+      carregarAgendamentos()
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao concluir agendamento.'))
+    } finally {
+      setConcluindo(false)
+    }
+  }
 
   const hojeBahiaStr = getHojeBahiaIso()
   const amanhaBahiaStr = getHojeBahiaIso(1)
@@ -272,14 +292,27 @@ export const AgendamentosPage: React.FC = () => {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => navigate(`/app/agendamentos/${ag.id}`)}
-                      leftIcon={<Eye className="w-3.5 h-3.5" />}
-                    >
-                      Abrir Detalhes
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      {ag.versao && ag.versao >= 1 && ['PROGRAMADO', 'EM_EXECUCAO'].includes(ag.status) && ag.data <= hojeBahiaStr && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setAgendamentoParaConcluir(ag)}
+                          leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                          title="Concluir agendamento e confirmar retorno de recursos"
+                        >
+                          Concluir
+                        </Button>
+                      )}
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => navigate(`/app/agendamentos/${ag.id}`)}
+                        leftIcon={<Eye className="w-3.5 h-3.5" />}
+                      >
+                        Abrir Detalhes
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -407,6 +440,51 @@ export const AgendamentosPage: React.FC = () => {
           </div>
         </form>
       </Drawer>
+      {/* Modal de Confirmação para Concluir Agendamento */}
+      <Modal
+        isOpen={!!agendamentoParaConcluir}
+        onClose={() => setAgendamentoParaConcluir(null)}
+        title="Concluir Agendamento Operacional"
+        size="md"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAgendamentoParaConcluir(null)}
+              disabled={concluindo}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleConfirmarConcluir}
+              isLoading={concluindo}
+              leftIcon={<CheckCircle2 className="w-4 h-4" />}
+            >
+              Confirmar Conclusão
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3 text-sm text-slate-700">
+          <p>
+            Você está prestes a concluir o agendamento da empresa{' '}
+            <strong>{agendamentoParaConcluir ? getEmpresaNome(agendamentoParaConcluir.empresa_id) : 'Empresa'}</strong> referente à data{' '}
+            <strong>{agendamentoParaConcluir?.data ? formatDateBahia(agendamentoParaConcluir.data) : ''}</strong>.
+          </p>
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs rounded-none space-y-1">
+            <p className="font-semibold flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              Retorno Automático de Recursos:
+            </p>
+            <p>
+              Todas as alocações que ainda estiverem com status <strong>"Em rota"</strong> ou <strong>"Programado"</strong> nesta programação terão seu retorno confirmado automaticamente para <strong>"Disponível"</strong>, liberando os motoristas e veículos para novas escalas.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

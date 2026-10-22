@@ -7,6 +7,31 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ## [Unreleased]
 
+### Adicionado & Corrigido (Ciclo de Vida de Viagens, Rotas Ativas e Conclusão de Agendamentos)
+- **Persistência e Visibilidade de Recursos em Rota de Datas Anteriores (`app/operacao/services.py`, `DetalhamentoTorre.tsx`, `StatusMotoristasPage.tsx`, `schemas.py`, `types/torre.ts`)**:
+  - Recursos (motoristas e veículos) com viagem iniciada (`EM_ROTA`) em agendamentos passados não concluídos permanecem explicitamente sinalizados como `EM_ROTA` em qualquer data subsequente até que ocorra sua baixa operacional formal.
+  - Adicionado o campo `data_inicio_rota` nas respostas da API (`DetalhamentoOperacionalResponse`, `MotoristaStatusResponse`), permitindo exibir badges visuais como `Em rota (desde DD/MM)` nas telas da Torre de Controle e Status de Motoristas.
+  - O card/KPI de "Em rota" da Torre de Controle passa a totalizar todas as viagens em andamento na frota, consolidando pendências operacionais históricas e atuais.
+  - Bloqueada a seleção e exibição de motoristas e veículos que possuem rota ativa em aberto no modal de inclusão de recursos SPOT (`motoristasSpotElegiveis` e `veiculosSpotElegiveis`).
+  - Habilitada a baixa individual direta de motoristas com rotas em aberto de datas anteriores através dos Drawers de alteração de status na Torre de Controle e na tela de Status de Motoristas.
+- **Funcionalidade de Conclusão Formal de Agendamentos e Liberação em Lote (`app/agendamentos/services.py`, `routers.py`, `AgendamentosPage.tsx`, `AgendamentoDetalhesPage.tsx`, `agendamentosService.ts`)**:
+  - Criado o endpoint `POST /api/v1/agendamentos/{agendamento_id}/concluir`.
+  - Validações de integridade: agendamento deve ter versão oficial salva ($v \ge 1$), status diferente de `CANCELADO`/`CONCLUIDO` e data operacional menor ou igual à data de hoje (não permite concluir datas futuras antecipadamente).
+  - Ao concluir, o status da programação passa para `CONCLUIDO` e todas as alocações vinculadas que ainda estejam com status `EM_ROTA` ou `PROGRAMADO` têm seu retorno registrado com sucesso, liberando os recursos para `DISPONIVEL` imediatamente.
+  - Adicionado botão de ação rápida "Concluir" na coluna Ação da listagem de Agendamentos Operacionais e botão destacado "Concluir Agendamento" no cabeçalho de Detalhes do Agendamento, ambos com modal de confirmação claro.
+- **Regularização Retroativa Automática no Startup (`app/main.py`)**:
+  - Adicionadas rotinas de saneamento defensivo na inicialização da API para concluir programações e liberar rotas/status em aberto com datas estritamente anteriores a 21/10/2026 (período pré-piloto), sanando inconsistências históricas acumuladas da base de testes.
+- **Suíte de Testes Automatizados (`tests/test_concluir_agendamento.py`, `frontend/src/test/errors.test.ts`)**:
+  - Criados testes de validação para o novo endpoint de conclusão, cobrindo regras de negócio (versão pendente, bloqueio de datas futuras e transição atômica de alocações para `DISPONIVEL`).
+
+### Corrigido & Aprimorado (Fidelidade de Erros da API e Observabilidade Operacional)
+- **Preservação de Mensagens de Validação da API no Frontend (`frontend/src/services/api/errors.ts`, `frontend/src/test/errors.test.ts`)**:
+  - Sanado o problema no qual objetos `ApiError` rejeitados pelo interceptor do Axios eram parseados novamente pelo `getErrorMessage` e descartavam a mensagem `detail` retornada pelo backend, exibindo mensagens genéricas de falha.
+  - Implementada priorização de mensagens `detail` e suporte a objetos pré-parseados, assegurando que justificativas de bloqueio de negócio (duplicidades, indisponibilidade anterior, conflitos de rota ou vínculos contratuais) sejam exibidas com exatidão nos formulários e alertas.
+  - Adicionada suíte de testes unitários para o módulo de tratamento de erros da API.
+- **Observabilidade Estruturada de Alocações no Backend (`app/agendamentos/services.py`)**:
+  - Incorporado logging de nível `warning` com contexto detalhado em `AgendamentoService.verificar_conflito_alocacao`, registrando nos logs do servidor o motivo explícito de qualquer rejeição `HTTP 400` ao tentar alocar recursos SPOT ou dedicados em programações.
+
 ### Adicionado & Aprimorado (Ordenação Prioritária de Recursos por Status Operacional)
 - **Hierarquia de Status Operacional nas Listagens (`app/operacao/services.py`, `DetalhamentoTorre.tsx`, `StatusMotoristasPage.tsx`, `tests/test_status_motoristas.py`)**:
   - Implementada ordenação estrita de motoristas nas tabelas "Status de Motoristas" e "Detalhamento Operacional dos Recursos":

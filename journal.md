@@ -1,5 +1,45 @@
 # Diário de Bordo — Torre de Controle Logtudo
 
+## [2026-10-21] Persistência de Viagens em Rota, Conclusão de Agendamentos e Regularização de Frota
+
+### 1. Diagnóstico do Conflito de Alocação e Regra de Negócio de Viagens em Rota
+- **Cenário**: O motorista "Pedro Vitor Andrade" entrou em rota em 05/10 e nunca foi baixado/concluído. Na data atual (21/10), o operador observou que ele aparecia como "Não alocado", na Torre não constava na lista de "Em rota", e a tentativa de alocá-lo em um novo agendamento retornava HTTP 400.
+- **Causa Raiz**: O backend checava `AlocacaoOperacional.status_operacional == 'EM_ROTA'` sem filtro de data em `verificar_conflito_alocacao` para impedir que um recurso em rota fosse escalado simultaneamente. Porém, as telas de Torre e Status olhavam apenas a data de hoje, e não havia mecanismo de conclusão formal de programações para desmobilizar os recursos.
+- **Solução Implementada**:
+  - Viagens com status `EM_ROTA` permanecem retidas até sua baixa explícita, com visibilidade transparente em datas posteriores através do indicador `desde DD/MM`.
+  - A Torre de Controle totaliza no card "Em rota" e na lista de recursos todas as viagens ativas da frota (do dia e de dias anteriores em aberto).
+  - No modal SPOT de novos agendamentos, recursos com viagens ativas em aberto são excluídos das opções de seleção.
+  - Disponibilizada a baixa individual imediata nos Drawers de Status/Torre mesmo para viagens de datas passadas.
+
+### 2. Conclusão Formal de Agendamentos e Liberação em Lote
+- **Backend (`app/agendamentos/services.py`, `routers.py`)**:
+  - Implementado o método `concluir_agendamento(db, agendamento_id, usuario_id)`.
+  - Valida que a programação foi oficializada ($v \ge 1$), não é futura ($\le \text{hoje}$) e não está cancelada/concluída.
+  - Altera o status do agendamento para `CONCLUIDO` e passa todas as alocações em `EM_ROTA` ou `PROGRAMADO` para `DISPONIVEL`, registrando os eventos operacionais de encerramento.
+  - Exposto o endpoint `POST /api/v1/agendamentos/{agendamento_id}/concluir`.
+- **Frontend (`AgendamentosPage.tsx`, `AgendamentoDetalhesPage.tsx`, `agendamentosService.ts`)**:
+  - Adicionado botão de ação rápida "Concluir" na coluna Ação da tabela de Agendamentos Operacionais para agendamentos $v \ge 1$ e status elegíveis.
+  - Adicionado botão "Concluir Agendamento" no cabeçalho da página de Detalhes do Agendamento.
+  - Modais de confirmação explicativos detalhando a liberação automática dos recursos vinculados.
+
+### 3. Saneamento Automático de Dados Históricos no Startup
+- **Rotina Defensiva no Startup (`app/main.py`)**:
+  - Execução de queries de migração de dados no evento de inicialização para concluir automaticamente agendamentos e liberar alocações/status com datas anteriores a 21/10/2026 (período de testes pré-piloto), permitindo que todos os motoristas e veículos voltem a ficar imediatamente disponíveis na base de dados de produção.
+
+## [2026-10-21] Correção de Exibição de Erros da API e Observabilidade de Alocações
+
+### Preservação e Fidelidade das Mensagens de Erro da API (`frontend/src/services/api/errors.ts`)
+- **Resolução do Erro Genérico no Frontend**:
+  - Corrigido o fluxo de duplo parsing em `parseApiError` e `getErrorMessage`. Quando o interceptor do Axios rejeitava um objeto `ApiError`, as chamadas subsequentes em blocos `catch` não reconheciam o objeto parseado e descartavam o atributo `detail` da API, caindo no fallback genérico *"Ocorreu um erro inesperado ao processar sua requisição."*.
+  - Implementada verificação prioritária de `isApiError` e extração de propriedades `detail` e `message` em plain objects, garantindo que qualquer rejeição ou regra violada (ex: duplicidade de motorista/veículo, vínculo contratual dedicado, indisponibilidade ativa na data ou dia anterior) seja exibida com clareza nos toasts e modais para o usuário.
+  - Criada suíte de testes unitários `frontend/src/test/errors.test.ts` cobrindo cenários com AxiosError, ApiError pré-parseado, erros 422 Pydantic e fallbacks customizados.
+
+### Observabilidade e Logs Estruturados de Conflito de Alocação (`app/agendamentos/services.py`)
+- **Rastreabilidade no Servidor**:
+  - Incorporado `logger = logging.getLogger(__name__)` em `app/agendamentos/services.py`.
+  - Adicionadas emissões estruturadas de `logger.warning` em cada uma das regras de bloqueio de `verificar_conflito_alocacao` (duplicidade no agendamento, exclusividade de motorista dedicado, exclusividade de veículo dedicado, indisponibilidade de motorista/veículo na data ou dia anterior, e concorrência em outro agendamento ativo).
+  - Permite aos operadores e desenvolvedores identificar imediatamente nos logs da VPS (`docker logs torre-de-controle-backend`) a causa exata pela qual uma alocação foi rejeitada com `HTTP 400`.
+
 ## [2026-10-07] Desacoplamento de Status SPOT, Versionamento Oficial de Agendamento, Ações em Lote e Refinamento de UI
 
 ### Ordenação Prioritária de Recursos por Status Operacional

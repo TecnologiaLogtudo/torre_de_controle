@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Input } from '@/components/ui/Input'
 import { toast } from '@/components/feedback/Toaster'
-import { getHojeBahiaIso } from '@/utils/date'
+import { getHojeBahiaIso, formatDateBahia } from '@/utils/date'
 import { getErrorMessage } from '@/services/api/errors'
 import { RefreshCw, UserCheck, Edit, AlertTriangle, CheckSquare, Square, Users, CheckCircle2 } from 'lucide-react'
 
@@ -542,7 +542,17 @@ export const StatusMotoristasPage: React.FC = () => {
                         {SEM_ALOCACAO_LABEL}
                       </span>
                     ) : (
-                      <StatusBadge status={m.status_operacional} size="sm" />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <StatusBadge status={m.status_operacional} size="sm" />
+                        {m.status_operacional === 'EM_ROTA' && m.data_inicio_rota && (
+                          <span
+                            className="px-1.5 py-0.5 rounded-none text-[10px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300"
+                            title={`Rota iniciada em ${formatDateBahia(m.data_inicio_rota)} e ainda pendente de retorno.`}
+                          >
+                            desde {formatDateBahia(m.data_inicio_rota).slice(0, 5)}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </button>
                 </TableCell>
