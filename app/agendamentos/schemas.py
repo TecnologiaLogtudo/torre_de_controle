@@ -33,6 +33,17 @@ class AlocacaoInicialPayload(BaseModel):
     veiculo_id: UUID
     categoria: Optional[str] = "SPOT"
 
+class RestaurarAlocacoesItem(BaseModel):
+    id: Optional[UUID] = None
+    motorista_id: UUID
+    veiculo_id: UUID
+    categoria: str
+    status_operacional: str = "PROGRAMADO"
+    motivo_indisponibilidade_id: Optional[UUID] = None
+
+class RestaurarAlocacoesPayload(BaseModel):
+    alocacoes: List[RestaurarAlocacoesItem]
+
 class AlocacaoOperacionalResponse(AlocacaoOperacionalBase):
     id: UUID
     agendamento_id: UUID

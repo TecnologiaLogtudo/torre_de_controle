@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.auth.services import obter_usuario_atual
 from app.usuarios.models import Usuario
 from app.agendamentos.schemas import (
+    RestaurarAlocacoesPayload,
     AgendamentoCreate,
     AgendamentoUpdate,
     AgendamentoResponse,
@@ -225,3 +226,17 @@ def salvar_versao_agendamento(
 ):
     """Salva a programação do agendamento avançando a versão e gerando histórico."""
     return AgendamentoService.salvar_versao_agendamento(db, agendamento_id, usuario_atual.id)
+
+@router.post(
+    "/{agendamento_id}/restaurar-alocacoes",
+    response_model=AgendamentoResponse,
+    summary="Restaurar alocações para o snapshot da última versão salva",
+)
+def restaurar_alocacoes(
+    agendamento_id: UUID,
+    payload: RestaurarAlocacoesPayload,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(obter_usuario_atual),
+):
+    """Descarta alterações operacionais recentes e restaura a lista de alocações para a versão oficial."""
+    return AgendamentoService.restaurar_alocacoes(db, agendamento_id, payload, usuario_atual.id)

@@ -120,4 +120,23 @@ export const agendamentosService = {
     const response = await apiClient.post<Agendamento>(`/api/v1/agendamentos/${agendamentoId}/salvar-versao`)
     return response.data
   },
+
+  // --- Restaurar Alocações ao Snapshot Salvo ---
+  async restaurarAlocacoes(
+    agendamentoId: string,
+    alocacoes: Array<{
+      id?: string
+      motorista_id: string
+      veiculo_id: string
+      categoria: string
+      status_operacional: string
+      motivo_indisponibilidade_id?: string | null
+    }>
+  ): Promise<Agendamento> {
+    const response = await apiClient.post<Agendamento>(
+      `/api/v1/agendamentos/${agendamentoId}/restaurar-alocacoes`,
+      { alocacoes }
+    )
+    return response.data
+  },
 }

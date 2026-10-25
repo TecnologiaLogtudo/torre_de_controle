@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Radio,
   Truck,
@@ -17,6 +17,7 @@ import {
 import { Badge } from '../ui/Badge'
 import logoOfficial from '@/Identidade visual/Logos/Variações do Logo_Prancheta 1-01.png'
 import textureBg from '@/Identidade visual/Texturas/texturas_Prancheta 1-02.png'
+import { useNavigationGuard } from '@/app/providers/NavigationGuardProvider'
 
 interface NavGroup {
   groupName?: string
@@ -128,6 +129,8 @@ const navigationStructure: NavGroup[] = [
 ]
 
 export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobile }) => {
+  const navigate = useNavigate()
+  const { requestNavigation } = useNavigationGuard()
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     Cadastros: true,
     Configurações: true,
@@ -135,6 +138,24 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
 
   const toggleGroup = (name: string) => {
     setExpandedGroups(prev => ({ ...prev, [name]: !prev[name] }))
+  }
+
+  const handleLinkClick = (e: React.MouseEvent, targetPath: string, isSoon: boolean) => {
+    if (isSoon) {
+      e.preventDefault()
+      return
+    }
+
+    const allowed = requestNavigation(targetPath, () => {
+      if (onCloseMobile) onCloseMobile()
+      navigate(targetPath)
+    })
+
+    if (!allowed) {
+      e.preventDefault()
+    } else if (onCloseMobile) {
+      onCloseMobile()
+    }
   }
 
   return (
@@ -194,7 +215,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                           <NavLink
                             key={child.path}
                             to={child.path}
-                            onClick={onCloseMobile}
+                            onClick={e => handleLinkClick(e, child.path, false)}
                             className={({ isActive }) =>
                               `flex items-center justify-between px-3 py-2 rounded-none text-xs font-medium transition-all ${
                                 isActive
@@ -219,13 +240,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                 <NavLink
                   key={item.path}
                   to={isSoon ? '#' : item.path}
-                  onClick={e => {
-                    if (isSoon) {
-                      e.preventDefault()
-                    } else if (onCloseMobile) {
-                      onCloseMobile()
-                    }
-                  }}
+                  onClick={e => handleLinkClick(e, item.path, isSoon)}
                   className={({ isActive }) =>
                     `flex items-center justify-between px-3 py-2 rounded-none text-xs font-medium transition-all ${
                       isActive && !isSoon
@@ -240,9 +255,8 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                     <span className="shrink-0">{item.icon}</span>
                     <span>{item.name}</span>
                   </div>
-
                   {isSoon && (
-                    <Badge variant="EM_BREVE" size="sm">
+                    <Badge variant="EM_BREVE" size="sm" className="text-[10px] py-0 px-1.5 opacity-60">
                       Em breve
                     </Badge>
                   )}
@@ -251,18 +265,6 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
             })}
           </div>
         ))}
-      </div>
-
-      {/* Footer Info */}
-      <div className="p-4 border-t border-logtudo-border/60 text-[11px] text-slate-400 flex flex-col gap-1 bg-logtudo-deep/80 relative z-10">
-        <div className="flex items-center justify-between">
-          <span>Timezone:</span>
-          <span className="font-semibold text-logtudo-accent">America/Bahia</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span>Operação:</span>
-          <span className="font-semibold text-emerald-400">Fase 5.1 Ativa</span>
-        </div>
       </div>
     </aside>
   )

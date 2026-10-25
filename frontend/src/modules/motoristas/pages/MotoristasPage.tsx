@@ -5,7 +5,7 @@ import { veiculosService } from '@/services/veiculos/veiculosService'
 import { empresasService } from '@/services/empresas/empresasService'
 import { Motorista } from '@/types/motoristas'
 import { MotoristaDedicadoVinculo } from '@/types/contratos'
-import { Veiculo } from '@/types/veiculos'
+import { Veiculo, EspecialidadeVeiculo } from '@/types/veiculos'
 import { Empresa } from '@/types/empresas'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -23,7 +23,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { ImportModal } from '@/components/ui/ImportModal'
 import { toast } from '@/components/feedback/Toaster'
 import { getErrorMessage } from '@/services/api/errors'
-import { UserCheck, Plus, Edit, Upload, Link2, Unlink } from 'lucide-react'
+import { UserCheck, Plus, Edit, Upload, Link2, Unlink, Truck } from 'lucide-react'
 
 export const MotoristasPage: React.FC = () => {
   const [motoristas, setMotoristas] = useState<Motorista[]>([])
@@ -43,7 +43,7 @@ export const MotoristasPage: React.FC = () => {
   const [filtroEspecialidade, setFiltroEspecialidade] = useState('')
   const [filtroStatus, setFiltroStatus] = useState<string>('TODOS')
 
-  // Drawer Cadastro/Edição
+  // Drawer Cadastro/Edição com Cadastro Casado
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedMotorista, setSelectedMotorista] = useState<Motorista | null>(null)
   const [nomeForm, setNomeForm] = useState('')
@@ -51,7 +51,17 @@ export const MotoristasPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
-  // Drawer Vinculação de Veículo
+  // Vínculo Casado no Drawer de Cadastro/Edição
+  const [modoVinculoForm, setModoVinculoForm] = useState<'nenhum' | 'existente' | 'novo'>('nenhum')
+  const [veiculoIdVinculoForm, setVeiculoIdVinculoForm] = useState('')
+  const [novoVeiculoPlaca, setNovoVeiculoPlaca] = useState('')
+  const [novoVeiculoTipo, setNovoVeiculoTipo] = useState('HR')
+  const [novoVeiculoEspecialidade, setNovoVeiculoEspecialidade] = useState<EspecialidadeVeiculo>('SECO')
+  const [categoriaVinculoForm, setCategoriaVinculoForm] = useState<'SPOT' | 'DEDICADO'>('SPOT')
+  const [empresaIdVinculoForm, setEmpresaIdVinculoForm] = useState('')
+  const [vinculoOriginal, setVinculoOriginal] = useState<MotoristaDedicadoVinculo | null>(null)
+
+  // Drawer Vinculação Rápida de Veículo
   const [drawerVinculoOpen, setDrawerVinculoOpen] = useState(false)
   const [motoristaParaVinculo, setMotoristaParaVinculo] = useState<Motorista | null>(null)
   const [vinculoAtualMotorista, setVinculoAtualMotorista] = useState<MotoristaDedicadoVinculo | null>(null)
@@ -86,10 +96,27 @@ export const MotoristasPage: React.FC = () => {
     carregarDados()
   }, [carregarDados])
 
+  const veiculosDisponiveisParaCadastro = useMemo(() => {
+    const veiculosOcupadosPorOutros = new Set(
+      vinculos
+        .filter(v => v.ativo && v.veiculo_id && v.motorista_id !== selectedMotorista?.id)
+        .map(v => v.veiculo_id)
+    )
+    return veiculos.filter(v => v.ativo && !veiculosOcupadosPorOutros.has(v.id))
+  }, [veiculos, vinculos, selectedMotorista])
+
   const handleOpenNovo = () => {
     setSelectedMotorista(null)
     setNomeForm('')
     setAtivoForm(true)
+    setModoVinculoForm('nenhum')
+    setVeiculoIdVinculoForm('')
+    setNovoVeiculoPlaca('')
+    setNovoVeiculoTipo('HR')
+    setNovoVeiculoEspecialidade('SECO')
+    setCategoriaVinculoForm('SPOT')
+    setEmpresaIdVinculoForm(empresas.length > 0 ? empresas[0].id : '')
+    setVinculoOriginal(null)
     setFormError(null)
     setDrawerOpen(true)
   }
@@ -98,6 +125,24 @@ export const MotoristasPage: React.FC = () => {
     setSelectedMotorista(m)
     setNomeForm(m.nome)
     setAtivoForm(m.ativo)
+    const vinc = vinculos.find(v => v.motorista_id === m.id && v.ativo) || null
+    setVinculoOriginal(vinc)
+
+    if (vinc) {
+      setModoVinculoForm('existente')
+      setVeiculoIdVinculoForm(vinc.veiculo_id || '')
+      setCategoriaVinculoForm((vinc.categoria || vinc.categoria_operacional || 'SPOT') as 'SPOT' | 'DEDICADO')
+      setEmpresaIdVinculoForm(vinc.empresa_id || (empresas.length > 0 ? empresas[0].id : ''))
+    } else {
+      setModoVinculoForm('nenhum')
+      setVeiculoIdVinculoForm('')
+      setCategoriaVinculoForm('SPOT')
+      setEmpresaIdVinculoForm(empresas.length > 0 ? empresas[0].id : '')
+    }
+
+    setNovoVeiculoPlaca('')
+    setNovoVeiculoTipo('HR')
+    setNovoVeiculoEspecialidade('SECO')
     setFormError(null)
     setDrawerOpen(true)
   }
@@ -111,20 +156,98 @@ export const MotoristasPage: React.FC = () => {
       return
     }
 
+    let cleanPlaca = ''
+    if (modoVinculoForm === 'novo') {
+      cleanPlaca = novoVeiculoPlaca.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
+      if (cleanPlaca.length !== 7) {
+        setFormError('A placa do novo veículo deve conter exatamente 7 caracteres alfanuméricos (Mercosul ou tradicional).')
+        return
+      }
+      if (!novoVeiculoTipo.trim()) {
+        setFormError('Selecione o tipo do novo veículo.')
+        return
+      }
+      if (categoriaVinculoForm === 'DEDICADO' && !empresaIdVinculoForm) {
+        setFormError('Selecione a empresa contratante para vínculo dedicado.')
+        return
+      }
+    } else if (modoVinculoForm === 'existente') {
+      if (!veiculoIdVinculoForm) {
+        setFormError('Selecione um veículo físico para vincular ao motorista.')
+        return
+      }
+      if (categoriaVinculoForm === 'DEDICADO' && !empresaIdVinculoForm) {
+        setFormError('Selecione a empresa contratante para vínculo dedicado.')
+        return
+      }
+    }
+
     setSubmitting(true)
     try {
+      let motId: string
       if (selectedMotorista) {
         await motoristasService.atualizar(selectedMotorista.id, {
           nome: nomeForm.trim(),
           ativo: ativoForm,
         })
-        toast.success(`Motorista "${nomeForm.trim()}" atualizado com sucesso!`)
+        motId = selectedMotorista.id
       } else {
-        await motoristasService.criar({ nome: nomeForm.trim() })
-        toast.success(`Motorista "${nomeForm.trim()}" cadastrado com sucesso!`)
+        const created = await motoristasService.criar({ nome: nomeForm.trim() })
+        motId = created.id
       }
+
+      if (modoVinculoForm === 'novo') {
+        const createdVeic = await veiculosService.criar({
+          placa: cleanPlaca,
+          tipo_veiculo: novoVeiculoTipo.trim(),
+          especialidade: novoVeiculoEspecialidade,
+        })
+        if (vinculoOriginal) {
+          await contratosService.desativarVinculoDedicado(vinculoOriginal.id)
+        }
+        await contratosService.criarVinculoDedicado({
+          empresa_id: categoriaVinculoForm === 'DEDICADO' ? empresaIdVinculoForm : undefined,
+          motorista_id: motId,
+          veiculo_id: createdVeic.id,
+          tipo_veiculo: createdVeic.tipo_veiculo,
+          categoria_operacional: categoriaVinculoForm,
+          categoria: categoriaVinculoForm,
+        })
+        toast.success(
+          `Motorista "${nomeForm.trim()}" e veículo [${cleanPlaca}] cadastrados e vinculados com sucesso!`
+        )
+      } else if (modoVinculoForm === 'existente') {
+        const mudouVeiculo = vinculoOriginal?.veiculo_id !== veiculoIdVinculoForm
+        const mudouCat = (vinculoOriginal?.categoria || vinculoOriginal?.categoria_operacional) !== categoriaVinculoForm
+        const mudouEmp =
+          (vinculoOriginal?.empresa_id || '') !==
+          (categoriaVinculoForm === 'DEDICADO' ? empresaIdVinculoForm : '')
+
+        if (!vinculoOriginal || mudouVeiculo || mudouCat || mudouEmp) {
+          if (vinculoOriginal) {
+            await contratosService.desativarVinculoDedicado(vinculoOriginal.id)
+          }
+          const veicObj = veiculos.find(v => v.id === veiculoIdVinculoForm)
+          await contratosService.criarVinculoDedicado({
+            empresa_id: categoriaVinculoForm === 'DEDICADO' ? empresaIdVinculoForm : undefined,
+            motorista_id: motId,
+            veiculo_id: veiculoIdVinculoForm,
+            tipo_veiculo: veicObj?.tipo_veiculo,
+            categoria_operacional: categoriaVinculoForm,
+            categoria: categoriaVinculoForm,
+          })
+        }
+        toast.success(`Motorista "${nomeForm.trim()}" salvo com sucesso com veículo vinculado!`)
+      } else {
+        // modoVinculoForm === 'nenhum'
+        if (vinculoOriginal) {
+          await contratosService.desativarVinculoDedicado(vinculoOriginal.id)
+        }
+        toast.success(`Motorista "${nomeForm.trim()}" salvo com sucesso!`)
+      }
+
       setDrawerOpen(false)
-      carregarDados()
+      await carregarDados()
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Erro ao salvar motorista.')
       setFormError(msg)
@@ -443,7 +566,7 @@ export const MotoristasPage: React.FC = () => {
         </Table>
       )}
 
-      {/* Drawer Vinculação de Veículo */}
+      {/* Drawer Vinculação Rápida de Veículo */}
       <Drawer
         isOpen={drawerVinculoOpen}
         onClose={() => setDrawerVinculoOpen(false)}
@@ -564,49 +687,241 @@ export const MotoristasPage: React.FC = () => {
         </form>
       </Drawer>
 
-      {/* Drawer Formulário */}
+      {/* Drawer Cadastro/Edição com Cadastro Casado */}
       <Drawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title={selectedMotorista ? 'Editar Motorista' : 'Cadastrar Novo Motorista'}
-        subtitle="Informe o nome completo do motorista"
+        subtitle="Informe o nome completo do motorista e configure o vínculo de veículo"
+        size="lg"
       >
-        <form onSubmit={handleSalvar} className="space-y-4">
+        <form onSubmit={handleSalvar} className="space-y-5">
           {formError && <Alert type="error">{formError}</Alert>}
 
-          <Input
-            label="Nome Completo do Motorista"
-            value={nomeForm}
-            onChange={e => setNomeForm(e.target.value)}
-            placeholder="Ex: João da Silva"
-            required
-          />
+          <div className="space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+              1. Identificação do Motorista
+            </h4>
+            <Input
+              label="Nome Completo do Motorista"
+              value={nomeForm}
+              onChange={e => setNomeForm(e.target.value)}
+              placeholder="Ex: João da Silva"
+              required
+            />
 
-          {selectedMotorista && (
-            <div className="flex items-center gap-3 pt-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-                Status no Sistema:
-              </label>
+            {selectedMotorista && (
+              <div className="flex items-center gap-3 pt-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                  Status no Sistema:
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setAtivoForm(!ativoForm)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-none transition-colors border ${
+                    ativoForm
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                      : 'bg-rose-50 text-rose-700 border-rose-300'
+                  }`}
+                >
+                  {ativoForm ? 'Motorista Ativo' : 'Motorista Inativo'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-4 border-t border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Truck className="w-4 h-4 text-sky-600" />
+                2. Vínculo de Veículo / Cadastro Casado
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => setAtivoForm(!ativoForm)}
-                className={`px-3 py-1 text-xs font-semibold rounded-none transition-colors border ${
-                  ativoForm
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                    : 'bg-rose-50 text-rose-700 border-rose-300'
+                onClick={() => setModoVinculoForm('nenhum')}
+                className={`py-2 px-2 text-xs font-semibold border text-center transition-colors ${
+                  modoVinculoForm === 'nenhum'
+                    ? 'bg-slate-100 border-slate-600 text-slate-800'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                {ativoForm ? 'Motorista Ativo' : 'Motorista Inativo'}
+                Sem Veículo
+              </button>
+              <button
+                type="button"
+                onClick={() => setModoVinculoForm('existente')}
+                className={`py-2 px-2 text-xs font-semibold border text-center transition-colors ${
+                  modoVinculoForm === 'existente'
+                    ? 'bg-sky-50 border-sky-600 text-sky-800'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Vincular Existente
+              </button>
+              <button
+                type="button"
+                onClick={() => setModoVinculoForm('novo')}
+                className={`py-2 px-2 text-xs font-semibold border text-center transition-colors ${
+                  modoVinculoForm === 'novo'
+                    ? 'bg-emerald-50 border-emerald-600 text-emerald-800'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                + Novo Veículo Casado
               </button>
             </div>
-          )}
+
+            {modoVinculoForm === 'nenhum' && (
+              <div className="p-3 bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                O motorista será cadastrado como recurso operacional livre (SPOT) sem veículo físico associado no momento.
+              </div>
+            )}
+
+            {modoVinculoForm === 'existente' && (
+              <div className="space-y-3 p-3.5 bg-slate-50/80 border border-slate-200">
+                <Select
+                  label="Veículo Físico da Frota Disponível"
+                  value={veiculoIdVinculoForm}
+                  onChange={e => setVeiculoIdVinculoForm(e.target.value)}
+                  placeholder="Selecione o veículo..."
+                  options={veiculosDisponiveisParaCadastro.map(v => ({
+                    value: v.id,
+                    label: `[${v.placa}] ${v.tipo_veiculo}${v.identificacao && v.identificacao !== v.placa ? ` - ${v.identificacao}` : ''} (${v.especialidade})`,
+                  }))}
+                  required
+                />
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                    Categoria da Operação:
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCategoriaVinculoForm('SPOT')}
+                      className={`py-1.5 px-3 text-xs font-semibold border text-center transition-colors ${
+                        categoriaVinculoForm === 'SPOT'
+                          ? 'bg-sky-50 border-sky-600 text-sky-800'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      SPOT (Recurso Livre)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategoriaVinculoForm('DEDICADO')}
+                      className={`py-1.5 px-3 text-xs font-semibold border text-center transition-colors ${
+                        categoriaVinculoForm === 'DEDICADO'
+                          ? 'bg-indigo-50 border-indigo-600 text-indigo-800'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      DEDICADO (Empresa)
+                    </button>
+                  </div>
+                </div>
+
+                {categoriaVinculoForm === 'DEDICADO' && (
+                  <Select
+                    label="Empresa Contratante"
+                    value={empresaIdVinculoForm}
+                    onChange={e => setEmpresaIdVinculoForm(e.target.value)}
+                    options={empresas.map(e => ({ value: e.id, label: `${e.nome} (${e.identificacao})` }))}
+                    required
+                  />
+                )}
+              </div>
+            )}
+
+            {modoVinculoForm === 'novo' && (
+              <div className="space-y-3 p-3.5 bg-emerald-50/40 border border-emerald-200">
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Placa do Veículo (7 Dígitos)"
+                    value={novoVeiculoPlaca}
+                    onChange={e => setNovoVeiculoPlaca(e.target.value.toUpperCase())}
+                    placeholder="Ex: ABC1D23"
+                    maxLength={7}
+                    required
+                  />
+                  <Select
+                    label="Tipo de Veículo"
+                    value={novoVeiculoTipo}
+                    onChange={e => setNovoVeiculoTipo(e.target.value)}
+                    options={[
+                      { value: 'HR', label: 'HR' },
+                      { value: 'Fiorino', label: 'Fiorino' },
+                      { value: 'Truck', label: 'Truck' },
+                      { value: 'Toco', label: 'Toco' },
+                      { value: 'VUC', label: 'VUC' },
+                    ]}
+                    required
+                  />
+                </div>
+
+                <Select
+                  label="Especialidade do Veículo"
+                  value={novoVeiculoEspecialidade}
+                  onChange={e => setNovoVeiculoEspecialidade(e.target.value as EspecialidadeVeiculo)}
+                  options={[
+                    { value: 'SECO', label: 'SECO' },
+                    { value: 'REFRIGERADO', label: 'REFRIGERADO' },
+                  ]}
+                  required
+                />
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                    Categoria da Operação:
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCategoriaVinculoForm('SPOT')}
+                      className={`py-1.5 px-3 text-xs font-semibold border text-center transition-colors ${
+                        categoriaVinculoForm === 'SPOT'
+                          ? 'bg-sky-50 border-sky-600 text-sky-800'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      SPOT (Recurso Livre)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategoriaVinculoForm('DEDICADO')}
+                      className={`py-1.5 px-3 text-xs font-semibold border text-center transition-colors ${
+                        categoriaVinculoForm === 'DEDICADO'
+                          ? 'bg-indigo-50 border-indigo-600 text-indigo-800'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      DEDICADO (Empresa)
+                    </button>
+                  </div>
+                </div>
+
+                {categoriaVinculoForm === 'DEDICADO' && (
+                  <Select
+                    label="Empresa Contratante"
+                    value={empresaIdVinculoForm}
+                    onChange={e => setEmpresaIdVinculoForm(e.target.value)}
+                    options={empresas.map(e => ({ value: e.id, label: `${e.nome} (${e.identificacao})` }))}
+                    required
+                  />
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
             <Button variant="outline" size="sm" onClick={() => setDrawerOpen(false)} type="button">
               Cancelar
             </Button>
             <Button variant="primary" size="sm" isLoading={submitting} type="submit">
-              Salvar Motorista
+              {selectedMotorista ? 'Salvar Alterações' : 'Cadastrar Motorista'}
             </Button>
           </div>
         </form>
@@ -620,4 +935,3 @@ export const MotoristasPage: React.FC = () => {
     </div>
   )
 }
-

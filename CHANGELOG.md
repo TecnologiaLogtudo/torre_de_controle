@@ -7,6 +7,33 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ## [Unreleased]
 
+### Aprimorado (Layout e Ampliacao da Torre de Controle para Telas de 15")
+- **Ampliacao da Tabela de Detalhamento Operacional dos Recursos (`TorrePage.tsx`, `ApplicationLayout.tsx`, `DetalhamentoTorre.tsx`)**:
+  - O container global do layout foi expandido de `max-w-7xl` (1280px) para `w-full max-w-[1680px] mx-auto`, liberando espaco horizontal natural para dashboards densos em monitores e laptops de 15" (1366px, 1536px e 1920px).
+  - O layout do grid da Torre foi migrado para flexbox proporcional (`flex-1 min-w-0` para a tabela), concedendo de 180px a 350px adicionais de largura util para visualizacao simultanea e confortavel de todas as 8 colunas sem truncamentos indesejados.
+- **Protecao e Estabilidade do Feed de Eventos Imutaveis (`HistoricoEventosTorre.tsx`)**:
+  - Largura controlada e estavel fixada com `shrink-0` (`w-[330px]` / `2xl:w-[360px]`).
+  - Reformulacao da estrutura dos cards de eventos operacionais com cabecalho estruturado (horario, categoria e status badge) e corpo detalhado, garantindo que o feed nunca colapse, deforme ou quebre os badges de status.
+
+### Adicionado (Cadastro Casado de Motoristas e Veiculos)
+- **Cadastro Casado no Drawer de Motoristas (`frontend/src/modules/motoristas/pages/MotoristasPage.tsx`)**:
+  - Unificacao do fluxo de cadastro e vinculacao no mesmo container Drawer (tanto para novo cadastro quanto para edicao).
+  - Disponibilizacao de 3 abas operacionais para o recurso:
+    1. `Sem Veiculo`: cadastra o motorista como recurso SPOT livre sem veiculo associado.
+    2. `Vincular Existente`: seleciona da frota fisica disponivel com categoria (`SPOT` ou `DEDICADO`) e empresa contratante.
+    3. `+ Novo Veiculo Casado`: formulario integrado no mesmo Drawer com placa (7 digitos Mercosul/tradicional), tipo de veiculo (`HR`, `Fiorino`, `Truck`, `Toco`, `VUC`), especialidade (`SECO` ou `REFRIGERADO`), categoria (`SPOT` ou `DEDICADO`) e empresa contratante.
+  - Orquestracao transacional de chamadas: cria o motorista, cria o veiculo e formaliza o vinculo dedicado/SPOT de uma so vez, com mensagens de feedback contextualizadas.
+- **Cadastro Casado no Drawer de Veiculos (`frontend/src/modules/veiculos/pages/VeiculosPage.tsx`)**:
+  - Unificacao simetrica do fluxo de cadastro e vinculacao no mesmo container Drawer (tanto para novo cadastro quanto para edicao).
+  - Disponibilizacao de 3 abas operacionais para o veiculo:
+    1. `Sem Motorista`: cadastra o veiculo livre na frota fisica sem operador fixo.
+    2. `Vincular Existente`: vincula um motorista operacional disponivel com categoria (`SPOT` ou `DEDICADO`) e empresa contratante.
+    3. `+ Novo Motorista Casado`: campo integrado para nome completo do novo motorista, categoria operacional e empresa contratante.
+  - Orquestracao transacional de chamadas: cria o veiculo, cria o motorista e vincula automaticamente no mesmo submit.
+- **Suite de Testes Automatizados (`frontend/src/test/cadastroCasado.test.tsx`)**:
+  - 4 testes unitarios cobrindo o fluxo completo de cadastro casado e vinculacao existente em ambos os formularios de Motoristas e Veiculos.
+
+
 ### Adicionado & Corrigido (Ciclo de Vida de Viagens, Rotas Ativas e Conclusão de Agendamentos)
 - **Persistência e Visibilidade de Recursos em Rota de Datas Anteriores (`app/operacao/services.py`, `DetalhamentoTorre.tsx`, `StatusMotoristasPage.tsx`, `schemas.py`, `types/torre.ts`)**:
   - Recursos (motoristas e veículos) com viagem iniciada (`EM_ROTA`) em agendamentos passados não concluídos permanecem explicitamente sinalizados como `EM_ROTA` em qualquer data subsequente até que ocorra sua baixa operacional formal.

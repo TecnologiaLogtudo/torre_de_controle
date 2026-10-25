@@ -9,6 +9,7 @@ import { StatusBadge, PerfilBadge } from '@/components/ui/StatusBadge'
 import { Select } from '@/components/ui/Select'
 import { Input } from '@/components/ui/Input'
 import { Drawer } from '@/components/ui/Drawer'
+import { Modal } from '@/components/ui/Modal'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -17,6 +18,7 @@ import { agendamentosService } from '@/services/agendamentos/agendamentosService
 import { torreService } from '@/services/torre/torreService'
 import { toast } from '@/components/feedback/Toaster'
 import { getErrorMessage } from '@/services/api/errors'
+import { useNavigationGuard } from '@/app/providers/NavigationGuardProvider'
 import {
   Calendar,
   Clock,
@@ -35,11 +37,18 @@ import {
   Layers,
   CheckSquare,
   Square,
+  RotateCcw,
 } from 'lucide-react'
 
 export const AgendamentoDetalhesPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const {
+    setBlocked,
+    requestNavigation,
+    pendingNavigation,
+    clearPendingNavigation,
+  } = useNavigationGuard()
 
   const {
     agendamento,
@@ -52,6 +61,10 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     error,
     motoristasSpotElegiveis,
     veiculosSpotElegiveis,
+    alteracoesNaoSalvasEstruturais,
+    handleDesfazerAlteracoes,
+    handleSalvarVersaoOficial,
+    revertendoAlteracoes,
     drawerSpotOpen,
     setDrawerSpotOpen,
     targetAlocacaoId,
@@ -101,9 +114,14 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     carregarDetalhes,
   } = useAgendamentoDetalhes(id)
 
+  // Sincroniza a guarda de navegação global com alterações estruturais não salvas (Item 3)
+  React.useEffect(() => {
+    setBlocked(alteracoesNaoSalvasEstruturais)
+    return () => setBlocked(false)
+  }, [alteracoesNaoSalvasEstruturais, setBlocked])
+
   // Estado para Salvamento Formal e Versionamento
   const [salvandoVersao, setSalvandoVersao] = React.useState(false)
-  const [alteracoesNaoSalvas, setAlteracoesNaoSalvas] = React.useState(false)
 
   // Estado para Conclusão de Agendamento
   const [concluirModalOpen, setConcluirModalOpen] = React.useState(false)
@@ -114,9 +132,9 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     setConcluindo(true)
     try {
       await agendamentosService.concluir(agendamento.id)
-      toast.success('Agendamento concluído com sucesso! Recursos liberados.')
+      toast.success('Agendamento concluído com sucesso! Recursos liberados na Torre mantendo histórico estático.')
       setConcluirModalOpen(false)
-      await carregarDetalhes()
+      await carregarDetalhes(true)
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Erro ao concluir agendamento.'))
     } finally {
@@ -136,14 +154,51 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     if (!agendamento) return
     setSalvandoVersao(true)
     try {
-      const atualizado = await agendamentosService.salvarVersao(agendamento.id)
-      toast.success(`Agendamento salvo com sucesso! Nova versão oficial: v${atualizado.versao}`)
-      setAlteracoesNaoSalvas(false)
-      await carregarDetalhes()
+      const atualizado = await handleSalvarVersaoOficial()
+      toast.success(`Agendamento salvo com sucesso! Nova versão oficial: v${atualizado?.versao ?? 1}`)
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Erro ao salvar agendamento.'))
+      throw err
     } finally {
       setSalvandoVersao(false)
+    }
+  }
+
+  const handleVoltar = () => {
+    if (alteracoesNaoSalvasEstruturais) {
+      requestNavigation('/app/agendamentos', () => navigate('/app/agendamentos'))
+    } else {
+      navigate('/app/agendamentos')
+    }
+  }
+
+  const handleSalvarESair = async () => {
+    try {
+      await handleSalvarVersao()
+      if (pendingNavigation) {
+        const dest = pendingNavigation.targetUrl
+        clearPendingNavigation()
+        navigate(dest)
+      } else {
+        navigate('/app/agendamentos')
+      }
+    } catch {
+      // Erro já notificado
+    }
+  }
+
+  const handleDesfazerESair = async () => {
+    try {
+      await handleDesfazerAlteracoes()
+      if (pendingNavigation) {
+        const dest = pendingNavigation.targetUrl
+        clearPendingNavigation()
+        navigate(dest)
+      } else {
+        navigate('/app/agendamentos')
+      }
+    } catch {
+      // Erro já notificado
     }
   }
 
@@ -160,6 +215,37 @@ export const AgendamentoDetalhesPage: React.FC = () => {
       setSelectedAlocacoes([])
     } else {
       setSelectedAlocacoes(todasIds)
+    }
+  }
+
+  const alocacoesDedicadas = React.useMemo(
+    () => (agendamento ? agendamento.alocacoes.filter(a => a.categoria === 'DEDICADO') : []),
+    [agendamento]
+  )
+
+  const alocacoesSpot = React.useMemo(
+    () => (agendamento ? agendamento.alocacoes.filter(a => a.categoria === 'SPOT') : []),
+    [agendamento]
+  )
+
+  // Item 4: Seleção rápida por categoria
+  const handleToggleSelectAllDedicados = () => {
+    const dedicadosIds = alocacoesDedicadas.map(a => a.id)
+    const todosDedicadosSelecionados = dedicadosIds.length > 0 && dedicadosIds.every(id => selectedAlocacoes.includes(id))
+    if (todosDedicadosSelecionados) {
+      setSelectedAlocacoes(prev => prev.filter(id => !dedicadosIds.includes(id)))
+    } else {
+      setSelectedAlocacoes(prev => Array.from(new Set([...prev, ...dedicadosIds])))
+    }
+  }
+
+  const handleToggleSelectAllSpot = () => {
+    const spotIds = alocacoesSpot.map(a => a.id)
+    const todosSpotSelecionados = spotIds.length > 0 && spotIds.every(id => selectedAlocacoes.includes(id))
+    if (todosSpotSelecionados) {
+      setSelectedAlocacoes(prev => prev.filter(id => !spotIds.includes(id)))
+    } else {
+      setSelectedAlocacoes(prev => Array.from(new Set([...prev, ...spotIds])))
     }
   }
 
@@ -188,8 +274,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
       toast.success(`Status de ${selectedAlocacoes.length} vaga(s) atualizado para ${loteNovoStatus}!`)
       setSelectedAlocacoes([])
       setDrawerLoteOpen(false)
-      setAlteracoesNaoSalvas(true)
-      await carregarDetalhes()
+      await carregarDetalhes(false)
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Erro ao atualizar status em lote.')
       setLoteFormError(msg)
@@ -239,14 +324,11 @@ export const AgendamentoDetalhesPage: React.FC = () => {
     )
   }
 
-  const alocacoesDedicadas = agendamento.alocacoes.filter(a => a.categoria === 'DEDICADO')
-  const alocacoesSpot = agendamento.alocacoes.filter(a => a.categoria === 'SPOT')
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* Botão Voltar + Cabeçalho da Página */}
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" onClick={() => navigate('/app/agendamentos')} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+        <Button variant="outline" size="sm" onClick={handleVoltar} leftIcon={<ArrowLeft className="w-4 h-4" />}>
           Voltar
         </Button>
         <PageHeader
@@ -310,13 +392,13 @@ export const AgendamentoDetalhesPage: React.FC = () => {
         />
       </div>
 
-      {alteracoesNaoSalvas && (
+      {alteracoesNaoSalvasEstruturais && (
         <Alert type="info">
-          Existem modificações operacionais recentes nesta programação. Clique em <strong>"Salvar Agendamento"</strong> acima para registrar oficialmente a nova versão da escala.
+          Existem modificações recentes na composição de recursos (adição/substituição/remoção). Clique em <strong>"Salvar Agendamento"</strong> acima para registrar oficialmente a nova versão da escala.
         </Alert>
       )}
 
-      {/* Barra de Ações em Lote */}
+      {/* Barra Superior de Seleção Geral (Item 4) */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-100 p-2.5 border border-slate-300">
         <div className="flex items-center gap-2 text-xs">
           <Button
@@ -325,11 +407,11 @@ export const AgendamentoDetalhesPage: React.FC = () => {
             onClick={handleToggleSelectAll}
             leftIcon={selectedAlocacoes.length === agendamento.alocacoes.length ? <CheckSquare className="w-4 h-4 text-sky-600" /> : <Square className="w-4 h-4 text-slate-500" />}
           >
-            {selectedAlocacoes.length === agendamento.alocacoes.length ? 'Desmarcar Todas' : 'Selecionar Todas as Vagas'}
+            {selectedAlocacoes.length === agendamento.alocacoes.length ? 'Desmarcar Todas as Vagas' : 'Selecionar Todas as Vagas do Agendamento'}
           </Button>
           {selectedAlocacoes.length > 0 && (
             <span className="font-semibold text-slate-700">
-              ({selectedAlocacoes.length} vaga(s) selecionada(s))
+              ({selectedAlocacoes.length} de {agendamento.alocacoes.length} vaga(s) selecionada(s))
             </span>
           )}
         </div>
@@ -383,11 +465,31 @@ export const AgendamentoDetalhesPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Seção 1: Composição Contratual de Dedicados por Vaga */}
+      {/* Seção 1: Composição Contratual de Dedicados por Vaga (Item 4: Selecionar Todos os Dedicados) */}
       <Card
         title="Composição Contratual de Dedicados (Preenchimento por Vaga)"
         subtitle="Vagas da empresa atreladas aos recursos dedicados associados"
         className="bg-white border-slate-200 shadow-sm"
+        action={
+          alocacoesDedicadas.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleToggleSelectAllDedicados}
+              leftIcon={
+                alocacoesDedicadas.every(a => selectedAlocacoes.includes(a.id)) ? (
+                  <CheckSquare className="w-4 h-4 text-sky-600" />
+                ) : (
+                  <Square className="w-4 h-4 text-slate-500" />
+                )
+              }
+            >
+              {alocacoesDedicadas.every(a => selectedAlocacoes.includes(a.id))
+                ? 'Desmarcar Dedicados'
+                : 'Selecionar Todos os Dedicados'}
+            </Button>
+          )
+        }
       >
         {alocacoesDedicadas.length === 0 ? (
           <div className="p-4 bg-slate-50 rounded-none border border-dashed border-slate-200 text-center text-xs text-slate-500">
@@ -400,6 +502,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
               const motivo = motivos.find(m => m.id === aloc.motivo_indisponibilidade_id)
               const veiculoObj = getVeiculoObj(aloc.veiculo_id)
               const isVagaCoberta = isIndisponivel && alocacoesSpot.length > 0 && alocacoesSpot.length >= (idx + 1)
+              const isReadOnly = agendamento.status === 'CONCLUIDO' || agendamento.status === 'CANCELADO'
 
               return (
                 <div
@@ -416,7 +519,8 @@ export const AgendamentoDetalhesPage: React.FC = () => {
                         type="checkbox"
                         checked={selectedAlocacoes.includes(aloc.id)}
                         onChange={() => toggleSelectAlocacao(aloc.id)}
-                        className="w-4 h-4 text-sky-600 border-slate-300 rounded-none focus:ring-sky-500 cursor-pointer"
+                        disabled={isReadOnly}
+                        className="w-4 h-4 text-sky-600 border-slate-300 rounded-none focus:ring-sky-500 cursor-pointer disabled:opacity-50"
                         aria-label={`Selecionar Vaga Dedicada #${idx + 1}`}
                       />
                       <span className="text-xs font-bold text-slate-700">
@@ -447,52 +551,56 @@ export const AgendamentoDetalhesPage: React.FC = () => {
                         <p className="text-slate-600">
                           Motivo: <strong>{motivo?.nome || 'Motivo operacional registrado'}</strong>. A vaga permanece ocupada no contrato, mas necessita de cobertura SPOT para a rota.
                         </p>
-                        {isVagaCoberta ? (
-                          <div className="flex items-center gap-2">
+                        {!isReadOnly && (
+                          isVagaCoberta ? (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                disabled={true}
+                                leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                                className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 cursor-not-allowed"
+                              >
+                                Vaga Coberta por SPOT
+                              </Button>
+                            </div>
+                          ) : (
                             <Button
-                              variant="secondary"
+                              variant="primary"
                               size="sm"
-                              disabled={true}
-                              leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
-                              className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 cursor-not-allowed"
+                              onClick={handleOpenAdicionarSpot}
+                              leftIcon={<Plus className="w-3.5 h-3.5" />}
+                              className="bg-rose-700 hover:bg-rose-800 border-rose-700 text-white"
                             >
-                              Vaga Coberta por SPOT
+                              + Cobrir Vaga com SPOT
                             </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={handleOpenAdicionarSpot}
-                            leftIcon={<Plus className="w-3.5 h-3.5" />}
-                            className="bg-rose-700 hover:bg-rose-800 border-rose-700 text-white"
-                          >
-                            + Cobrir Vaga com SPOT
-                          </Button>
+                          )
                         )}
                       </div>
                     )}
                   </div>
 
-                  <div className="pt-2.5 border-t border-slate-200 flex items-center justify-end gap-2 flex-wrap">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenTrocarVeiculo(aloc.id)}
-                      leftIcon={<Truck className="w-3.5 h-3.5 text-sky-600" />}
-                      title="Substituir provisoriamente o veículo deste dedicado mantendo o contrato"
-                    >
-                      Trocar Veículo
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenAlterarStatus(aloc.id, aloc.status_operacional)}
-                      leftIcon={<Activity className="w-3.5 h-3.5 text-slate-600" />}
-                    >
-                      Alterar Status
-                    </Button>
-                  </div>
+                  {!isReadOnly && (
+                    <div className="pt-2.5 border-t border-slate-200 flex items-center justify-end gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenTrocarVeiculo(aloc.id)}
+                        leftIcon={<Truck className="w-3.5 h-3.5 text-sky-600" />}
+                        title="Substituir provisoriamente o veículo deste dedicado mantendo o contrato"
+                      >
+                        Trocar Veículo
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenAlterarStatus(aloc.id, aloc.status_operacional)}
+                        leftIcon={<Activity className="w-3.5 h-3.5 text-slate-600" />}
+                      >
+                        Alterar Status
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -500,20 +608,42 @@ export const AgendamentoDetalhesPage: React.FC = () => {
         )}
       </Card>
 
-      {/* Seção 2: Alocações SPOT */}
+      {/* Seção 2: Alocações SPOT (Item 4: Selecionar Todos os SPOT) */}
       <Card
         title="Alocações SPOT (Recursos Adicionais)"
         subtitle="Inclusão e substituição de recursos SPOT complementares"
         className="bg-white border-slate-200 shadow-sm"
         action={
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleOpenAdicionarSpot}
-            leftIcon={<Plus className="w-4 h-4" />}
-          >
-            Adicionar SPOT
-          </Button>
+          agendamento.status !== 'CONCLUIDO' && agendamento.status !== 'CANCELADO' && (
+            <div className="flex items-center gap-2">
+              {alocacoesSpot.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleToggleSelectAllSpot}
+                  leftIcon={
+                    alocacoesSpot.every(s => selectedAlocacoes.includes(s.id)) ? (
+                      <CheckSquare className="w-4 h-4 text-sky-600" />
+                    ) : (
+                      <Square className="w-4 h-4 text-slate-500" />
+                    )
+                  }
+                >
+                  {alocacoesSpot.every(s => selectedAlocacoes.includes(s.id))
+                    ? 'Desmarcar SPOT'
+                    : 'Selecionar Todos os SPOT'}
+                </Button>
+              )}
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleOpenAdicionarSpot}
+                leftIcon={<Plus className="w-4 h-4" />}
+              >
+                Adicionar SPOT
+              </Button>
+            </div>
+          )
         }
       >
         {alocacoesSpot.length === 0 ? (
@@ -522,64 +652,106 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {alocacoesSpot.map(spot => (
-              <div
-                key={spot.id}
-                className="p-4 bg-slate-50/80 border border-slate-200 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-              >
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedAlocacoes.includes(spot.id)}
-                      onChange={() => toggleSelectAlocacao(spot.id)}
-                      className="w-4 h-4 text-sky-600 border-slate-300 rounded-none focus:ring-sky-500 cursor-pointer"
-                      aria-label="Selecionar Vaga SPOT"
-                    />
-                    <StatusBadge status="SPOT" showIcon={false} size="sm" />
-                    <span className="font-bold text-slate-900 text-sm">
-                      {getMotoristaNome(spot.motorista_id)}
-                    </span>
+            {alocacoesSpot.map(spot => {
+              const isReadOnly = agendamento.status === 'CONCLUIDO' || agendamento.status === 'CANCELADO'
+              return (
+                <div
+                  key={spot.id}
+                  className="p-4 bg-slate-50/80 border border-slate-200 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedAlocacoes.includes(spot.id)}
+                        onChange={() => toggleSelectAlocacao(spot.id)}
+                        disabled={isReadOnly}
+                        className="w-4 h-4 text-sky-600 border-slate-300 rounded-none focus:ring-sky-500 cursor-pointer disabled:opacity-50"
+                        aria-label="Selecionar Vaga SPOT"
+                      />
+                      <StatusBadge status="SPOT" showIcon={false} size="sm" />
+                      <span className="font-bold text-slate-900 text-sm">
+                        {getMotoristaNome(spot.motorista_id)}
+                      </span>
+                    </div>
+                    <div className="font-mono text-sky-700 flex items-center gap-2 flex-wrap">
+                      <span>{getVeiculoInfo(spot.veiculo_id)}</span>
+                      <PerfilBadge perfil={getVeiculoObj(spot.veiculo_id)?.especialidade} />
+                    </div>
                   </div>
-                  <div className="font-mono text-sky-700 flex items-center gap-2 flex-wrap">
-                    <span>{getVeiculoInfo(spot.veiculo_id)}</span>
-                    <PerfilBadge perfil={getVeiculoObj(spot.veiculo_id)?.especialidade} />
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                  <StatusBadge status={spot.status_operacional} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenAlterarStatus(spot.id, spot.status_operacional)}
-                    leftIcon={<Activity className="w-3.5 h-3.5" />}
-                  >
-                    Alterar Status
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenSubstituirSpot(spot.id)}
-                    leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
-                  >
-                    Substituir SPOT
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoverSpot(spot.id)}
-                    className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                    leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                  >
-                    Remover
-                  </Button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <StatusBadge status={spot.status_operacional} />
+                    {!isReadOnly && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenAlterarStatus(spot.id, spot.status_operacional)}
+                          leftIcon={<Activity className="w-3.5 h-3.5" />}
+                        >
+                          Alterar Status
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenSubstituirSpot(spot.id)}
+                          leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                        >
+                          Substituir SPOT
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoverSpot(spot.id)}
+                          className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                          leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                        >
+                          Remover
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </Card>
+
+      {/* Barra de Ação Flutuante Inferior (Item 4) */}
+      {selectedAlocacoes.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white shadow-2xl border border-slate-700 px-5 py-3 rounded-none flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <CheckSquare className="w-4 h-4 text-sky-400" />
+            <span>
+              {selectedAlocacoes.length} de {agendamento.alocacoes.length} vaga(s) selecionada(s)
+            </span>
+          </div>
+          <div className="h-4 w-[1px] bg-slate-700" />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setLoteFormError(null)
+                setDrawerLoteOpen(true)
+              }}
+              leftIcon={<Layers className="w-4 h-4" />}
+            >
+              Alterar Status em Lote ({selectedAlocacoes.length})
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedAlocacoes([])}
+              className="text-slate-300 hover:text-white hover:bg-slate-800"
+            >
+              Desmarcar Todas
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Seção 3: Histórico de Alterações */}
       <Card
@@ -636,7 +808,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
         )}
       </Card>
 
-      {/* Drawer Adicionar / Substituir SPOT */}
+      {/* Drawer Adicionar / Substituir SPOT (Item 1: Ordem alfabética) */}
       <Drawer
         isOpen={drawerSpotOpen}
         onClose={() => setDrawerSpotOpen(false)}
@@ -647,7 +819,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           {spotFormError && <Alert type="error">{spotFormError}</Alert>}
 
           <Select
-            label="Motorista SPOT (Apenas Não-Dedicados e Livres)"
+            label="Motorista SPOT (Ordem Alfabética A-Z)"
             value={motoristaSpotId}
             onChange={e => handleSelectMotoristaSpot(e.target.value)}
             placeholder="Selecione o motorista..."
@@ -656,7 +828,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           />
 
           <Select
-            label="Veículo SPOT (Apenas Não-Dedicados e Livres)"
+            label="Veículo SPOT (Ordem Alfabética A-Z)"
             value={veiculoSpotId}
             onChange={e => handleSelectVeiculoSpot(e.target.value)}
             placeholder="Selecione o veículo..."
@@ -720,7 +892,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           )}
 
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-none text-xs text-slate-700">
-            <strong>Trilha de Auditoria:</strong> Toda transição gera um evento operacional imutável com timestamp em <code>America/Bahia</code>.
+            <strong>Trilha de Auditoria:</strong> Toda transição gera um evento operacional imutável com timestamp em <code>America/Bahia</code>. A vaga permanece no agendamento para auditoria.
           </div>
 
           <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
@@ -734,7 +906,7 @@ export const AgendamentoDetalhesPage: React.FC = () => {
         </form>
       </Drawer>
 
-      {/* Drawer de Trocar Veículo Dedicado Provisoriamente */}
+      {/* Drawer de Trocar Veículo Dedicado Provisoriamente (Item 1: Ordem alfabética) */}
       <Drawer
         isOpen={drawerTrocaVeiculoOpen}
         onClose={() => setDrawerTrocaVeiculoOpen(false)}
@@ -745,13 +917,13 @@ export const AgendamentoDetalhesPage: React.FC = () => {
           {trocaFormError && <Alert type="error">{trocaFormError}</Alert>}
 
           <Select
-            label="Novo Veículo Substituto"
+            label="Novo Veículo Substituto (Ordem Alfabética A-Z)"
             value={novoVeiculoIdForm}
             onChange={e => setNovoVeiculoIdForm(e.target.value)}
             placeholder="Selecione o veículo..."
             options={veiculosSpotElegiveis.map(v => ({
               value: v.id,
-              label: `${v.tipo_veiculo} - ${v.placa} (${v.especialidade})`,
+              label: `${v.tipo_veiculo}${v.identificacao && v.identificacao !== v.placa ? ` - ${v.identificacao}` : ''} [${v.placa}] (${v.especialidade})`,
             }))}
             required
           />
@@ -827,13 +999,67 @@ export const AgendamentoDetalhesPage: React.FC = () => {
         </form>
       </Drawer>
 
-      {/* Modal de Conclusão de Agendamento */}
+      {/* Modal Bloqueante de Saída com Alterações Não Salvas (Item 3) */}
+      <Modal
+        isOpen={!!pendingNavigation}
+        onClose={clearPendingNavigation}
+        title="Alterações não salvas na programação"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-none text-xs text-amber-900">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold mb-1">Atenção: A escala possui alterações na composição de recursos!</p>
+              <p className="text-amber-800 leading-relaxed">
+                Você adicionou, substituiu ou removeu motoristas/veículos neste agendamento. Se sair sem salvar, essas alterações serão descartadas para manter a programação oficial consistente.
+              </p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-700">
+            O que você deseja fazer antes de sair desta tela?
+          </p>
+
+          <div className="flex flex-col gap-2 pt-2 border-t border-slate-200">
+            <Button
+              variant="primary"
+              onClick={handleSalvarESair}
+              isLoading={salvandoVersao}
+              leftIcon={<Save className="w-4 h-4" />}
+              className="w-full justify-center"
+            >
+              Salvar Agendamento e Prosseguir
+            </Button>
+
+            <Button
+              variant="danger"
+              onClick={handleDesfazerESair}
+              isLoading={revertendoAlteracoes}
+              leftIcon={<RotateCcw className="w-4 h-4" />}
+              className="w-full justify-center"
+            >
+              Desfazer Alterações e Sair
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={clearPendingNavigation}
+              className="w-full justify-center"
+            >
+              Permanecer na Tela
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal de Conclusão de Agendamento (Item 2) */}
       <ConfirmDialog
         isOpen={concluirModalOpen}
         onClose={() => setConcluirModalOpen(false)}
         onConfirm={handleConfirmarConclusao}
         title="Concluir Agendamento"
-        message="Tem certeza que deseja concluir este agendamento? Todas as viagens em aberto serão finalizadas e os motoristas/veículos retornarão para o status DISPONÍVEL."
+        message="Tem certeza que deseja concluir este agendamento? A programação será encerrada e os motoristas serão liberados para novas viagens na Torre, mantendo o histórico e os registros desta programação inalterados para auditoria."
         confirmText="Sim, Concluir"
         cancelText="Voltar"
         variant="primary"

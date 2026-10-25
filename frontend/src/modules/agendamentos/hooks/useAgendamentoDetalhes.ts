@@ -8,7 +8,7 @@ import { contratosService } from '@/services/contratos/contratosService'
 import { torreService } from '@/services/torre/torreService'
 import { getErrorMessage } from '@/services/api/errors'
 import { toast } from '@/components/feedback/Toaster'
-import { Agendamento, HistoricoAgendamento, StatusOperacional } from '@/types/agendamentos'
+import { Agendamento, HistoricoAgendamento, StatusOperacional, AlocacaoOperacional } from '@/types/agendamentos'
 import { Empresa } from '@/types/empresas'
 import { Motorista } from '@/types/motoristas'
 import { Veiculo } from '@/types/veiculos'
@@ -28,6 +28,11 @@ export function useAgendamentoDetalhes(id: string | undefined) {
   const [statusMotoristas, setStatusMotoristas] = useState<MotoristaStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Snapshot das alocações da última versão salva e controle de alterações estruturais
+  const [snapshotAlocacoes, setSnapshotAlocacoes] = useState<AlocacaoOperacional[]>([])
+  const [alteracoesNaoSalvasEstruturais, setAlteracoesNaoSalvasEstruturais] = useState(false)
+  const [revertendoAlteracoes, setRevertendoAlteracoes] = useState(false)
 
   // Drawer de Adicionar / Substituir SPOT
   const [drawerSpotOpen, setDrawerSpotOpen] = useState(false)
@@ -53,13 +58,14 @@ export function useAgendamentoDetalhes(id: string | undefined) {
   const [spotParaRemoverId, setSpotParaRemoverId] = useState<string | null>(null)
   const [removendoSpot, setRemovendoSpot] = useState(false)
 
-  const carregarDetalhes = useCallback(async () => {
+  const carregarDetalhes = useCallback(async (atualizarSnapshot = false) => {
     if (!id) return
     setLoading(true)
     setError(null)
     try {
       const agData = await agendamentosService.buscarPorId(id)
       setAgendamento(agData)
+      setSnapshotAlocacoes(prev => (atualizarSnapshot || prev.length === 0 ? agData.alocacoes : prev))
 
       const [empData, histData, mList, vList, motList, vincList, torreList, statusMotData] = await Promise.all([
         empresasService.buscarPorId(agData.empresa_id).catch(() => null),
@@ -88,12 +94,13 @@ export function useAgendamentoDetalhes(id: string | undefined) {
   }, [id])
 
   useEffect(() => {
-    carregarDetalhes()
+    carregarDetalhes(true)
   }, [carregarDetalhes])
 
   // Motoristas elegíveis para inclusão SPOT:
   // 1. Não pode ter vínculo DEDICADO ativo com NENHUMA empresa
   // 2. Não pode estar PROGRAMADO, EM_ROTA ou INDISPONÍVEL na data do agendamento
+  // 3. Ordenação alfabética A-Z (Item 1)
   const motoristasSpotElegiveis = useMemo(() => {
     if (!agendamento) return []
 
@@ -137,19 +144,22 @@ export function useAgendamentoDetalhes(id: string | undefined) {
         .map(s => s.motorista_id)
     )
 
-    return motoristas.filter(m => {
-      if (!m.ativo) return false
-      if (motoristasDedicadosSet.has(m.id)) return false
-      if (motoristasAlocadosNoAgendamento.has(m.id)) return false
-      if (motoristasOcupadosNaTorre.has(m.id)) return false
-      if (motoristasOcupadosNoStatus.has(m.id)) return false
-      return true
-    })
+    return motoristas
+      .filter(m => {
+        if (!m.ativo) return false
+        if (motoristasDedicadosSet.has(m.id)) return false
+        if (motoristasAlocadosNoAgendamento.has(m.id)) return false
+        if (motoristasOcupadosNaTorre.has(m.id)) return false
+        if (motoristasOcupadosNoStatus.has(m.id)) return false
+        return true
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
   }, [agendamento, vinculosDedicados, motoristas, detalhamentoTorre, statusMotoristas, targetAlocacaoId])
 
   // Veículos elegíveis para inclusão SPOT:
   // 1. Não pode ter vínculo DEDICADO ativo com NENHUMA empresa
   // 2. Não pode estar PROGRAMADO, EM_ROTA ou INDISPONÍVEL na data do agendamento
+  // 3. Ordenação alfabética pelo label exibido Tipo [Placa] (Item 1)
   const veiculosSpotElegiveis = useMemo(() => {
     if (!agendamento) return []
 
@@ -179,13 +189,20 @@ export function useAgendamentoDetalhes(id: string | undefined) {
         .map(d => d.veiculo_id)
     )
 
-    return veiculos.filter(v => {
-      if (!v.ativo) return false
-      if (veiculosDedicadosSet.has(v.id)) return false
-      if (veiculosAlocadosNoAgendamento.has(v.id)) return false
-      if (veiculosOcupadosNaTorre.has(v.id)) return false
-      return true
-    })
+    const formatVeiculoLabel = (v: Veiculo) =>
+      `${v.tipo_veiculo}${v.identificacao && v.identificacao !== v.placa ? ` - ${v.identificacao}` : ''} [${v.placa}] (${v.especialidade})`
+
+    return veiculos
+      .filter(v => {
+        if (!v.ativo) return false
+        if (veiculosDedicadosSet.has(v.id)) return false
+        if (veiculosAlocadosNoAgendamento.has(v.id)) return false
+        if (veiculosOcupadosNaTorre.has(v.id)) return false
+        return true
+      })
+      .sort((a, b) =>
+        formatVeiculoLabel(a).localeCompare(formatVeiculoLabel(b), 'pt-BR', { sensitivity: 'base' })
+      )
   }, [agendamento, vinculosDedicados, veiculos, detalhamentoTorre, targetAlocacaoId])
 
   const handleSelectMotoristaSpot = (motId: string) => {
@@ -256,7 +273,8 @@ export function useAgendamentoDetalhes(id: string | undefined) {
         toast.success('Recurso SPOT adicionado à programação!')
       }
       setDrawerSpotOpen(false)
-      carregarDetalhes()
+      setAlteracoesNaoSalvasEstruturais(true)
+      carregarDetalhes(false)
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Este recurso ou veículo não está disponível para esta alocação.')
       setSpotFormError(msg)
@@ -278,7 +296,8 @@ export function useAgendamentoDetalhes(id: string | undefined) {
       await agendamentosService.removerSpot(spotParaRemoverId)
       setSpotParaRemoverId(null)
       toast.success('Alocação SPOT removida com sucesso.')
-      carregarDetalhes()
+      setAlteracoesNaoSalvasEstruturais(true)
+      carregarDetalhes(false)
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Erro ao remover alocação SPOT.')
       setError(msg)
@@ -297,7 +316,8 @@ export function useAgendamentoDetalhes(id: string | undefined) {
       await agendamentosService.cancelar(agendamento.id)
       setCancelModalOpen(false)
       toast.success('Agendamento cancelado com sucesso.')
-      carregarDetalhes()
+      setAlteracoesNaoSalvasEstruturais(false)
+      carregarDetalhes(true)
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Erro ao cancelar agendamento.')
       setError(msg)
@@ -350,7 +370,8 @@ export function useAgendamentoDetalhes(id: string | undefined) {
       })
       toast.success(`Status operacional atualizado para ${novoStatusForm}!`)
       setDrawerStatusOpen(false)
-      carregarDetalhes()
+      // Mudança de status não afeta alteracoesNaoSalvasEstruturais
+      carregarDetalhes(false)
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Erro ao atualizar status operacional.')
       setStatusFormError(msg)
@@ -392,7 +413,8 @@ export function useAgendamentoDetalhes(id: string | undefined) {
       })
       toast.success('Veículo do dedicado alterado provisoriamente com sucesso!')
       setDrawerTrocaVeiculoOpen(false)
-      carregarDetalhes()
+      setAlteracoesNaoSalvasEstruturais(true)
+      carregarDetalhes(false)
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Erro ao trocar veículo dedicado.')
       setTrocaFormError(msg)
@@ -400,6 +422,44 @@ export function useAgendamentoDetalhes(id: string | undefined) {
     } finally {
       setSubmittingTroca(false)
     }
+  }
+
+  // Reversão de alterações para a última versão oficial
+  const handleDesfazerAlteracoes = async () => {
+    if (!agendamento) return
+    setRevertendoAlteracoes(true)
+    try {
+      const payloadAlocacoes = snapshotAlocacoes.map(a => ({
+        id: a.id,
+        motorista_id: a.motorista_id,
+        veiculo_id: a.veiculo_id,
+        categoria: a.categoria,
+        status_operacional: a.status_operacional,
+        motivo_indisponibilidade_id: a.motivo_indisponibilidade_id,
+      }))
+      const res = await agendamentosService.restaurarAlocacoes(agendamento.id, payloadAlocacoes)
+      setAgendamento(res)
+      setSnapshotAlocacoes(res.alocacoes)
+      setAlteracoesNaoSalvasEstruturais(false)
+      toast.info('Alterações não salvas foram descartadas.')
+      await carregarDetalhes(true)
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao descartar alterações.'))
+      throw err
+    } finally {
+      setRevertendoAlteracoes(false)
+    }
+  }
+
+  // Salvar versão oficial avançando versao
+  const handleSalvarVersaoOficial = async () => {
+    if (!agendamento) return
+    const res = await agendamentosService.salvarVersao(agendamento.id)
+    setAgendamento(res)
+    setSnapshotAlocacoes(res.alocacoes)
+    setAlteracoesNaoSalvasEstruturais(false)
+    await carregarDetalhes(true)
+    return res
   }
 
   const getMotoristaNome = (mId: string) => motoristas.find(m => m.id === mId)?.nome || 'Motorista'
@@ -418,11 +478,19 @@ export function useAgendamentoDetalhes(id: string | undefined) {
     motivos,
     vinculosDedicados,
     detalhamentoTorre,
+    statusMotoristas,
     loading,
     error,
     carregarDetalhes,
     motoristasSpotElegiveis,
     veiculosSpotElegiveis,
+    // Snapshot & Alterações Estruturais
+    snapshotAlocacoes,
+    alteracoesNaoSalvasEstruturais,
+    setAlteracoesNaoSalvasEstruturais,
+    handleDesfazerAlteracoes,
+    handleSalvarVersaoOficial,
+    revertendoAlteracoes,
     // Drawer SPOT
     drawerSpotOpen,
     setDrawerSpotOpen,

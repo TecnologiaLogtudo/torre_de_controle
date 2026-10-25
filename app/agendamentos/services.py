@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, date, time, timedelta
 from typing import List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
@@ -13,6 +13,7 @@ from app.agendamentos.schemas import (
     AlocacaoOperacionalCreate,
     AlocacaoOperacionalUpdate,
     TrocaVeiculoDedicadoPayload,
+    RestaurarAlocacoesPayload,
 )
 from app.contratos.models import MotoristaDedicadoVinculo
 from app.contratos.services import obter_configuracao_vigente
@@ -542,10 +543,29 @@ class AgendamentoService:
         agendamento.status = "CONCLUIDO"
 
         total_baixados = 0
+        from app.operacao.models import StatusOperacionalMotorista
         for aloc in agendamento.alocacoes:
             if aloc.status_operacional in ["PROGRAMADO", "EM_ROTA"]:
                 aloc_status_ant = aloc.status_operacional
-                aloc.status_operacional = "DISPONIVEL"
+                # Preserva aloc.status_operacional estatico no agendamento para auditoria
+                s_diario = (
+                    db.query(StatusOperacionalMotorista)
+                    .filter(
+                        StatusOperacionalMotorista.motorista_id == aloc.motorista_id,
+                        StatusOperacionalMotorista.data == agendamento.data,
+                    )
+                    .first()
+                )
+                if not s_diario:
+                    s_diario = StatusOperacionalMotorista(
+                        motorista_id=aloc.motorista_id,
+                        data=agendamento.data,
+                        status_operacional="DISPONIVEL",
+                    )
+                    db.add(s_diario)
+                else:
+                    s_diario.status_operacional = "DISPONIVEL"
+                    s_diario.motivo_indisponibilidade_id = None
                 total_baixados += 1
                 evento = EventoOperacional(
                     empresa_id=agendamento.empresa_id,
@@ -845,4 +865,59 @@ class AgendamentoService:
         db.commit()
         db.refresh(agendamento)
 
+        return agendamento
+
+    @staticmethod
+    def restaurar_alocacoes(
+        db: Session,
+        agendamento_id: UUID,
+        dados: RestaurarAlocacoesPayload,
+        usuario_id: UUID,
+    ) -> Agendamento:
+        agendamento = AgendamentoService.buscar_por_id(db, agendamento_id)
+        if agendamento.status in ["CONCLUIDO", "CANCELADO"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Não é permitido reverter alterações em agendamento {agendamento.status}.",
+            )
+
+        aloc_atuais = db.query(AlocacaoOperacional).filter(
+            AlocacaoOperacional.agendamento_id == agendamento.id
+        ).all()
+        atuais_por_id = {str(a.id): a for a in aloc_atuais}
+
+        ids_desejados = {str(item.id) for item in dados.alocacoes if item.id}
+
+        for a in aloc_atuais:
+            if a.categoria == "SPOT" and str(a.id) not in ids_desejados:
+                db.delete(a)
+
+        for item in dados.alocacoes:
+            aloc_existente = atuais_por_id.get(str(item.id)) if item.id else None
+            if aloc_existente:
+                aloc_existente.veiculo_id = item.veiculo_id
+                aloc_existente.motorista_id = item.motorista_id
+                aloc_existente.status_operacional = item.status_operacional
+                aloc_existente.motivo_indisponibilidade_id = item.motivo_indisponibilidade_id
+            else:
+                nova_aloc = AlocacaoOperacional(
+                    id=item.id or uuid4(),
+                    agendamento_id=agendamento.id,
+                    motorista_id=item.motorista_id,
+                    veiculo_id=item.veiculo_id,
+                    categoria=item.categoria,
+                    status_operacional=item.status_operacional,
+                    motivo_indisponibilidade_id=item.motivo_indisponibilidade_id,
+                )
+                db.add(nova_aloc)
+
+        historico = HistoricoAgendamento(
+            agendamento_id=agendamento.id,
+            alterado_por_id=usuario_id,
+            tipo_alteracao="DESFAZER_ALTERACOES",
+            descricao="Alterações não salvas foram descartadas e o agendamento retornou à versão anterior.",
+        )
+        db.add(historico)
+        db.commit()
+        db.refresh(agendamento)
         return agendamento

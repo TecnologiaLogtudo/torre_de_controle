@@ -49,9 +49,9 @@ export const TorrePage: React.FC = () => {
         selectedEmpresaId={filtrosDetalhamento.empresa_id}
       />
 
-      {/* Grid de Detalhamento Operacional + Feed de Eventos */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
+      {/* Grid Expandido de Detalhamento Operacional + Feed de Eventos */}
+      <div className="flex flex-col xl:flex-row gap-5 items-start">
+        <div className="flex-1 min-w-0 w-full">
           <DetalhamentoTorre
             detalhamento={detalhamento}
             empresas={empresas}
@@ -63,7 +63,7 @@ export const TorrePage: React.FC = () => {
           />
         </div>
 
-        <div>
+        <div className="w-full xl:w-[330px] 2xl:w-[360px] shrink-0">
           <HistoricoEventosTorre
             eventos={historicoEventos}
             isLoading={loading}

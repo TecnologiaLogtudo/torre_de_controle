@@ -620,8 +620,8 @@ class OperacaoService:
 
         if alocacao:
             status_anterior = alocacao.status_operacional
-            if dados.novo_status == "SEM_ALOCACAO" or (is_spot and dados.novo_status == "DISPONIVEL"):
-                # Libera o motorista SPOT da alocação da empresa contratante e registra o status geral
+            if dados.novo_status == "SEM_ALOCACAO":
+                # Libera o motorista da alocação quando explicitamente solicitada SEM_ALOCACAO
                 from app.operacao.models import StatusOperacionalMotorista
                 s_diario = (
                     db.query(StatusOperacionalMotorista)
@@ -931,7 +931,7 @@ class OperacaoService:
                         )
 
                 status_ant = aloc.status_operacional
-                if dados.novo_status == "SEM_ALOCACAO" or (is_spot and dados.novo_status == "DISPONIVEL"):
+                if dados.novo_status == "SEM_ALOCACAO":
                     from app.operacao.models import StatusOperacionalMotorista
                     data_alvo = aloc.agendamento.data if aloc.agendamento else agora_local().date()
                     s_diario = (

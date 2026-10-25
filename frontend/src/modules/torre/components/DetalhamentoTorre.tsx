@@ -415,7 +415,7 @@ export const DetalhamentoTorre: React.FC<DetalhamentoTorreProps> = ({
                     <TableCell compact className="font-semibold text-slate-900 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
                         <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span className="truncate max-w-[170px]" title={item.motorista_nome}>{item.motorista_nome}</span>
+                        <span className="truncate max-w-[200px]" title={item.motorista_nome}>{item.motorista_nome}</span>
                       </div>
                     </TableCell>
 
@@ -427,7 +427,7 @@ export const DetalhamentoTorre: React.FC<DetalhamentoTorreProps> = ({
                     </TableCell>
 
                     <TableCell compact className="text-slate-700 whitespace-nowrap">
-                      <span className="truncate max-w-[140px] block" title={item.empresa_nome || '-'}>
+                      <span className="truncate max-w-[180px] block" title={item.empresa_nome || '-'}>
                         {item.empresa_nome || '-'}
                       </span>
                     </TableCell>
@@ -470,7 +470,7 @@ export const DetalhamentoTorre: React.FC<DetalhamentoTorreProps> = ({
                     </TableCell>
 
                     <TableCell compact className="text-xs text-slate-500 whitespace-nowrap">
-                      <span className="truncate max-w-[150px] block" title={item.motivo_indisponibilidade || '-'}>
+                      <span className="truncate max-w-[180px] block" title={item.motivo_indisponibilidade || '-'}>
                         {item.motivo_indisponibilidade ? (
                           <span className="text-rose-600 font-semibold">{item.motivo_indisponibilidade}</span>
                         ) : (
