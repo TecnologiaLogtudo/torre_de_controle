@@ -1,5 +1,15 @@
 # Diário de Bordo — Torre de Controle Logtudo
 
+## [2026-10-26] Configuração de Healthchecks Nativos para Coolify, Traefik, Caddy e Docker
+
+### 1. Diagnóstico do Alerta no Coolify
+- **Alerta**: *"Nenhuma verificação de integridade configurada. O recurso pode estar funcionando normalmente. O Traefik e o Caddy encaminharão o tráfego para este contêiner mesmo sem uma verificação de integridade..."*.
+- **Causa**: Ausência de diretivas `HEALTHCHECK` nos Dockerfiles e no serviço `frontend` do Compose, e falta de endpoint `/health` dedicado no Nginx do frontend.
+
+### 2. Solução Implementada
+- **Frontend**: Criado endpoint `/health` no Nginx (`frontend/nginx.conf`) e instrução `HEALTHCHECK` via `wget` no `frontend/Dockerfile` e `docker-compose.yml`.
+- **Backend**: Instrução `HEALTHCHECK` via `curl` adicionada ao `Dockerfile` apontando para o endpoint `@app.get("/health")` existente, com padronização no `docker-compose.yml`.
+
 ## [2026-10-26] Eliminação do Status "Sem Alocação" e Adoção da Disponibilidade Natural
 
 ### 1. Diagnóstico do Problema de Status e Causas Raízes

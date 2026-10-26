@@ -7,6 +7,15 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ## [Unreleased]
 
+### Adicionado (Healthchecks para Coolify, Traefik, Caddy e Docker)
+- **Verificação de Integridade no Frontend (`frontend/nginx.conf`, `frontend/Dockerfile`, `docker-compose.yml`)**:
+  - Adicionado endpoint dedicado `GET /health` no Nginx respondendo `HTTP 200 OK`.
+  - Configurada instrução `HEALTHCHECK` no Dockerfile do frontend via `wget` (BusyBox Alpine) com checagem a cada 30 segundos.
+  - Atualizado serviço `frontend` no `docker-compose.yml` com `healthcheck` ativo e dependência saudável de `web` (`condition: service_healthy`).
+- **Verificação de Integridade no Backend (`Dockerfile`, `docker-compose.yml`)**:
+  - Configurada instrução `HEALTHCHECK` no Dockerfile raiz do backend consultando `GET /health` via `curl` a cada 30 segundos.
+  - Padronizado o bloco `healthcheck` do serviço `web` no `docker-compose.yml` para consumo nativo pelo Traefik e Caddy do Coolify.
+
 ### Modificado & Corrigido (Eliminação do Status "Sem Alocação" e Adoção da Disponibilidade Natural)
 - **Disponibilidade Natural como Padrão da Frota Ativa (`app/operacao/services.py`, `models.py`, `schemas.py`)**:
   - Motoristas ativos sem escala e sem exceção cadastrada são considerados natural e imediatamente `DISPONIVEL` em qualquer data consultada, eliminando a degradação temporal diária onde os motoristas voltavam a 'Sem Alocação' na virada da meia-noite ou ao navegar no calendário.
