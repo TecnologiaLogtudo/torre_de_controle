@@ -7,6 +7,17 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/spec/v2.0.
 
 ## [Unreleased]
 
+### Modificado & Corrigido (Eliminação do Status "Sem Alocação" e Adoção da Disponibilidade Natural)
+- **Disponibilidade Natural como Padrão da Frota Ativa (`app/operacao/services.py`, `models.py`, `schemas.py`)**:
+  - Motoristas ativos sem escala e sem exceção cadastrada são considerados natural e imediatamente `DISPONIVEL` em qualquer data consultada, eliminando a degradação temporal diária onde os motoristas voltavam a 'Sem Alocação' na virada da meia-noite ou ao navegar no calendário.
+  - O status transitório `"SEM_ALOCACAO"` foi formalmente descontinuado do ciclo de vida dos recursos, com suporte retrocompatível automático (converte silenciosamente requisições legadas com `SEM_ALOCACAO` para `DISPONIVEL`).
+  - Atualizado o método `obter_resumo_geral` e `obter_status_motoristas`: todos os recursos livres passam a somar nativamente como disponíveis na capacidade total da Torre de Controle.
+- **Simplificação e Limpeza da Interface de Status dos Motoristas (`frontend/src/modules/motoristas/pages/StatusMotoristasPage.tsx`, `DetalhamentoTorre.tsx`, `types/torre.ts`)**:
+  - Removido o card de resumo redundante "Sem Alocação" e o banner com ação em lote "Tornar Todos Disponíveis", desonerando a rotina diária dos operadores.
+  - As seleções de status individual e em lote foram simplificadas para os 4 status oficiais da operação (`DISPONIVEL`, `PROGRAMADO`, `EM_ROTA`, `INDISPONIVEL`).
+- **Suíte de Testes Automatizados (`frontend/src/test/statusMotoristas.test.tsx`, `tests/test_status_motoristas.py`)**:
+  - Atualizados os testes unitários e de integração no frontend e backend para validar a prontidão automática de motoristas como `DISPONIVEL`.
+
 ### Aprimorado (Layout e Ampliacao da Torre de Controle para Telas de 15")
 - **Ampliacao da Tabela de Detalhamento Operacional dos Recursos (`TorrePage.tsx`, `ApplicationLayout.tsx`, `DetalhamentoTorre.tsx`)**:
   - O container global do layout foi expandido de `max-w-7xl` (1280px) para `w-full max-w-[1680px] mx-auto`, liberando espaco horizontal natural para dashboards densos em monitores e laptops de 15" (1366px, 1536px e 1920px).

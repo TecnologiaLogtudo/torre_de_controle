@@ -20,16 +20,14 @@ import { Input } from '@/components/ui/Input'
 import { toast } from '@/components/feedback/Toaster'
 import { getHojeBahiaIso, formatDateBahia } from '@/utils/date'
 import { getErrorMessage } from '@/services/api/errors'
-import { RefreshCw, UserCheck, Edit, AlertTriangle, CheckSquare, Square, Users, CheckCircle2 } from 'lucide-react'
+import { RefreshCw, UserCheck, Edit, AlertTriangle, CheckSquare, Square, Users } from 'lucide-react'
 
-const SEM_ALOCACAO_LABEL = 'Sem Alocação'
 
 const STATUS_OPTIONS: { value: MotoristaStatus['status_operacional']; label: string; desc: string }[] = [
   { value: 'DISPONIVEL', label: 'Disponível', desc: 'Motorista apto e pronto para atender operações.' },
   { value: 'PROGRAMADO', label: 'Programado', desc: 'Escalado em agendamento para execução.' },
   { value: 'EM_ROTA', label: 'Em Rota', desc: 'Em atendimento operacional/viagem em trânsito.' },
   { value: 'INDISPONIVEL', label: 'Indisponível', desc: 'Impossibilitado de operar (necessário motivo).' },
-  { value: 'SEM_ALOCACAO', label: 'Sem Alocação', desc: 'Recurso livre sem escala operacional na data.' },
 ]
 
 interface ResumoCardProps {
@@ -186,13 +184,6 @@ export const StatusMotoristasPage: React.FC = () => {
     }
   }
 
-  const handleSelectTodosSemAlocacao = () => {
-    const semAlocIds = (statusData?.motoristas || [])
-      .filter(m => m.status_operacional === 'SEM_ALOCACAO')
-      .map(m => m.motorista_id)
-    setSelectedMotoristas(semAlocIds)
-  }
-
   const handleSalvarStatusLote = async (e: React.FormEvent) => {
     e.preventDefault()
     if (selectedMotoristas.length === 0) return
@@ -225,40 +216,11 @@ export const StatusMotoristasPage: React.FC = () => {
     }
   }
 
-  const handleTornarSemAlocacaoDisponiveis = async () => {
-    const semAlocIds = (statusData?.motoristas || [])
-      .filter(m => m.status_operacional === 'SEM_ALOCACAO')
-      .map(m => m.motorista_id)
-
-    if (semAlocIds.length === 0) {
-      toast.info('Não há motoristas sem alocação nesta data.')
-      return
-    }
-
-    setLoading(true)
-    try {
-      await torreService.atualizarStatusLote({
-        motorista_ids: semAlocIds,
-        data: dataFiltro,
-        novo_status: 'DISPONIVEL',
-        origem_alteracao: 'status_motoristas_tornar_disponiveis',
-      })
-      toast.success(`${semAlocIds.length} motorista(s) sem alocação alterado(s) para Disponível com sucesso!`)
-      setSelectedMotoristas([])
-      await carregarDados()
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err, 'Erro ao atualizar motoristas sem alocação.'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const statusOrdemPeso: Record<string, number> = {
     EM_ROTA: 1,
     PROGRAMADO: 2,
     DISPONIVEL: 3,
     INDISPONIVEL: 4,
-    SEM_ALOCACAO: 5,
   }
 
   const motoristasFiltrados: MotoristaStatus[] = (statusData?.motoristas || [])
@@ -375,45 +337,11 @@ export const StatusMotoristasPage: React.FC = () => {
             ativo={filtroStatus === 'INDISPONIVEL'}
             onClick={() => setFiltroStatus(filtroStatus === 'INDISPONIVEL' ? 'TODOS' : 'INDISPONIVEL')}
           />
-          <ResumoCard
-            label="Sem Alocação"
-            valor={statusData.sem_alocacao}
-            cor="text-slate-600"
-            borderAccent="border-t-slate-400"
-            ativo={filtroStatus === 'SEM_ALOCACAO'}
-            onClick={() => setFiltroStatus(filtroStatus === 'SEM_ALOCACAO' ? 'TODOS' : 'SEM_ALOCACAO')}
-          />
+
         </div>
       )}
 
-      {/* Atalho Rápido para Motoristas Sem Alocação */}
-      {statusData && statusData.sem_alocacao > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-amber-50 border border-amber-200 rounded-none text-xs text-amber-900">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>
-              Existem <strong>{statusData.sem_alocacao}</strong> motorista(s) com status <strong>Sem Alocação</strong> nesta data.
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSelectTodosSemAlocacao}
-            >
-              Selecionar ({statusData.sem_alocacao})
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleTornarSemAlocacaoDisponiveis}
-              leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
-            >
-              Tornar Todos Disponíveis
-            </Button>
-          </div>
-        </div>
-      )}
+
 
       {/* Barra de Ação em Massa */}
       {selectedMotoristas.length > 0 && (
@@ -537,11 +465,6 @@ export const StatusMotoristasPage: React.FC = () => {
                     className="cursor-pointer inline-flex items-center group text-left"
                     title="Clique para alterar status operacional"
                   >
-                    {m.status_operacional === 'SEM_ALOCACAO' ? (
-                      <span className="inline-flex items-center rounded-none border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs font-mono font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-200 transition-colors">
-                        {SEM_ALOCACAO_LABEL}
-                      </span>
-                    ) : (
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <StatusBadge status={m.status_operacional} size="sm" />
                         {m.status_operacional === 'EM_ROTA' && m.data_inicio_rota && (
@@ -553,7 +476,6 @@ export const StatusMotoristasPage: React.FC = () => {
                           </span>
                         )}
                       </div>
-                    )}
                   </button>
                 </TableCell>
                 <TableCell compact className="text-slate-600 text-xs font-sans">
@@ -598,13 +520,7 @@ export const StatusMotoristasPage: React.FC = () => {
                   <div className="bg-slate-50 border border-slate-200 p-3 space-y-1.5 text-xs">
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500">Status Atual:</span>
-                      {selectedMotorista.status_operacional === 'SEM_ALOCACAO' ? (
-                        <span className="inline-flex items-center border border-slate-300 bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-slate-700">
-                          {SEM_ALOCACAO_LABEL}
-                        </span>
-                      ) : (
-                        <StatusBadge status={selectedMotorista.status_operacional} />
-                      )}
+                      <StatusBadge status={selectedMotorista.status_operacional} />
                     </div>
                     <div className="flex justify-between items-center text-slate-700">
                       <span className="text-slate-500">Categoria:</span>
@@ -738,7 +654,6 @@ export const StatusMotoristasPage: React.FC = () => {
             options={[
               { value: 'DISPONIVEL', label: 'Disponível (Pronto para operar)' },
               { value: 'INDISPONIVEL', label: 'Indisponível (Registrar Motivo)' },
-              { value: 'SEM_ALOCACAO', label: 'Sem Alocação (Remover alocação atual)' },
             ]}
             required
           />

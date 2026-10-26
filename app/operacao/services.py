@@ -427,7 +427,7 @@ class OperacaoService:
         }
 
         resultado: List[MotoristaStatusResponse] = []
-        contagem = {"DISPONIVEL": 0, "PROGRAMADO": 0, "EM_ROTA": 0, "INDISPONIVEL": 0, "SEM_ALOCACAO": 0}
+        contagem = {"DISPONIVEL": 0, "PROGRAMADO": 0, "EM_ROTA": 0, "INDISPONIVEL": 0}
 
         for m in motoristas:
             aloc = alocacoes.get(m.id)
@@ -454,11 +454,11 @@ class OperacaoService:
                 alocacao_id = aloc.id
             else:
                 s_diario = status_diarios.get(m.id)
-                if s_diario:
+                if s_diario and s_diario.status_operacional != "SEM_ALOCACAO":
                     status_op = s_diario.status_operacional
                     motivo = s_diario.motivo_indisponibilidade.nome if s_diario.motivo_indisponibilidade else None
                 else:
-                    status_op = "SEM_ALOCACAO"
+                    status_op = "DISPONIVEL"
                     motivo = None
 
                 empresa_id_resp = vinculo.empresa_id if vinculo else None
@@ -510,7 +510,6 @@ class OperacaoService:
             "PROGRAMADO": 2,
             "DISPONIVEL": 3,
             "INDISPONIVEL": 4,
-            "SEM_ALOCACAO": 5,
         }
         resultado.sort(key=lambda x: (ordem_status_map.get(x.status_operacional, 99), x.motorista_nome.lower()))
 
@@ -521,7 +520,7 @@ class OperacaoService:
             programados=contagem["PROGRAMADO"],
             em_rota=contagem["EM_ROTA"],
             indisponiveis=contagem["INDISPONIVEL"],
-            sem_alocacao=contagem["SEM_ALOCACAO"],
+            sem_alocacao=0,
             motoristas=resultado,
         )
 
@@ -554,6 +553,9 @@ class OperacaoService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Status operacional inválido: {dados.novo_status}.",
             )
+        # Normalização retrocompatível: SEM_ALOCACAO converte para DISPONIVEL
+        if dados.novo_status == "SEM_ALOCACAO":
+            dados.novo_status = "DISPONIVEL"
 
         nome_motivo = None
         if dados.novo_status == "INDISPONIVEL":
@@ -620,7 +622,7 @@ class OperacaoService:
 
         if alocacao:
             status_anterior = alocacao.status_operacional
-            if dados.novo_status == "SEM_ALOCACAO":
+            if is_spot and dados.novo_status == "DISPONIVEL":
                 # Libera o motorista da alocação quando explicitamente solicitada SEM_ALOCACAO
                 from app.operacao.models import StatusOperacionalMotorista
                 s_diario = (
@@ -773,7 +775,7 @@ class OperacaoService:
                     veiculo_id=vinculo.veiculo_id,
                     agendamento_id=agendamento.id,
                     categoria=vinculo.categoria_operacional,
-                    status_anterior="SEM_ALOCACAO",
+                    status_anterior="DISPONIVEL",
                     novo_status=dados.novo_status,
                     motivo_indisponibilidade=None,
                     usuario_id=usuario_id,
@@ -812,7 +814,7 @@ class OperacaoService:
                 )
                 .first()
             )
-            status_anterior = s_diario.status_operacional if s_diario else "SEM_ALOCACAO"
+            status_anterior = s_diario.status_operacional if (s_diario and s_diario.status_operacional != "SEM_ALOCACAO") else "DISPONIVEL"
             if not s_diario:
                 s_diario = StatusOperacionalMotorista(
                     motorista_id=motorista_id,
@@ -931,7 +933,7 @@ class OperacaoService:
                         )
 
                 status_ant = aloc.status_operacional
-                if dados.novo_status == "SEM_ALOCACAO":
+                if is_spot and dados.novo_status == "DISPONIVEL":
                     from app.operacao.models import StatusOperacionalMotorista
                     data_alvo = aloc.agendamento.data if aloc.agendamento else agora_local().date()
                     s_diario = (

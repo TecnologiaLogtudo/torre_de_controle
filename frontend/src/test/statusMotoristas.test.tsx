@@ -46,7 +46,7 @@ describe('Suíte de Testes S2 — Página de Status de Motoristas', () => {
           veiculo_id: null,
           veiculo_placa: null,
           categoria: null,
-          status_operacional: 'SEM_ALOCACAO',
+          status_operacional: 'DISPONIVEL',
           motivo_indisponibilidade: null,
           agendamento_id: null,
         },
@@ -71,7 +71,8 @@ describe('Suíte de Testes S2 — Página de Status de Motoristas', () => {
     expect(screen.getByText('Carlos Dedicado')).toBeInTheDocument()
     expect(screen.getByText('Marcos SPOT')).toBeInTheDocument()
     expect(screen.getByText('[ABC1D23]')).toBeInTheDocument()
-    expect(screen.getAllByText('Sem Alocação').length).toBeGreaterThan(0)
+    // Sem Alocação removido - agora é Disponível
+    expect(screen.getAllByText('Disponível').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Logística Parceira SP').length).toBeGreaterThan(0)
 
     // Indicadores consolidados
@@ -160,7 +161,7 @@ describe('Suíte de Testes S2 — Página de Status de Motoristas', () => {
           veiculo_id: null,
           veiculo_placa: null,
           categoria: null,
-          status_operacional: 'SEM_ALOCACAO',
+          status_operacional: 'DISPONIVEL',
           motivo_indisponibilidade: null,
           agendamento_id: null,
         },
@@ -224,7 +225,7 @@ describe('Suíte de Testes S2 — Página de Status de Motoristas', () => {
           veiculo_id: null,
           veiculo_placa: null,
           categoria: 'SPOT',
-          status_operacional: 'SEM_ALOCACAO',
+          status_operacional: 'DISPONIVEL',
           motivo_indisponibilidade: null,
           agendamento_id: null,
         },
@@ -283,7 +284,7 @@ describe('Suíte de Testes S2 — Página de Status de Motoristas', () => {
           veiculo_id: null,
           veiculo_placa: null,
           categoria: 'SPOT',
-          status_operacional: 'SEM_ALOCACAO',
+          status_operacional: 'DISPONIVEL',
           motivo_indisponibilidade: null,
           agendamento_id: null,
         },
@@ -295,7 +296,7 @@ describe('Suíte de Testes S2 — Página de Status de Motoristas', () => {
           veiculo_id: null,
           veiculo_placa: null,
           categoria: 'SPOT',
-          status_operacional: 'SEM_ALOCACAO',
+          status_operacional: 'DISPONIVEL',
           motivo_indisponibilidade: null,
           agendamento_id: null,
         },

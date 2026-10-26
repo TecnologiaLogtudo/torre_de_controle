@@ -87,7 +87,7 @@ class MotoristaStatusResponse(BaseModel):
     veiculo_tipo: Optional[str] = None
     veiculo_especialidade: Optional[str] = None
     categoria: Optional[str] = None
-    status_operacional: str  # DISPONIVEL, PROGRAMADO, EM_ROTA, INDISPONIVEL, SEM_ALOCACAO
+    status_operacional: str  # DISPONIVEL, PROGRAMADO, EM_ROTA, INDISPONIVEL
     motivo_indisponibilidade: Optional[str] = None
     agendamento_id: Optional[UUID] = None
     alocacao_id: Optional[UUID] = None
@@ -95,7 +95,7 @@ class MotoristaStatusResponse(BaseModel):
 
 class AlterarStatusMotoristaRequest(BaseModel):
     data: date
-    novo_status: str  # DISPONIVEL, PROGRAMADO, EM_ROTA, INDISPONIVEL, SEM_ALOCACAO
+    novo_status: str  # DISPONIVEL, PROGRAMADO, EM_ROTA, INDISPONIVEL (retrocompatível com SEM_ALOCACAO)
     motivo_indisponibilidade_id: Optional[UUID] = None
     origem_alteracao: Optional[str] = "painel_status_motoristas"
 

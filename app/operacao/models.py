@@ -27,7 +27,7 @@ class StatusOperacionalMotorista(BaseEntidade):
 
     motorista_id = Column(UUID(as_uuid=True), ForeignKey("motoristas.id", ondelete="CASCADE"), nullable=False)
     data = Column(Date, nullable=False)
-    status_operacional = Column(String(50), nullable=False, default="DISPONIVEL")  # DISPONIVEL, INDISPONIVEL, SEM_ALOCACAO
+    status_operacional = Column(String(50), nullable=False, default="DISPONIVEL")  # DISPONIVEL, INDISPONIVEL
     motivo_indisponibilidade_id = Column(UUID(as_uuid=True), ForeignKey("motivos_indisponibilidade.id", ondelete="SET NULL"), nullable=True)
 
     motorista = relationship("Motorista")

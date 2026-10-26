@@ -1,5 +1,27 @@
 # Diário de Bordo — Torre de Controle Logtudo
 
+## [2026-10-26] Eliminação do Status "Sem Alocação" e Adoção da Disponibilidade Natural
+
+### 1. Diagnóstico do Problema de Status e Causas Raízes
+- **Sintoma Relatado**: Motoristas disponíveis mudavam repetidamente seu status para "Sem Alocação".
+- **Causas Raízes Identificadas**:
+  1. *Efemeridade Diária*: A tabela `status_operacional_motoristas` gravava o status fixado a uma data específica. Ao virar o dia ou consultar nova data no calendário, não havia registro diário para a data alvo, caindo no fallback `status_op = "SEM_ALOCACAO"`.
+  2. *Desalocação SPOT / Cancelamento de Agendamentos*: Ao desalocar um motorista de um agendamento ou cancelar uma programação, o vínculo era excluído, mas nenhum status `DISPONIVEL` avulso era persistido, empurrando o motorista para o fallback "Sem Alocação".
+  3. *Confusão de Domínio*: "Sem Alocação" não é um status de prontidão operacional, mas sim a ausência de uma alocação ativa. Um motorista ativo sem apontamento de indisponibilidade é conceitualmente `DISPONIVEL`.
+
+### 2. Solução Implementada
+- **Backend**:
+  - `OperacaoService.obter_status_motoristas`: Fallback de recursos livres sem exceção diária atualizado para `DISPONIVEL`.
+  - Tratamento resiliente e retrocompatível: requisições com `novo_status == "SEM_ALOCACAO"` são normalizadas automaticamente para `DISPONIVEL`.
+  - Remoção de `"SEM_ALOCACAO"` dos pesos de ordenação e mapa de contagem, mantendo `sem_alocacao=0` para integridade da API externa.
+- **Frontend**:
+  - Removido o banner de alerta e ação em lote "Tornar Todos Disponíveis".
+  - Removido o card de resumo "Sem Alocação" dos indicadores do topo.
+  - Atualizadas as opções de status para os 4 status canônicos: `Disponível`, `Programado`, `Em Rota` e `Indisponível`.
+- **Testes**:
+  - Suíte do frontend Vitest 100% verde (54 testes passando).
+  - Testes do backend adaptados para certificar a nova regra de disponibilidade natural.
+
 ## [2026-10-21] Persistência de Viagens em Rota, Conclusão de Agendamentos e Regularização de Frota
 
 ### 1. Diagnóstico do Conflito de Alocação e Regra de Negócio de Viagens em Rota

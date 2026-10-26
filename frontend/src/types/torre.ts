@@ -76,7 +76,7 @@ export interface MotoristaStatus {
   veiculo_tipo?: string | null
   veiculo_especialidade?: string | null
   categoria?: string | null
-  status_operacional: 'DISPONIVEL' | 'PROGRAMADO' | 'EM_ROTA' | 'INDISPONIVEL' | 'SEM_ALOCACAO'
+  status_operacional: 'DISPONIVEL' | 'PROGRAMADO' | 'EM_ROTA' | 'INDISPONIVEL'
   motivo_indisponibilidade?: string | null
   agendamento_id?: string | null
   alocacao_id?: string | null
@@ -85,7 +85,7 @@ export interface MotoristaStatus {
 
 export interface AlterarStatusMotoristaPayload {
   data: string
-  novo_status: 'DISPONIVEL' | 'PROGRAMADO' | 'EM_ROTA' | 'INDISPONIVEL' | 'SEM_ALOCACAO'
+  novo_status: 'DISPONIVEL' | 'PROGRAMADO' | 'EM_ROTA' | 'INDISPONIVEL'
   motivo_indisponibilidade_id?: string | null
   origem_alteracao?: string
 }
@@ -97,7 +97,7 @@ export interface MotoristasStatus {
   programados: number
   em_rota: number
   indisponiveis: number
-  sem_alocacao: number
+  sem_alocacao?: number
   motoristas: MotoristaStatus[]
 }
 
@@ -145,7 +145,7 @@ export interface StatusOperacionalLotePayload {
   alocacao_ids?: string[]
   motorista_ids?: string[]
   data?: string
-  novo_status: 'DISPONIVEL' | 'PROGRAMADO' | 'EM_ROTA' | 'INDISPONIVEL' | 'SEM_ALOCACAO' | string
+  novo_status: 'DISPONIVEL' | 'PROGRAMADO' | 'EM_ROTA' | 'INDISPONIVEL' | string
   motivo_indisponibilidade_id?: string | null
   observacao?: string
   origem_alteracao?: string

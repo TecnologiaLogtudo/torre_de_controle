@@ -63,7 +63,6 @@ export const DetalhamentoTorre: React.FC<DetalhamentoTorreProps> = ({
     PROGRAMADO: 2,
     DISPONIVEL: 3,
     INDISPONIVEL: 4,
-    SEM_ALOCACAO: 5,
   }
 
   const detalhamentoVisivel = React.useMemo(() => {

@@ -6,7 +6,7 @@ from tests.test_torre_e_operacao_completa import obter_headers_autenticados
 
 
 def test_status_motoristas_sem_alocacao(client):
-    """Motorista ativo sem alocação no dia deve aparecer como SEM_ALOCACAO."""
+    """Motorista ativo sem alocação no dia deve aparecer como DISPONIVEL."""
     headers = obter_headers_autenticados(client)
 
     res_mot = client.post(
@@ -23,7 +23,7 @@ def test_status_motoristas_sem_alocacao(client):
     assert dados["total"] >= 1
 
     alvo = next(m for m in dados["motoristas"] if m["motorista_id"] == motorista_id)
-    assert alvo["status_operacional"] == "SEM_ALOCACAO"
+    assert alvo["status_operacional"] == "DISPONIVEL"
     assert alvo["motorista_nome"] == "Sem Alocacao Status Teste"
 
 
@@ -181,13 +181,13 @@ def test_alterar_status_motorista_sem_alocacao_e_com_alocacao(client, db):
 
     hoje = agora_local().date().isoformat()
 
-    # 2. Inicialmente está SEM_ALOCACAO
+    # 2. Inicialmente está DISPONIVEL
     res_st1 = client.get("/api/v1/operacao/motoristas-status", params={"data": hoje}, headers=headers)
     assert res_st1.status_code == status.HTTP_200_OK
     alvo = next(m for m in res_st1.json()["motoristas"] if m["motorista_id"] == mot_id)
-    assert alvo["status_operacional"] == "SEM_ALOCACAO"
+    assert alvo["status_operacional"] == "DISPONIVEL"
 
-    # 3. Altera SEM_ALOCACAO -> INDISPONIVEL (sem motivo deve falhar 400)
+    # 3. Altera DISPONIVEL -> INDISPONIVEL (sem motivo deve falhar 400)
     res_err = client.post(
         f"/api/v1/operacao/motoristas/{mot_id}/status",
         json={"data": hoje, "novo_status": "INDISPONIVEL"},
@@ -195,7 +195,7 @@ def test_alterar_status_motorista_sem_alocacao_e_com_alocacao(client, db):
     )
     assert res_err.status_code == status.HTTP_400_BAD_REQUEST
 
-    # 4. Altera SEM_ALOCACAO -> INDISPONIVEL (com motivo)
+    # 4. Altera DISPONIVEL -> INDISPONIVEL (com motivo)
     res_indisp = client.post(
         f"/api/v1/operacao/motoristas/{mot_id}/status",
         json={"data": hoje, "novo_status": "INDISPONIVEL", "motivo_indisponibilidade_id": motivo_id},
@@ -229,12 +229,12 @@ def test_alterar_status_motorista_sem_alocacao_e_com_alocacao(client, db):
         headers=headers,
     )
     assert res_sem.status_code == status.HTTP_200_OK
-    assert res_sem.json()["status_operacional"] == "SEM_ALOCACAO"
+    assert res_sem.json()["status_operacional"] == "DISPONIVEL"
 
     # Consulta final consolidado
     res_st3 = client.get("/api/v1/operacao/motoristas-status", params={"data": hoje}, headers=headers)
     alvo3 = next(m for m in res_st3.json()["motoristas"] if m["motorista_id"] == mot_id)
-    assert alvo3["status_operacional"] == "SEM_ALOCACAO"
+    assert alvo3["status_operacional"] == "DISPONIVEL"
 
     # 7. Motorista SPOT não pode ser alterado para PROGRAMADO ou EM_ROTA diretamente
     res_bloq_prog = client.post(
