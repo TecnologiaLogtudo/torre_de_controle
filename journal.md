@@ -32,6 +32,33 @@
   - Suíte do frontend Vitest 100% verde (54 testes passando).
   - Testes do backend adaptados para certificar a nova regra de disponibilidade natural.
 
+## [2026-10-25] Cadastro Casado de Recursos, Melhorias de Agendamento e Ampliação da Torre de Controle
+
+### 1. Cadastro Casado nos Drawers de Motoristas e Veículos
+- **Drawer de Motoristas (`MotoristasPage.tsx`)**:
+  - Unificação do fluxo de cadastro e vinculação no mesmo container Drawer (tanto para novo cadastro quanto para edição).
+  - Disponibilização de 3 abas operacionais:
+    1. `Sem Veículo`: cadastra o motorista como recurso SPOT livre sem veículo associado.
+    2. `Vincular Existente`: seleciona da frota física disponível com categoria (`SPOT` ou `DEDICADO`) e empresa contratante.
+    3. `+ Novo Veículo Casado`: formulário integrado no mesmo Drawer com placa, tipo de veículo (`HR`, `Fiorino`, `Truck`, `Toco`, `VUC`), especialidade (`SECO` ou `REFRIGERADO`), categoria (`SPOT` ou `DEDICADO`) e empresa contratante.
+  - Orquestração transacional de chamadas: cria o motorista, cria o veículo e formaliza o vínculo de uma só vez com feedback imediato.
+- **Drawer de Veículos (`VeiculosPage.tsx`)**:
+  - Unificação simétrica no mesmo container Drawer com 3 abas:
+    1. `Sem Motorista`: cadastra o veículo livre na frota física sem operador fixo.
+    2. `Vincular Existente`: vincula um motorista operacional disponível com categoria e empresa contratante.
+    3. `+ Novo Motorista Casado`: campo integrado para nome completo do novo motorista, categoria operacional e empresa contratante.
+  - Orquestração transacional no mesmo submit.
+- **Suíte de Testes Automatizados (`frontend/src/test/cadastroCasado.test.tsx`)**:
+  - 4 testes unitários cobrindo o fluxo completo de cadastro casado e vinculação existente.
+
+### 2. Ampliação da Torre de Controle para Telas de 15" e Estabilização do Feed
+- **Ampliação da Tabela de Detalhamento Operacional (`TorrePage.tsx`, `ApplicationLayout.tsx`, `DetalhamentoTorre.tsx`)**:
+  - O container global do layout foi expandido de `max-w-7xl` (1280px) para `w-full max-w-[1680px] mx-auto`, liberando espaço horizontal natural para dashboards densos em monitores e laptops de 15" (1366px a 1920px).
+  - O layout do grid da Torre foi migrado para flexbox proporcional (`flex-1 min-w-0` para a tabela), concedendo de 180px a 350px adicionais de largura útil para visualização simultânea de todas as colunas sem truncamentos indesejados.
+- **Proteção e Estabilidade do Feed de Eventos Imutáveis (`HistoricoEventosTorre.tsx`)**:
+  - Largura controlada e estável fixada com `shrink-0` (`w-[330px]` / `2xl:w-[360px]`).
+  - Reformulação da estrutura dos cards de eventos operacionais com cabeçalho estruturado e corpo detalhado, garantindo que o feed nunca colapse, deforme ou quebre os badges de status.
+
 ## [2026-10-21] Persistência de Viagens em Rota, Conclusão de Agendamentos e Regularização de Frota
 
 ### 1. Diagnóstico do Conflito de Alocação e Regra de Negócio de Viagens em Rota
